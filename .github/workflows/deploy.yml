@@ -1,24 +1,29 @@
 name: Deploy TelcoCRM
-
 on:
   push:
     branches: [main]
-
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
-
       - name: Inject credentials
         run: |
           sed -i "s|__SHEET_ID__|${{ secrets.SHEET_ID }}|g" index.html
           sed -i "s|__API_KEY__|${{ secrets.API_KEY }}|g" index.html
           sed -i "s|__CLIENT_ID__|${{ secrets.CLIENT_ID }}|g" index.html
-
+      - name: Debug (remove after fix)
+        run: |
+          echo "SHEET_ID length: ${#SHEET_ID}"
+          echo "API_KEY length: ${#API_KEY}"
+          echo "CLIENT_ID length: ${#CLIENT_ID}"
+          grep -o 'CLIENT_ID.*' index.html | head -1
+        env:
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          API_KEY: ${{ secrets.API_KEY }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
