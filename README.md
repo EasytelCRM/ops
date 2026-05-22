@@ -1,2 +1,2 @@
 # telco-crm
-Easytel CRM
+Easytel
