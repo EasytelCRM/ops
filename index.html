@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TelcoCRM — Ops Manager Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f4f3ef; --surface: #ffffff; --surface2: #f9f8f5;
+    --border: #e5e3dc; --border2: #d0cec6;
+    --text: #1a1916; --text2: #6b6960; --text3: #9e9b93;
+    --accent: #1a4f8a; --accent-light: #e8f0fa; --accent-text: #1a4f8a;
+    --green: #2d6a2d; --green-light: #eaf3ea;
+    --amber: #7a4a00; --amber-light: #fef3e2;
+    --red: #8a1a1a; --red-light: #faeaea;
+    --radius: 8px; --radius-lg: 12px;
+  }
+  body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; font-size: 14px; line-height: 1.5; }
+  .app { display: flex; height: 100vh; }
+  .sidebar { width: 240px; min-width: 240px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .logo { padding: 1.25rem 1.25rem 1rem; border-bottom: 1px solid var(--border); }
+  .logo-mark { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+  .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
+  .logo h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo p { font-size: 11px; color: var(--text3); padding-left: 42px; }
+  nav { padding: 0.75rem 0.5rem; }
+  .nav-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); padding: 8px 0.75rem 4px; }
+  .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 0.75rem; border-radius: var(--radius); font-size: 13px; cursor: pointer; color: var(--text2); transition: all 0.12s; }
+  .nav-item i { font-size: 17px; }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+  .client-jump { border-top: 1px solid var(--border); padding: 0.5rem; overflow-y: auto; flex: 1; }
+  .cj-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); padding: 6px 0.75rem 4px; }
+  .cj-item { display: flex; align-items: center; gap: 8px; padding: 6px 0.75rem; border-radius: var(--radius); cursor: pointer; font-size: 12px; color: var(--text2); transition: all 0.12s; }
+  .cj-item:hover, .cj-item.active { background: var(--bg); color: var(--text); }
+  .av-xs { width: 22px; height: 22px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; flex-shrink: 0; }
+  .main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.875rem 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .topbar h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+  .topbar-actions { display: flex; gap: 8px; align-items: center; }
+  .sync-status { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 5px; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  .sync-dot.syncing { background: var(--amber); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius); border: 1px solid var(--border2); background: var(--surface); color: var(--text); font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.12s; font-weight: 400; white-space: nowrap; }
+  .btn:hover { background: var(--bg); }
+  .btn i { font-size: 15px; }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: #163f70; border-color: #163f70; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-danger { color: var(--red); border-color: #f0b8b8; }
+  .btn-danger:hover { background: var(--red-light); }
+  .content { flex: 1; overflow-y: auto; padding: 1.5rem; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; }
+  .stat-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .stat-value { font-size: 28px; font-weight: 300; letter-spacing: -1px; }
+  .stat-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1rem; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--border); }
+  .card-head h3 { font-size: 13px; font-weight: 600; }
+  .card-body { padding: 1.25rem; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 9px 1rem; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface2); }
+  td { padding: 10px 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr.clickable:hover td { background: var(--bg); cursor: pointer; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+  .badge-blue { background: var(--accent-light); color: var(--accent-text); }
+  .badge-green { background: var(--green-light); color: var(--green); }
+  .badge-amber { background: var(--amber-light); color: var(--amber); }
+  .badge-gray { background: var(--bg); color: var(--text2); border: 1px solid var(--border); }
+  .profile-grid { display: grid; grid-template-columns: 260px 1fr; gap: 1rem; align-items: start; }
+  .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; position: sticky; top: 0; }
+  .av-lg { width: 52px; height: 52px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600; margin-bottom: 10px; }
+  .profile-name { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
+  .profile-company { font-size: 13px; color: var(--text2); margin-bottom: 12px; }
+  .pf { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 12px; }
+  .pf i { color: var(--text3); font-size: 15px; margin-top: 1px; flex-shrink: 0; }
+  .pf-label { color: var(--text3); margin-bottom: 1px; font-size: 11px; }
+  .pf-value { color: var(--text); word-break: break-all; }
+  .profile-actions { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+  .tab { padding: 9px 16px; font-size: 13px; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; align-items: center; gap: 6px; transition: all 0.12s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+  .tab-badge { background: var(--bg); color: var(--text3); font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
+  .note-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 8px; }
+  .note-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .note-author { font-size: 12px; font-weight: 500; color: var(--text2); }
+  .note-date { font-size: 11px; color: var(--text3); }
+  .note-text { font-size: 13px; line-height: 1.65; }
+  .job-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.875rem 1rem; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+  .job-info { flex: 1; min-width: 0; }
+  .job-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .job-meta { font-size: 11px; color: var(--text3); }
+  .job-cost { font-size: 14px; font-weight: 500; font-family: 'DM Mono', monospace; white-space: nowrap; }
+  .search-bar { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 1rem; }
+  .search-bar i { color: var(--text3); font-size: 16px; }
+  .search-bar input { background: none; border: none; outline: none; font-size: 13px; color: var(--text); flex: 1; font-family: inherit; }
+  .empty { text-align: center; padding: 2.5rem 1rem; color: var(--text3); }
+  .empty i { font-size: 36px; display: block; margin-bottom: 8px; }
+  .empty p { font-size: 13px; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(10,10,8,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; width: 500px; max-width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.15); }
+  .modal-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+  .modal-hdr h3 { font-size: 16px; font-weight: 600; }
+  .modal-x { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 20px; display: flex; }
+  .modal-x:hover { color: var(--text); }
+  .form-group { margin-bottom: 14px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  label.lbl { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 5px; }
+  input.fi, select.fi, textarea.fi { width: 100%; padding: 8px 11px; border: 1px solid var(--border2); border-radius: var(--radius); font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.12s; }
+  input.fi:focus, select.fi:focus, textarea.fi:focus { border-color: var(--accent); }
+  textarea.fi { resize: vertical; min-height: 90px; line-height: 1.6; }
+  .modal-ftr { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+  .setup-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+  .setup-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; width: 540px; max-width: 95vw; box-shadow: 0 8px 40px rgba(0,0,0,0.12); max-height: 95vh; overflow-y: auto; }
+  .setup-box h2 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+  .setup-box p { font-size: 13px; color: var(--text2); margin-bottom: 1.5rem; line-height: 1.7; }
+  .setup-step { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 1rem; }
+  .step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .step-text { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .step-text strong { color: var(--text); }
+  .ai-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; background: var(--accent-light); color: var(--accent); padding: 3px 9px; border-radius: 20px; }
+  .ai-msg-user { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 8px; font-size: 13px; }
+  .ai-msg-user strong { font-weight: 500; color: var(--text2); font-size: 11px; display: block; margin-bottom: 3px; }
+  .ai-msg-ai { background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 0 var(--radius) var(--radius) 0; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
+  .ai-msg-ai strong { font-weight: 500; color: var(--accent); font-size: 11px; display: block; margin-bottom: 3px; }
+  .ai-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .ai-sug { background: var(--surface); border: 1px solid var(--border2); border-radius: 20px; padding: 5px 12px; font-size: 12px; cursor: pointer; color: var(--text2); transition: all 0.12s; }
+  .ai-sug:hover { background: var(--accent-light); color: var(--accent); }
+  .ai-input-row { display: flex; gap: 8px; margin-top: 1rem; }
+  .ai-input-row input { flex: 1; padding: 9px 13px; border: 1px solid var(--border2); border-radius: var(--radius); font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); outline: none; }
+  .ai-input-row input:focus { border-color: var(--accent); }
+  .ai-history { max-height: 380px; overflow-y: auto; margin-bottom: 0.5rem; }
+  .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--text); color: #fff; padding: 10px 16px; border-radius: var(--radius); font-size: 13px; z-index: 9999; display: flex; align-items: center; gap: 8px; animation: slideIn 0.2s ease; }
+  @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  .origin-box { font-family: monospace; background: var(--bg); padding: 2px 6px; border-radius: 4px; font-size: 12px; word-break: break-all; }
+</style>
+</head>
+<body>
+
+<!-- Setup Screen -->
+<div class="setup-screen" id="setup-screen">
+  <div class="setup-box">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="width:36px;height:36px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px"><i class="ti ti-signal-5g"></i></div>
+      <div><div style="font-size:16px;font-weight:600">TelcoCRM</div><div style="font-size:11px;color:var(--text3)">Google Sheets Setup</div></div>
+    </div>
+    <p>Your CRM data lives in Google Sheets — shared, permanent, and accessible by your whole team. Complete this one-time setup.</p>
+    <div class="setup-step">
+      <div class="step-num">1</div>
+      <div class="step-text">Go to <a href="https://console.cloud.google.com" target="_blank" style="color:var(--accent)">console.cloud.google.com</a> → create a project → enable the <strong>Google Sheets API</strong> → go to <strong>Credentials</strong>.</div>
+    </div>
+    <div class="setup-step">
+      <div class="step-num">2</div>
+      <div class="step-text">Create an <strong>API Key</strong> and restrict it to the Sheets API.</div>
+    </div>
+    <div class="setup-step">
+      <div class="step-num">3</div>
+      <div class="step-text">Create an <strong>OAuth 2.0 Client ID</strong> (Web Application). Add this exact URL as an <strong>Authorised JavaScript Origin</strong>:<br><br>
+        <span class="origin-box" id="origin-display"></span>
+      </div>
+    </div>
+    <div class="setup-step">
+      <div class="step-num">4</div>
+      <div class="step-text">Make sure your Google Sheet is shared with <strong>Editor</strong> access for all team members.</div>
+    </div>
+    <div style="margin-top:1.5rem">
+      <div class="form-group"><label class="lbl">Spreadsheet ID *</label><input class="fi" id="setup-sheet-id" value="1XANkYVp5er0GcDKUYgsLcUn96QMxjBZw-yWNyAT9KM8" placeholder="From your Sheet URL between /d/ and /edit"><div style="font-size:11px;color:var(--text3);margin-top:4px">Already pre-filled with your Sheet ID</div></div>
+      <div class="form-group"><label class="lbl">API Key *</label><input class="fi" id="setup-api-key" placeholder="AIza..."></div>
+      <div class="form-group"><label class="lbl">OAuth Client ID *</label><input class="fi" id="setup-client-id" placeholder="123456789-abc...apps.googleusercontent.com"></div>
+      <div class="form-group"><label class="lbl">Your name (shown on notes)</label><input class="fi" id="setup-username" placeholder="e.g. Ops Manager"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="saveSetup()"><i class="ti ti-plug-connected"></i> Connect to Google Sheets</button>
+      <div id="setup-error" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text3)">
+        Settings are saved locally in your browser. Each team member enters their own credentials once.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div class="app" id="main-app" style="display:none">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark"><div class="logo-icon"><i class="ti ti-signal-5g"></i></div><h1>TelcoCRM</h1></div>
+      <p>Ops Manager Portal</p>
+    </div>
+    <nav>
+      <div class="nav-label">Main</div>
+      <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
+      <div class="nav-item" data-page="clients" onclick="showPage('clients',this)"><i class="ti ti-users"></i> Clients</div>
+      <div class="nav-item" data-page="jobs" onclick="showPage('jobs',this)"><i class="ti ti-tool"></i> Jobs</div>
+      <div class="nav-label" style="margin-top:8px">Tools</div>
+      <div class="nav-item" data-page="assistant" onclick="showPage('assistant',this)"><i class="ti ti-robot"></i> AI Assistant</div>
+    </nav>
+    <div class="client-jump">
+      <div class="cj-label">Recent clients</div>
+      <div id="sidebar-clients"></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h2 id="topbar-title">Dashboard</h2>
+      <div class="topbar-actions">
+        <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-text">Synced</span></div>
+        <button class="btn btn-sm" onclick="loadAll()" title="Refresh"><i class="ti ti-refresh"></i></button>
+        <div id="topbar-actions"><button class="btn btn-primary" onclick="openModal('add-client')"><i class="ti ti-plus"></i> Add client</button></div>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- Dashboard -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Total clients</div><div class="stat-value" id="s-clients">—</div><div class="stat-sub">Active accounts</div></div>
+          <div class="stat-card"><div class="stat-label">Total jobs</div><div class="stat-value" id="s-jobs">—</div><div class="stat-sub">All time</div></div>
+          <div class="stat-card"><div class="stat-label">In progress</div><div class="stat-value" id="s-progress">—</div><div class="stat-sub">Active jobs</div></div>
+          <div class="stat-card"><div class="stat-label">Notes logged</div><div class="stat-value" id="s-notes">—</div><div class="stat-sub">Across all clients</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Recent jobs</h3><button class="btn btn-sm" onclick="showPage('jobs',document.querySelector('[data-page=jobs]'))">View all</button></div>
+          <div id="dash-jobs"><div class="empty"><i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i><p>Loading...</p></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Recent clients</h3><button class="btn btn-sm" onclick="showPage('clients',document.querySelector('[data-page=clients]'))">View all</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Company</th><th>Name</th><th>Phone</th><th>Notes</th><th>Jobs</th></tr></thead><tbody id="dash-clients"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- Clients -->
+      <div class="page" id="page-clients">
+        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="client-search" placeholder="Search by company, name, phone, account #..." oninput="renderClients()"></div>
+        <div class="card">
+          <div class="card-head"><h3 id="clients-count">All clients</h3><button class="btn btn-primary btn-sm" onclick="openModal('add-client')"><i class="ti ti-plus"></i> Add client</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Company</th><th>Name</th><th>Phone</th><th>Account #</th><th>Services</th><th>Notes</th><th>Jobs</th><th></th></tr></thead><tbody id="clients-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- Profile -->
+      <div class="page" id="page-profile">
+        <div class="profile-grid">
+          <div id="profile-sidebar"></div>
+          <div>
+            <div class="tabs" id="profile-tabs">
+              <div class="tab active" onclick="switchTab('notes',this)"><i class="ti ti-notes" style="font-size:15px"></i> Notes <span class="tab-badge" id="tab-notes-count">0</span></div>
+              <div class="tab" onclick="switchTab('jobs',this)"><i class="ti ti-tool" style="font-size:15px"></i> Jobs <span class="tab-badge" id="tab-jobs-count">0</span></div>
+            </div>
+            <div id="tab-notes-content">
+              <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="openModal('add-note')"><i class="ti ti-plus"></i> Add note</button></div>
+              <div id="notes-list"></div>
+            </div>
+            <div id="tab-jobs-content" style="display:none">
+              <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="openModal('add-job')"><i class="ti ti-plus"></i> Log job</button></div>
+              <div id="jobs-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Jobs -->
+      <div class="page" id="page-jobs">
+        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search" placeholder="Search jobs by title or client..." oninput="renderJobs()"></div>
+        <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap" id="job-filters">
+          <button class="btn btn-sm" style="background:var(--accent);color:#fff;border-color:var(--accent)" onclick="setJobFilter('all',this)">All</button>
+          <button class="btn btn-sm" onclick="setJobFilter('Pending',this)">Pending</button>
+          <button class="btn btn-sm" onclick="setJobFilter('In progress',this)">In progress</button>
+          <button class="btn btn-sm" onclick="setJobFilter('Complete',this)">Complete</button>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="jobs-count">All jobs</h3><button class="btn btn-primary btn-sm" onclick="openModal('add-job-any')"><i class="ti ti-plus"></i> Log job</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Date</th><th>Status</th><th>Cost</th><th>Notes</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- AI -->
+      <div class="page" id="page-assistant">
+        <div class="card">
+          <div class="card-head"><h3>AI assistant <span class="ai-chip"><i class="ti ti-sparkles" style="font-size:13px"></i> Claude</span></h3></div>
+          <div class="card-body">
+            <p style="font-size:13px;color:var(--text2);margin-bottom:1rem">Ask anything about your clients, jobs, or get help drafting messages.</p>
+            <div class="ai-history" id="ai-history"></div>
+            <div class="ai-input-row">
+              <input type="text" id="ai-input" placeholder='e.g. "Which clients have no recent activity?"' onkeydown="if(event.key==='Enter')sendAI()">
+              <button class="btn btn-primary" onclick="sendAI()"><i class="ti ti-send"></i> Send</button>
+            </div>
+            <div class="ai-suggestions">
+              <div class="ai-sug" onclick="setAIQ('Summarise all open and in-progress jobs')">Open jobs</div>
+              <div class="ai-sug" onclick="setAIQ('Which clients have no notes logged?')">Clients with no notes</div>
+              <div class="ai-sug" onclick="setAIQ('List all completed jobs with their costs')">Completed job costs</div>
+              <div class="ai-sug" onclick="setAIQ('Draft a professional follow-up email for my most recent client')">Draft follow-up</div>
+              <div class="ai-sug" onclick="setAIQ('Which client has the most jobs?')">Most active client</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+
+<script>
+const SHEET_ID_KEY  = 'tcrm_sheet_id';
+const API_KEY_KEY   = 'tcrm_api_key';
+const CLIENT_ID_KEY = 'tcrm_client_id';
+const USERNAME_KEY  = 'tcrm_username';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+
+let cfg = {};
+let tokenClient, accessToken = null;
+let db = { clients: [], jobs: [], notes: [] };
+let activeClientId = null, jobFilter = 'all', aiHistory = [];
+
+// ── Setup ─────────────────────────────────────────────────────
+// Show the correct origin for the OAuth setup instructions
+document.getElementById('origin-display').textContent = location.origin || location.href.split('/').slice(0,3).join('/');
+
+function loadCfg() {
+  cfg = {
+    sheetId:  localStorage.getItem(SHEET_ID_KEY)  || '',
+    apiKey:   localStorage.getItem(API_KEY_KEY)   || '',
+    clientId: localStorage.getItem(CLIENT_ID_KEY) || '',
+    username: localStorage.getItem(USERNAME_KEY)  || 'Ops Manager',
+  };
+}
+
+function saveSetup() {
+  const sheetId  = document.getElementById('setup-sheet-id').value.trim();
+  const apiKey   = document.getElementById('setup-api-key').value.trim();
+  const clientId = document.getElementById('setup-client-id').value.trim();
+  const username = document.getElementById('setup-username').value.trim() || 'Ops Manager';
+  const errEl    = document.getElementById('setup-error');
+  if (!sheetId || !apiKey || !clientId) { errEl.textContent='Please fill in all required fields.'; errEl.style.display='block'; return; }
+  localStorage.setItem(SHEET_ID_KEY, sheetId);
+  localStorage.setItem(API_KEY_KEY,  apiKey);
+  localStorage.setItem(CLIENT_ID_KEY,clientId);
+  localStorage.setItem(USERNAME_KEY, username);
+  errEl.style.display = 'none';
+  loadCfg();
+  loadGIS();
+}
+
+// ── Google Identity Services ──────────────────────────────────
+function loadGIS() {
+  if (typeof google !== 'undefined' && google.accounts) { initTokenClient(); return; }
+  const existing = document.getElementById('gis-script');
+  if (existing) {
+    // Script already in DOM — poll until google object is ready
+    waitForGoogle();
+    return;
+  }
+  const s = document.createElement('script');
+  s.id = 'gis-script';
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true;
+  s.onload = () => setTimeout(initTokenClient, 150);
+  s.onerror = () => toast('Could not load Google auth. Check your internet connection.', 'ti-alert-circle');
+  document.head.appendChild(s);
+}
+
+function waitForGoogle() {
+  let attempts = 0;
+  const poll = setInterval(() => {
+    attempts++;
+    if (typeof google !== 'undefined' && google.accounts) {
+      clearInterval(poll);
+      initTokenClient();
+    } else if (attempts > 50) {
+      clearInterval(poll);
+      toast('Google auth timed out. Please refresh.', 'ti-alert-circle');
+    }
+  }, 100);
+}
+
+function initTokenClient() {
+  if (typeof google === 'undefined' || !google.accounts) { toast('Google auth not ready — please refresh.', 'ti-alert-circle'); return; }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: cfg.clientId,
+    scope: SCOPES,
+    callback: (resp) => {
+      if (resp.error) { toast('Auth error: ' + resp.error, 'ti-alert-circle'); return; }
+      accessToken = resp.access_token;
+      document.getElementById('setup-screen').style.display = 'none';
+      document.getElementById('main-app').style.display = 'flex';
+      loadAll();
+    },
+  });
+  tokenClient.requestAccessToken({ prompt: '' });
+}
+
+// ── Sheets API ────────────────────────────────────────────────
+const BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
+function authHdr() { return { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }; }
+
+async function sheetsGet(range) {
+  const r = await fetch(`${BASE}/${cfg.sheetId}/values/${encodeURIComponent(range)}?key=${cfg.apiKey}`, { headers: authHdr() });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sheetsAppend(sheet, rows) {
+  const r = await fetch(`${BASE}/${cfg.sheetId}/values/${encodeURIComponent(sheet+'!A1')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS&key=${cfg.apiKey}`, { method:'POST', headers: authHdr(), body: JSON.stringify({ values: rows }) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sheetsUpdate(range, rows) {
+  const r = await fetch(`${BASE}/${cfg.sheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW&key=${cfg.apiKey}`, { method:'PUT', headers: authHdr(), body: JSON.stringify({ values: rows }) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sheetsClear(range) {
+  const r = await fetch(`${BASE}/${cfg.sheetId}/values/${encodeURIComponent(range)}:clear?key=${cfg.apiKey}`, { method:'POST', headers: authHdr() });
+  if (!r.ok) throw new Error(await r.text());
+}
+function colLetter(n) { let s=''; while(n>0){s=String.fromCharCode(64+(n%26||26))+s;n=Math.floor((n-1)/26);} return s; }
+
+async function ensureSheets() {
+  const meta = await fetch(`${BASE}/${cfg.sheetId}?key=${cfg.apiKey}`, { headers: authHdr() }).then(r=>r.json());
+  const existing = (meta.sheets||[]).map(s=>s.properties.title);
+  const toAdd = ['Clients','Jobs','Notes'].filter(n=>!existing.includes(n));
+  if (toAdd.length) {
+    await fetch(`${BASE}/${cfg.sheetId}:batchUpdate?key=${cfg.apiKey}`, { method:'POST', headers: authHdr(), body: JSON.stringify({ requests: toAdd.map(title=>({ addSheet:{ properties:{ title } } })) }) });
+  }
+  const hdrs = {
+    Clients: ['id','name','company','phone','email','address','accountNumber','svcInternet','svcWebex','svcNec','since'],
+    Jobs:    ['id','clientId','title','type','date','status','cost','notes'],
+    Notes:   ['id','clientId','text','author','date'],
+  };
+  for (const [sheet, hdr] of Object.entries(hdrs)) {
+    try {
+      const res = await sheetsGet(`${sheet}!A1:A1`);
+      if (!res.values || !res.values[0] || res.values[0][0] !== hdr[0]) await sheetsUpdate(`${sheet}!A1:${colLetter(hdr.length)}1`, [hdr]);
+    } catch(e) { await sheetsUpdate(`${sheet}!A1:${colLetter(hdr.length)}1`, [hdr]); }
+  }
+}
+
+// ── Load ──────────────────────────────────────────────────────
+function setSyncStatus(s) {
+  const dot=document.getElementById('sync-dot'), txt=document.getElementById('sync-text');
+  dot.className='sync-dot'+(s==='syncing'?' syncing':s==='error'?' error':'');
+  txt.textContent=s==='syncing'?'Syncing…':s==='error'?'Sync error':'Synced';
+}
+
+async function loadAll() {
+  setSyncStatus('syncing');
+  try {
+    await ensureSheets();
+    const [cr,jr,nr] = await Promise.all([sheetsGet('Clients!A2:K'), sheetsGet('Jobs!A2:H'), sheetsGet('Notes!A2:E')]);
+    db.clients = (cr.values||[]).filter(r=>r[0]).map(r=>({ id:r[0],name:r[1]||'',company:r[2]||'',phone:r[3]||'',email:r[4]||'',address:r[5]||'',accountNumber:r[6]||'',services:{internet:r[7]==='TRUE',webex:r[8]==='TRUE',nec:r[9]==='TRUE'},since:r[10]||'' }));
+    db.jobs    = (jr.values||[]).filter(r=>r[0]).map(r=>({ id:r[0],clientId:r[1]||'',title:r[2]||'',type:r[3]||'',date:r[4]||'',status:r[5]||'Pending',cost:r[6]||'',notes:r[7]||'' }));
+    db.notes   = (nr.values||[]).filter(r=>r[0]).map(r=>({ id:r[0],clientId:r[1]||'',text:r[2]||'',author:r[3]||'',date:r[4]||'' }));
+    setSyncStatus('ok'); renderAll();
+  } catch(e) { setSyncStatus('error'); toast('Load error: '+e.message,'ti-alert-circle'); console.error(e); }
+}
+
+// ── Write helpers ─────────────────────────────────────────────
+const C_HDR = ['id','name','company','phone','email','address','accountNumber','svcInternet','svcWebex','svcNec','since'];
+const J_HDR = ['id','clientId','title','type','date','status','cost','notes'];
+const N_HDR = ['id','clientId','text','author','date'];
+const clientRow = c => [c.id,c.name,c.company,c.phone,c.email,c.address,c.accountNumber,c.services.internet?'TRUE':'FALSE',c.services.webex?'TRUE':'FALSE',c.services.nec?'TRUE':'FALSE',c.since];
+const jobRow    = j => [j.id,j.clientId,j.title,j.type,j.date,j.status,j.cost,j.notes];
+const noteRow   = n => [n.id,n.clientId,n.text,n.author,n.date];
+async function rewriteSheet(sheet, hdr, rows) { await sheetsClear(`${sheet}!A1:Z`); await sheetsUpdate(`${sheet}!A1:${colLetter(hdr.length)}${rows.length+1}`, [hdr,...rows]); }
+
+// ── CRUD ──────────────────────────────────────────────────────
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+
+async function addClient(data) {
+  setSyncStatus('syncing');
+  try { const c={id:uid(),...data}; db.clients.push(c); await sheetsAppend('Clients',[clientRow(c)]); setSyncStatus('ok'); toast('Client added'); closeModal(); renderAll(); }
+  catch(e) { setSyncStatus('error'); toast('Save failed: '+e.message,'ti-alert-circle'); }
+}
+async function updateClient(id, data) {
+  setSyncStatus('syncing');
+  try { const i=db.clients.findIndex(c=>c.id===id); db.clients[i]={...db.clients[i],...data}; await rewriteSheet('Clients',C_HDR,db.clients.map(clientRow)); setSyncStatus('ok'); toast('Client updated'); closeModal(); renderAll(); if(activeClientId===id)renderProfile(id); }
+  catch(e) { setSyncStatus('error'); toast('Save failed: '+e.message,'ti-alert-circle'); }
+}
+async function deleteClient(id) {
+  if(!confirm('Delete this client and all their notes and jobs?')) return;
+  setSyncStatus('syncing');
+  try {
+    db.clients=db.clients.filter(c=>c.id!==id); db.notes=db.notes.filter(n=>n.clientId!==id); db.jobs=db.jobs.filter(j=>j.clientId!==id);
+    await Promise.all([rewriteSheet('Clients',C_HDR,db.clients.map(clientRow)),rewriteSheet('Notes',N_HDR,db.notes.map(noteRow)),rewriteSheet('Jobs',J_HDR,db.jobs.map(jobRow))]);
+    setSyncStatus('ok'); toast('Client deleted','ti-trash');
+    if(activeClientId===id){activeClientId=null;showPage('clients',document.querySelector('[data-page=clients]'));}else renderAll();
+  } catch(e) { setSyncStatus('error'); toast('Delete failed: '+e.message,'ti-alert-circle'); }
+}
+async function addNote(data) {
+  setSyncStatus('syncing');
+  try { const n={id:uid(),clientId:activeClientId,...data}; db.notes.push(n); await sheetsAppend('Notes',[noteRow(n)]); setSyncStatus('ok'); toast('Note saved'); closeModal(); renderAll(); renderProfile(activeClientId); }
+  catch(e) { setSyncStatus('error'); toast('Save failed: '+e.message,'ti-alert-circle'); }
+}
+async function deleteNote(id) {
+  if(!confirm('Delete this note?')) return;
+  setSyncStatus('syncing');
+  try { db.notes=db.notes.filter(n=>n.id!==id); await rewriteSheet('Notes',N_HDR,db.notes.map(noteRow)); setSyncStatus('ok'); toast('Note deleted','ti-trash'); renderAll(); renderProfile(activeClientId); }
+  catch(e) { setSyncStatus('error'); toast('Delete failed: '+e.message,'ti-alert-circle'); }
+}
+async function addJob(data) {
+  setSyncStatus('syncing');
+  try { const j={id:uid(),...data}; db.jobs.push(j); await sheetsAppend('Jobs',[jobRow(j)]); setSyncStatus('ok'); toast('Job logged'); closeModal(); renderAll(); if(activeClientId)renderProfile(activeClientId); }
+  catch(e) { setSyncStatus('error'); toast('Save failed: '+e.message,'ti-alert-circle'); }
+}
+async function deleteJob(id) {
+  if(!confirm('Delete this job?')) return;
+  setSyncStatus('syncing');
+  try { db.jobs=db.jobs.filter(j=>j.id!==id); await rewriteSheet('Jobs',J_HDR,db.jobs.map(jobRow)); setSyncStatus('ok'); toast('Job deleted','ti-trash'); renderAll(); if(activeClientId)renderProfile(activeClientId); }
+  catch(e) { setSyncStatus('error'); toast('Delete failed: '+e.message,'ti-alert-circle'); }
+}
+async function cycleJobStatus(id) {
+  const j=db.jobs.find(x=>x.id===id); if(!j) return;
+  j.status=['Pending','In progress','Complete'][(['Pending','In progress','Complete'].indexOf(j.status)+1)%3];
+  setSyncStatus('syncing');
+  try { await rewriteSheet('Jobs',J_HDR,db.jobs.map(jobRow)); setSyncStatus('ok'); toast('Status → '+j.status); renderAll(); if(activeClientId)renderProfile(activeClientId); }
+  catch(e) { setSyncStatus('error'); toast('Save failed: '+e.message,'ti-alert-circle'); }
+}
+
+// ── Render ────────────────────────────────────────────────────
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function initials(n){return String(n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
+function statusBadge(s){return s==='Complete'?`<span class="badge badge-green">${s}</span>`:s==='In progress'?`<span class="badge badge-blue">${s}</span>`:`<span class="badge badge-amber">${s}</span>`;}
+function today(){return new Date().toISOString().slice(0,10);}
+
+function renderAll(){renderSidebar();renderDashboard();renderClients();renderJobs();}
+
+function renderSidebar(){
+  document.getElementById('sidebar-clients').innerHTML=[...db.clients].slice(-7).reverse().map(c=>`<div class="cj-item ${c.id===activeClientId?'active':''}" onclick="openProfile('${c.id}')"><div class="av-xs">${initials(c.company||c.name)}</div><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.company||c.name)}</span></div>`).join('');
+}
+
+function renderDashboard(){
+  document.getElementById('s-clients').textContent=db.clients.length;
+  document.getElementById('s-jobs').textContent=db.jobs.length;
+  document.getElementById('s-progress').textContent=db.jobs.filter(j=>j.status==='In progress').length;
+  document.getElementById('s-notes').textContent=db.notes.length;
+  const rj=[...db.jobs].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6);
+  document.getElementById('dash-jobs').innerHTML=rj.length?rj.map(j=>{const c=db.clients.find(x=>x.id===j.clientId)||{};return`<div class="job-card">${statusBadge(j.status)}<div class="job-info"><div class="job-title">${esc(j.title)}</div><div class="job-meta">${esc(c.company||c.name||'Unknown')} · ${j.date}${j.type?' · '+j.type:''}</div></div>${j.cost?`<div class="job-cost">$${j.cost}</div>`:''}</div>`;}).join(''):`<div class="empty"><i class="ti ti-tool"></i><p>No jobs yet.</p></div>`;
+  document.getElementById('dash-clients').innerHTML=[...db.clients].slice(-5).reverse().map(c=>`<tr class="clickable" onclick="openProfile('${c.id}')"><td><div style="display:flex;align-items:center;gap:8px"><div class="av-xs">${initials(c.company||c.name)}</div>${esc(c.company||'—')}</div></td><td style="color:var(--text2)">${esc(c.name)}</td><td style="color:var(--text2);font-family:'DM Mono',monospace;font-size:12px">${esc(c.phone)}</td><td>${db.notes.filter(n=>n.clientId===c.id).length}</td><td>${db.jobs.filter(j=>j.clientId===c.id).length}</td></tr>`).join('');
+}
+
+function renderClients(){
+  const q=(document.getElementById('client-search')||{}).value||'';
+  const f=db.clients.filter(c=>!q||(c.company||'').toLowerCase().includes(q.toLowerCase())||(c.name||'').toLowerCase().includes(q.toLowerCase())||(c.phone||'').includes(q)||(c.accountNumber||'').toLowerCase().includes(q.toLowerCase()));
+  document.getElementById('clients-count').textContent=`All clients (${f.length})`;
+  const tb=document.getElementById('clients-tbody'); if(!tb) return;
+  tb.innerHTML=f.length?f.map(c=>`<tr class="clickable" onclick="openProfile('${c.id}')"><td><div style="display:flex;align-items:center;gap:8px"><div class="av-xs">${initials(c.company||c.name)}</div><strong style="font-weight:500">${esc(c.company||'—')}</strong></div></td><td style="color:var(--text2)">${esc(c.name)}</td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.phone)}</td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.accountNumber)||'—'}</td><td><div style="display:flex;gap:4px;flex-wrap:wrap">${(c.services||{}).internet?'<span class="badge badge-blue">Internet</span>':''}${(c.services||{}).webex?'<span class="badge badge-green">Webex</span>':''}${(c.services||{}).nec?'<span class="badge badge-amber">NEC</span>':''}</div></td><td>${db.notes.filter(n=>n.clientId===c.id).length}</td><td>${db.jobs.filter(j=>j.clientId===c.id).length}</td><td><div style="display:flex;gap:4px"><button class="btn btn-sm" onclick="event.stopPropagation();openModal('edit-client','${c.id}')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteClient('${c.id}')"><i class="ti ti-trash"></i></button></div></td></tr>`).join(''):`<tr><td colspan="8"><div class="empty"><i class="ti ti-search"></i><p>No clients found.</p></div></td></tr>`;
+}
+
+function renderJobs(){
+  const q=(document.getElementById('job-search')||{}).value||'';
+  let f=db.jobs.filter(j=>{const c=db.clients.find(x=>x.id===j.clientId)||{};return(!q||j.title.toLowerCase().includes(q.toLowerCase())||(c.company||c.name||'').toLowerCase().includes(q.toLowerCase()))&&(jobFilter==='all'||j.status===jobFilter);}).sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('jobs-count').textContent=`All jobs (${f.length})`;
+  const tb=document.getElementById('jobs-tbody'); if(!tb) return;
+  tb.innerHTML=f.length?f.map(j=>{const c=db.clients.find(x=>x.id===j.clientId)||{};return`<tr><td><strong style="font-weight:500">${esc(j.title)}</strong>${j.type?`<span class="badge badge-gray" style="margin-left:6px">${esc(j.type)}</span>`:''}</td><td><span style="color:var(--accent);cursor:pointer" onclick="openProfile('${c.id}')">${esc(c.company||c.name||'Unknown')}</span></td><td style="color:var(--text2);font-size:12px">${j.date}</td><td>${statusBadge(j.status)}</td><td style="font-family:'DM Mono',monospace;font-size:12px">${j.cost?'$'+j.cost:'—'}</td><td style="color:var(--text2);font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(j.notes)||'—'}</td><td><div style="display:flex;gap:4px"><button class="btn btn-sm" onclick="cycleJobStatus('${j.id}')"><i class="ti ti-refresh"></i></button><button class="btn btn-sm btn-danger" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button></div></td></tr>`;}).join(''):`<tr><td colspan="7"><div class="empty"><i class="ti ti-tool"></i><p>No jobs found.</p></div></td></tr>`;
+}
+
+function renderProfile(cid){
+  const c=db.clients.find(x=>x.id===cid); if(!c) return;
+  activeClientId=cid;
+  function pf(icon,label,val){return val?`<div class="pf"><i class="ti ${icon}"></i><div><div class="pf-label">${label}</div><div class="pf-value">${esc(val)}</div></div></div>`:''}
+  document.getElementById('profile-sidebar').innerHTML=`<div class="profile-card"><div class="av-lg">${initials(c.company||c.name)}</div><div class="profile-name">${esc(c.company||c.name)}</div><div class="profile-company">${c.company?esc(c.name):''}</div>${pf('ti-hash','Account number',c.accountNumber)}${pf('ti-phone','Phone',c.phone)}${pf('ti-mail','Email',c.email)}${pf('ti-map-pin','Address',c.address)}${pf('ti-calendar','Client since',c.since)}<div class="pf"><i class="ti ti-apps"></i><div><div class="pf-label">Services</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px">${(c.services||{}).internet?'<span class="badge badge-blue">Internet</span>':'<span class="badge badge-gray" style="opacity:.4">Internet</span>'}${(c.services||{}).webex?'<span class="badge badge-green">Webex</span>':'<span class="badge badge-gray" style="opacity:.4">Webex</span>'}${(c.services||{}).nec?'<span class="badge badge-amber">NEC</span>':'<span class="badge badge-gray" style="opacity:.4">NEC</span>'}</div></div></div><div class="profile-actions"><button class="btn btn-sm" onclick="openModal('edit-client','${c.id}')"><i class="ti ti-edit"></i> Edit</button><button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')"><i class="ti ti-trash"></i> Delete</button></div></div>`;
+  const notes=db.notes.filter(n=>n.clientId===cid).sort((a,b)=>b.date.localeCompare(a.date));
+  const jobs=db.jobs.filter(j=>j.clientId===cid).sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('tab-notes-count').textContent=notes.length;
+  document.getElementById('tab-jobs-count').textContent=jobs.length;
+  document.getElementById('notes-list').innerHTML=notes.length?notes.map(n=>`<div class="note-card"><div class="note-meta"><span class="note-author"><i class="ti ti-user" style="font-size:13px"></i> ${esc(n.author)}</span><div style="display:flex;align-items:center;gap:8px"><span class="note-date">${n.date}</span><button class="btn btn-sm btn-danger" onclick="deleteNote('${n.id}')"><i class="ti ti-trash"></i></button></div></div><div class="note-text">${esc(n.text)}</div></div>`).join(''):`<div class="empty"><i class="ti ti-notes"></i><p>No notes yet.</p></div>`;
+  document.getElementById('jobs-list').innerHTML=jobs.length?jobs.map(j=>`<div class="job-card">${statusBadge(j.status)}<div class="job-info"><div class="job-title">${esc(j.title)}${j.type?` <span class="badge badge-gray">${esc(j.type)}</span>`:''}</div><div class="job-meta">${j.date}${j.notes?' · '+esc(j.notes):''}</div></div>${j.cost?`<div class="job-cost">$${j.cost}</div>`:''}<div style="display:flex;gap:4px"><button class="btn btn-sm" onclick="cycleJobStatus('${j.id}')"><i class="ti ti-refresh"></i></button><button class="btn btn-sm btn-danger" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button></div></div>`).join(''):`<div class="empty"><i class="ti ti-tool"></i><p>No jobs yet.</p></div>`;
+  renderSidebar();
+}
+
+// ── Nav ───────────────────────────────────────────────────────
+function showPage(name,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(el)el.classList.add('active');
+  document.getElementById('topbar-title').textContent={dashboard:'Dashboard',clients:'Clients',jobs:'Jobs',assistant:'AI Assistant',profile:'Client profile'}[name]||name;
+  const ta=document.getElementById('topbar-actions');
+  if(name==='clients')ta.innerHTML=`<button class="btn btn-primary" onclick="openModal('add-client')"><i class="ti ti-plus"></i> Add client</button>`;
+  else if(name==='jobs')ta.innerHTML=`<button class="btn btn-primary" onclick="openModal('add-job-any')"><i class="ti ti-plus"></i> Log job</button>`;
+  else if(name==='dashboard')ta.innerHTML=`<button class="btn btn-primary" onclick="openModal('add-client')"><i class="ti ti-plus"></i> Add client</button>`;
+  else ta.innerHTML='';
+  renderAll();
+}
+function openProfile(cid){
+  activeClientId=cid;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-profile').classList.add('active');
+  const c=db.clients.find(x=>x.id===cid);
+  document.getElementById('topbar-title').textContent=c?(c.company||c.name):'Client profile';
+  document.getElementById('topbar-actions').innerHTML=`<button class="btn btn-primary btn-sm" onclick="openModal('add-note')"><i class="ti ti-plus"></i> Note</button><button class="btn btn-primary btn-sm" onclick="openModal('add-job')"><i class="ti ti-plus"></i> Log job</button>`;
+  switchTab('notes',document.querySelector('#profile-tabs .tab'));
+  renderProfile(cid);
+}
+function switchTab(tab,el){
+  document.querySelectorAll('#profile-tabs .tab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.getElementById('tab-notes-content').style.display=tab==='notes'?'block':'none';
+  document.getElementById('tab-jobs-content').style.display=tab==='jobs'?'block':'none';
+}
+function setJobFilter(f,el){
+  jobFilter=f;
+  document.querySelectorAll('#job-filters .btn').forEach(b=>{b.style.background='';b.style.color='';b.style.borderColor='';});
+  if(el){el.style.background='var(--accent)';el.style.color='#fff';el.style.borderColor='var(--accent)';}
+  renderJobs();
+}
+
+// ── Modals ────────────────────────────────────────────────────
+function svcChecks(c={}){return`<div class="form-group"><label class="lbl">Services</label><div style="display:flex;gap:18px;margin-top:6px"><label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;font-weight:400"><input type="checkbox" id="f-svc-internet" ${(c.services||{}).internet?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)"> Internet</label><label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;font-weight:400"><input type="checkbox" id="f-svc-webex" ${(c.services||{}).webex?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)"> Webex</label><label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;font-weight:400"><input type="checkbox" id="f-svc-nec" ${(c.services||{}).nec?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)"> NEC</label></div></div>`;}
+
+function openModal(type,id){
+  const root=document.getElementById('modal-root');
+  let body='';
+  if(type==='add-client'||type==='edit-client'){
+    const c=id?db.clients.find(x=>x.id===id)||{}:{};
+    const isEdit=type==='edit-client';
+    body=`<div class="modal-hdr"><h3>${isEdit?'Edit client':'New client'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+      <div class="form-group"><label class="lbl">Account number</label><input class="fi" id="f-account" value="${esc(c.accountNumber||'')}" placeholder="e.g. ACC-10042"></div>
+      <div class="form-row"><div class="form-group"><label class="lbl">Full name *</label><input class="fi" id="f-name" value="${esc(c.name||'')}" placeholder="Jane Smith"></div><div class="form-group"><label class="lbl">Company</label><input class="fi" id="f-company" value="${esc(c.company||'')}" placeholder="Acme Pty Ltd"></div></div>
+      <div class="form-group"><label class="lbl">Phone *</label><input class="fi" id="f-phone" value="${esc(c.phone||'')}" placeholder="02 9000 0000"></div>
+      <div class="form-group"><label class="lbl">Email</label><input class="fi" id="f-email" value="${esc(c.email||'')}" placeholder="name@company.com.au"></div>
+      <div class="form-group"><label class="lbl">Address</label><input class="fi" id="f-address" value="${esc(c.address||'')}" placeholder="123 Main St, Sydney NSW 2000"></div>
+      <div class="form-group"><label class="lbl">Client since</label><input class="fi" type="date" id="f-since" value="${c.since||today()}"></div>
+      ${svcChecks(c)}
+      <div class="modal-ftr"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="${isEdit?`submitEditClient('${id}')`:'submitAddClient()'}">${isEdit?'Save changes':'Add client'}</button></div>`;
+  } else if(type==='add-note'){
+    const c=db.clients.find(x=>x.id===activeClientId);
+    body=`<div class="modal-hdr"><h3>Add note${c?' — '+esc(c.company||c.name):''}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+      <div class="form-group"><label class="lbl">Note *</label><textarea class="fi" id="f-note" placeholder="Enter details about this interaction..."></textarea></div>
+      <div class="form-row"><div class="form-group"><label class="lbl">Author</label><input class="fi" id="f-author" value="${esc(cfg.username||'Ops Manager')}"></div><div class="form-group"><label class="lbl">Date</label><input class="fi" type="date" id="f-date" value="${today()}"></div></div>
+      <div class="modal-ftr"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitNote()">Save note</button></div>`;
+  } else if(type==='add-job'||type==='add-job-any'){
+    const opts=db.clients.map(c=>`<option value="${c.id}"${c.id===activeClientId?' selected':''}>${esc(c.company||c.name)}</option>`).join('');
+    body=`<div class="modal-hdr"><h3>Log job</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+      <div class="form-group"><label class="lbl">Client *</label><select class="fi" id="f-job-client">${opts}</select></div>
+      <div class="form-group"><label class="lbl">Job title *</label><input class="fi" id="f-job-title" placeholder="e.g. NBN line installation"></div>
+      <div class="form-row"><div class="form-group"><label class="lbl">Type</label><select class="fi" id="f-job-type"><option value="">— Select —</option><option>Installation</option><option>Fault</option><option>Hardware</option><option>VoIP</option><option>Support</option><option>Upgrade</option><option>Other</option></select></div><div class="form-group"><label class="lbl">Date</label><input class="fi" type="date" id="f-job-date" value="${today()}"></div></div>
+      <div class="form-row"><div class="form-group"><label class="lbl">Status</label><select class="fi" id="f-job-status"><option>Pending</option><option>In progress</option><option>Complete</option></select></div><div class="form-group"><label class="lbl">Cost ($)</label><input class="fi" type="number" id="f-job-cost" placeholder="0"></div></div>
+      <div class="form-group"><label class="lbl">Notes</label><textarea class="fi" id="f-job-notes" placeholder="Job details, outcome..."></textarea></div>
+      <div class="modal-ftr"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitJob()">Log job</button></div>`;
+  }
+  root.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">${body}</div></div>`;
+}
+function closeModal(){document.getElementById('modal-root').innerHTML='';}
+function collectClient(){return{name:document.getElementById('f-name').value.trim(),company:document.getElementById('f-company').value.trim(),phone:document.getElementById('f-phone').value.trim(),email:document.getElementById('f-email').value.trim(),address:document.getElementById('f-address').value.trim(),accountNumber:document.getElementById('f-account').value.trim(),since:document.getElementById('f-since').value,services:{internet:document.getElementById('f-svc-internet').checked,webex:document.getElementById('f-svc-webex').checked,nec:document.getElementById('f-svc-nec').checked}};}
+function submitAddClient(){const d=collectClient();if(!d.name){alert('Name is required.');return;}addClient(d);}
+function submitEditClient(id){updateClient(id,collectClient());}
+function submitNote(){const t=document.getElementById('f-note').value.trim();if(!t){alert('Note cannot be empty.');return;}addNote({text:t,author:document.getElementById('f-author').value||cfg.username||'Ops Manager',date:document.getElementById('f-date').value});}
+function submitJob(){const t=document.getElementById('f-job-title').value.trim();if(!t){alert('Job title is required.');return;}addJob({clientId:document.getElementById('f-job-client').value||activeClientId,title:t,type:document.getElementById('f-job-type').value,date:document.getElementById('f-job-date').value,status:document.getElementById('f-job-status').value,cost:document.getElementById('f-job-cost').value,notes:document.getElementById('f-job-notes').value.trim()});}
+
+// ── AI ────────────────────────────────────────────────────────
+function setAIQ(t){document.getElementById('ai-input').value=t;document.getElementById('ai-input').focus();}
+async function sendAI(){
+  const inp=document.getElementById('ai-input'),q=inp.value.trim();if(!q)return;inp.value='';
+  const h=document.getElementById('ai-history');
+  h.innerHTML+=`<div class="ai-msg-user"><strong>You</strong>${esc(q)}</div>`;
+  const tid='ai-'+Date.now();
+  h.innerHTML+=`<div class="ai-msg-ai" id="${tid}"><strong>Claude</strong>Thinking...</div>`;
+  h.scrollTop=h.scrollHeight;
+  aiHistory.push({role:'user',content:q});
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:`You are an AI assistant for a Telco Ops Manager CRM. Data:\nCLIENTS:${JSON.stringify(db.clients)}\nJOBS:${JSON.stringify(db.jobs)}\nNOTES:${JSON.stringify(db.notes)}\nToday:${today()}. Be concise. Australian business context.`,messages:aiHistory})});
+    const d=await res.json();
+    const reply=(d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    aiHistory.push({role:'assistant',content:reply});
+    document.getElementById(tid).innerHTML=`<strong>Claude</strong>${esc(reply)}`;
+  }catch(e){document.getElementById(tid).innerHTML=`<strong>Claude</strong>Error: ${e.message}`;}
+  h.scrollTop=h.scrollHeight;
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function toast(msg,icon='ti-check'){const t=document.createElement('div');t.className='toast';t.innerHTML=`<i class="ti ${icon}"></i> ${msg}`;document.body.appendChild(t);setTimeout(()=>t.remove(),2800);}
+
+// ── Boot ──────────────────────────────────────────────────────
+loadCfg();
+if(cfg.sheetId&&cfg.apiKey&&cfg.clientId){
+  document.getElementById('setup-sheet-id').value=cfg.sheetId;
+  loadGIS();
+}
+</script>
+</body>
+</html>
