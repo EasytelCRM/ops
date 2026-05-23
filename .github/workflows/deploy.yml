@@ -14,10 +14,21 @@ jobs:
       - uses: actions/checkout@v4.2.2
 
       - name: Inject credentials
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON: ${{ secrets.SUPABASE_ANON }}
         run: |
-          sed -i "s|__SUPABASE_URL__|${{ secrets.SUPABASE_URL }}|g" index.html
-          sed -i "s|__SUPABASE_ANON__|${{ secrets.SUPABASE_ANON }}|g" index.html
-
+          python3 -c "
+          with open('index.html', 'r') as f:
+              content = f.read()
+          import os
+          content = content.replace('__SUPABASE_URL__', os.environ['SUPABASE_URL'])
+          content = content.replace('__SUPABASE_ANON__', os.environ['SUPABASE_ANON'])
+          with open('index.html', 'w') as f:
+              f.write(content)
+          print('Done')
+          "
+          
       - name: Verify injection
         run: grep -c "supabase.co" index.html && echo "Injection OK" || echo "Injection FAILED"
 
