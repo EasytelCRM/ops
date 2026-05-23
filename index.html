@@ -1110,6 +1110,16 @@ function closeModal(){ document.getElementById('modal-root').innerHTML = ''; }
 // ============================================================
 //  CLIENT MODAL
 // ============================================================
+function addAddressRow(){
+  const container = document.getElementById('site-rows');
+  if(!container) return;
+  const row = document.createElement('div');
+  row.className = 'site-row';
+  row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;align-items:center';
+  row.innerHTML = `<input class="fi site-name-input" placeholder="Site name" style="flex:1"><input class="fi site-addr-input" placeholder="123 Main St, Sydney NSW 2000" style="flex:2"><button type="button" class="btn btn-sm" onclick="this.closest('.site-row').remove()" style="flex-shrink:0;padding:7px 9px"><i class="ti ti-x"></i></button>`;
+  container.appendChild(row);
+}
+
 function openClientModal(id){
   const c = id ? allClients.find(x=>x.id===id)||{} : {};
   const isEdit = !!id;
@@ -1128,6 +1138,16 @@ function openClientModal(id){
         <label class="checkbox-label"><input type="checkbox" id="f-nec"      ${c.svc_nec?'checked':''}> NEC</label>
       </div>
     </div>
+    ${!isEdit?`<div class="form-group">
+      <label class="lbl">Addresses</label>
+      <div id="site-rows">
+        <div class="site-row" style="display:flex;gap:8px;margin-bottom:6px">
+          <input class="fi site-name-input" placeholder="Site name (e.g. Head Office)" style="flex:1">
+          <input class="fi site-addr-input" placeholder="123 Main St, Sydney NSW 2000" style="flex:2">
+        </div>
+      </div>
+      <button type="button" class="btn btn-sm" onclick="addAddressRow()" style="margin-top:4px"><i class="ti ti-plus"></i> Add another address</button>
+    </div>`:''}
     <div class="modal-ftr">
       <button class="btn" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="${isEdit?`submitEditClient('${id}')`:'submitAddClient()'}">${isEdit?'Save changes':'Add client'}</button>
@@ -1144,6 +1164,16 @@ async function submitAddClient(){
     const { data, error } = await sb.from('clients').insert(payload).select().single();
     if(error) throw error;
     await logAudit('created','clients',data.id,{},payload);
+    const siteRows = [...document.querySelectorAll('#site-rows .site-row')];
+    const sites = siteRows.map((row,i)=>({
+      client_id: data.id,
+      name: row.querySelector('.site-name-input').value.trim() || `Site ${i+1}`,
+      address: row.querySelector('.site-addr-input').value.trim()
+    })).filter(s=>s.address);
+    if(sites.length){
+      const { error: sErr } = await sb.from('sites').insert(sites);
+      if(sErr) throw sErr;
+    }
     closeModal(); toast('Client added'); loadClients();
   } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
 }
