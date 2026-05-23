@@ -583,6 +583,8 @@ function today(){ return new Date().toISOString().slice(0,10); }
 function fmtDate(d){ return d ? new Date(d).toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
 function fmtDateTime(d){ return d ? new Date(d).toLocaleString('en-AU',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'; }
 function isAdmin(){ return currentProfile?.role === 'admin'; }
+function isOps(){ return currentProfile?.role === 'ops'; }
+function isAdminOrOps(){ return isAdmin() || isOps(); }
 
 function setSyncStatus(s){
   const dot = document.getElementById('sync-dot');
@@ -700,7 +702,7 @@ async function initApp(){
 
   // Update UI with user info
   document.getElementById('user-name').textContent  = profile?.full_name || currentUser.email;
-  document.getElementById('user-role').textContent  = profile?.role || 'technician';
+  document.getElementById('user-role').textContent  = {admin:'Admin',ops:'Ops',technician:'Tech'}[profile?.role] || 'Tech';
   document.getElementById('user-avatar').textContent = initials(profile?.full_name || currentUser.email);
 
   // Show admin nav items
@@ -729,8 +731,8 @@ function showPage(name, el){
   document.getElementById('topbar-title').textContent = titles[name] || name;
   // Update top CTA
   const cta = document.getElementById('topbar-cta');
-  if(name==='clients' && isAdmin()) cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openClientModal()"><i class="ti ti-plus"></i> Add client</button>`;
-  else if(name==='jobs' && isAdmin()) cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openJobModal(null)"><i class="ti ti-plus"></i> Log job</button>`;
+  if(name==='clients' && isAdminOrOps()) cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openClientModal()"><i class="ti ti-plus"></i> Add client</button>`;
+  else if(name==='jobs' && isAdminOrOps()) cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openJobModal(null)"><i class="ti ti-plus"></i> Log job</button>`;
   else cta.innerHTML = '';
   closeSidebar();
   refreshCurrentPage();
@@ -856,8 +858,8 @@ function renderClientsList(){
       <td>${(c.sites||[]).length}</td>
       <td>${(c.jobs||[]).length}</td>
       <td><div style="display:flex;gap:4px">
-        ${isAdmin()?`<button class="btn btn-sm" onclick="event.stopPropagation();openClientModal('${c.id}')"><i class="ti ti-edit"></i></button>
-        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteClient('${c.id}')"><i class="ti ti-trash"></i></button>`:''}
+        ${isAdminOrOps()?`<button class="btn btn-sm" onclick="event.stopPropagation();openClientModal('${c.id}')"><i class="ti ti-edit"></i></button>`:''}
+        ${isAdmin()?`<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteClient('${c.id}')"><i class="ti ti-trash"></i></button>`:''}
       </div></td>
     </tr>`).join('')
     : `<tr><td colspan="7"><div class="empty"><i class="ti ti-search"></i><p>No clients found.</p></div></td></tr>`;
@@ -889,8 +891,8 @@ async function loadClientProfile(id){
       ${pf('ti-calendar','Client since',fmtDate(client.created_at))}
       <div class="pf"><i class="ti ti-apps"></i><div><div class="pf-label">Services</div><div style="margin-top:4px">${svcBadges(client)}</div></div></div>
       <div class="profile-actions">
-        ${isAdmin()?`<button class="btn btn-sm" onclick="openClientModal('${client.id}')"><i class="ti ti-edit"></i> Edit</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteClient('${client.id}')"><i class="ti ti-trash"></i> Delete</button>`:''}
+        ${isAdminOrOps()?`<button class="btn btn-sm" onclick="openClientModal('${client.id}')"><i class="ti ti-edit"></i> Edit</button>`:''}
+        ${isAdmin()?`<button class="btn btn-sm btn-danger" onclick="deleteClient('${client.id}')"><i class="ti ti-trash"></i> Delete</button>`:''}
       </div>`;
 
     // ── Tab counts ──
@@ -904,7 +906,7 @@ async function loadClientProfile(id){
     credsDisplay.textContent = client.system_credentials || 'No credentials stored yet.';
     credsEdit.value = client.system_credentials || '';
     // Show edit button only to admins and assigned technicians
-    document.getElementById('creds-edit-btn').style.display = (isAdmin() || jobs?.some(j=>j.assigned_to===currentUser?.id)) ? '' : 'none';
+    document.getElementById('creds-edit-btn').style.display = (isAdminOrOps() || jobs?.some(j=>j.assigned_to===currentUser?.id)) ? '' : 'none';
 
     // ── Notes ──
     document.getElementById('notes-list').innerHTML = (notes||[]).length
@@ -921,7 +923,7 @@ async function loadClientProfile(id){
       : `<div class="empty"><i class="ti ti-notes"></i><p>No notes yet.</p></div>`;
 
     // ── Jobs ──
-    document.getElementById('btn-add-job-profile').style.display = isAdmin() ? '' : 'none';
+    document.getElementById('btn-add-job-profile').style.display = isAdminOrOps() ? '' : 'none';
     document.getElementById('client-jobs-list').innerHTML = (jobs||[]).length
       ? (jobs||[]).map(j=>`<div class="job-card">
           ${typeBadge(j.type)}
@@ -943,7 +945,7 @@ async function loadClientProfile(id){
       : `<div class="empty"><i class="ti ti-tool"></i><p>No jobs yet.</p></div>`;
 
     // ── Sites ──
-    document.getElementById('btn-add-site').style.display = isAdmin() ? '' : 'none';
+    document.getElementById('btn-add-site').style.display = isAdminOrOps() ? '' : 'none';
     document.getElementById('sites-list').innerHTML = (sites||[]).length
       ? (sites||[]).map(s=>`<div class="site-card">
           <div class="site-body">
@@ -952,9 +954,9 @@ async function loadClientProfile(id){
             ${s.contact_name?`<div class="site-detail"><i class="ti ti-user" style="font-size:12px"></i> ${esc(s.contact_name)}${s.contact_phone?' · '+esc(s.contact_phone):''}</div>`:''}
             ${s.contact_email?`<div class="site-detail"><i class="ti ti-mail" style="font-size:12px"></i> ${esc(s.contact_email)}</div>`:''}
           </div>
-          ${isAdmin()?`<div style="display:flex;gap:4px;flex-shrink:0">
+          ${isAdminOrOps()?`<div style="display:flex;gap:4px;flex-shrink:0">
             <button class="btn btn-sm" onclick="openSiteModal('${s.id}')"><i class="ti ti-edit"></i></button>
-            <button class="btn btn-sm btn-danger" onclick="deleteSite('${s.id}')"><i class="ti ti-trash"></i></button>
+            ${isAdmin()?`<button class="btn btn-sm btn-danger" onclick="deleteSite('${s.id}')"><i class="ti ti-trash"></i></button>`:''}
           </div>`:''}
         </div>`).join('')
       : `<div class="empty"><i class="ti ti-map-pin"></i><p>No sites yet.</p></div>`;
@@ -1046,13 +1048,14 @@ async function loadUsers(){
       <tr>
         <td><div style="display:flex;align-items:center;gap:8px"><div class="user-avatar" style="width:28px;height:28px;font-size:10px">${initials(p.full_name)}</div>${esc(p.full_name)}</div></td>
         <td style="color:var(--text2)">${esc(p.email)}</td>
-        <td><span class="badge ${p.role==='admin'?'badge-blue':'badge-gray'}">${esc(p.role)}</span></td>
+        <td><span class="badge ${p.role==='admin'?'badge-blue':p.role==='ops'?'badge-amber':'badge-gray'}">${p.role==='admin'?'Admin':p.role==='ops'?'Ops':'Tech'}</span></td>
         <td style="font-size:12px;color:var(--text2)">${fmtDate(p.created_at)}</td>
         <td>
           ${p.id !== currentUser?.id ? `
             <select class="fi" style="width:120px;padding:4px 8px;font-size:12px" onchange="updateUserRole('${p.id}',this.value)">
-              <option ${p.role==='technician'?'selected':''}>technician</option>
-              <option ${p.role==='admin'?'selected':''}>admin</option>
+              <option value="technician" ${p.role==='technician'?'selected':''}>Tech</option>
+              <option value="ops" ${p.role==='ops'?'selected':''}>Ops</option>
+              <option value="admin" ${p.role==='admin'?'selected':''}>Admin</option>
             </select>` : '<span style="font-size:12px;color:var(--text3)">You</span>'}
         </td>
       </tr>`).join('');
@@ -1445,7 +1448,7 @@ function openInviteModal(){
     <div class="form-group"><label class="lbl">Full name *</label><input class="fi" id="f-inv-name" placeholder="Jane Smith"></div>
     <div class="form-group"><label class="lbl">Email *</label><input class="fi" type="email" id="f-inv-email" placeholder="jane@company.com.au"></div>
     <div class="form-group"><label class="lbl">Role *</label>
-      <select class="fi" id="f-inv-role"><option value="technician">Technician</option><option value="admin">Admin</option></select>
+      <select class="fi" id="f-inv-role"><option value="technician">Tech</option><option value="ops">Ops</option><option value="admin">Admin</option></select>
     </div>
     <div id="inv-error" class="form-error" style="display:none"></div>
     <div class="modal-ftr">
