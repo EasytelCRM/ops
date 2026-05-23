@@ -1,216 +1,410 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TelcoCRM — Ops Manager Portal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TelcoCRM</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #f4f3ef; --surface: #ffffff; --surface2: #f9f8f5;
-    --border: #e5e3dc; --border2: #d0cec6;
-    --text: #1a1916; --text2: #6b6960; --text3: #9e9b93;
-    --accent: #1a4f8a; --accent-light: #e8f0fa; --accent-text: #1a4f8a;
-    --green: #2d6a2d; --green-light: #eaf3ea;
-    --amber: #7a4a00; --amber-light: #fef3e2;
-    --red: #8a1a1a; --red-light: #faeaea;
-    --radius: 8px; --radius-lg: 12px;
-  }
-  html.dark {
-    --bg: #111110; --surface: #1c1c1a; --surface2: #242422;
-    --border: #2e2e2b; --border2: #3a3a36;
-    --text: #e8e6e1; --text2: #9e9b93; --text3: #6b6960;
-    --accent: #4a8fd4; --accent-light: #1a2d42; --accent-text: #7ab3e8;
-    --green: #5a9e5a; --green-light: #1a2e1a;
-    --amber: #c4903a; --amber-light: #2e2010;
-    --red: #c46060; --red-light: #2e1a1a;
-  }
-  *, *::before, *::after { transition: background-color 0.2s ease, border-color 0.2s ease, color 0.1s ease; }
-  .dark-toggle { background: none; border: 1px solid var(--border2); border-radius: var(--radius); padding: 5px 9px; cursor: pointer; color: var(--text2); display: flex; align-items: center; gap: 5px; font-size: 12px; font-family: inherit; }
-  .dark-toggle:hover { background: var(--bg); color: var(--text); }
-  body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; font-size: 14px; line-height: 1.5; }
-  .app { display: flex; height: 100vh; }
-  .sidebar { width: 240px; min-width: 240px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
-  .logo { padding: 1.25rem 1.25rem 1rem; border-bottom: 1px solid var(--border); }
-  .logo-mark { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
-  .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
-  .logo h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
-  .logo p { font-size: 11px; color: var(--text3); padding-left: 42px; }
-  nav { padding: 0.75rem 0.5rem; }
-  .nav-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); padding: 8px 0.75rem 4px; }
-  .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 0.75rem; border-radius: var(--radius); font-size: 13px; cursor: pointer; color: var(--text2); transition: all 0.12s; }
-  .nav-item i { font-size: 17px; }
-  .nav-item:hover { background: var(--bg); color: var(--text); }
-  .nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
-  .client-jump { border-top: 1px solid var(--border); padding: 0.5rem; overflow-y: auto; flex: 1; }
-  .cj-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); padding: 6px 0.75rem 4px; }
-  .cj-item { display: flex; align-items: center; gap: 8px; padding: 6px 0.75rem; border-radius: var(--radius); cursor: pointer; font-size: 12px; color: var(--text2); transition: all 0.12s; }
-  .cj-item:hover, .cj-item.active { background: var(--bg); color: var(--text); }
-  .av-xs { width: 22px; height: 22px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; flex-shrink: 0; }
-  .main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.875rem 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-  .topbar h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
-  .topbar-actions { display: flex; gap: 8px; align-items: center; }
-  .sync-status { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 5px; }
-  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-  .sync-dot.syncing { background: var(--amber); animation: pulse 1s infinite; }
-  .sync-dot.error { background: var(--red); }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius); border: 1px solid var(--border2); background: var(--surface); color: var(--text); font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.12s; font-weight: 400; white-space: nowrap; }
-  .btn:hover { background: var(--bg); }
-  .btn i { font-size: 15px; }
-  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .btn-primary:hover { background: #163f70; border-color: #163f70; }
-  .btn-sm { padding: 4px 10px; font-size: 12px; }
-  .btn-danger { color: var(--red); border-color: #f0b8b8; }
-  .btn-danger:hover { background: var(--red-light); }
-  .content { flex: 1; overflow-y: auto; padding: 1.5rem; }
-  .page { display: none; }
-  .page.active { display: block; }
-  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 1.5rem; }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; }
-  .stat-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-  .stat-value { font-size: 28px; font-weight: 300; letter-spacing: -1px; }
-  .stat-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1rem; }
-  .card-head { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--border); }
-  .card-head h3 { font-size: 13px; font-weight: 600; }
-  .card-body { padding: 1.25rem; }
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 9px 1rem; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface2); }
-  td { padding: 10px 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr.clickable:hover td { background: var(--bg); cursor: pointer; }
-  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
-  .badge-blue { background: var(--accent-light); color: var(--accent-text); }
-  .badge-green { background: var(--green-light); color: var(--green); }
-  .badge-amber { background: var(--amber-light); color: var(--amber); }
-  .badge-gray { background: var(--bg); color: var(--text2); border: 1px solid var(--border); }
-  .profile-grid { display: grid; grid-template-columns: 260px 1fr; gap: 1rem; align-items: start; }
-  .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; position: sticky; top: 0; }
-  .av-lg { width: 52px; height: 52px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600; margin-bottom: 10px; }
-  .profile-name { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
-  .profile-company { font-size: 13px; color: var(--text2); margin-bottom: 12px; }
-  .pf { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 12px; }
-  .pf i { color: var(--text3); font-size: 15px; margin-top: 1px; flex-shrink: 0; }
-  .pf-label { color: var(--text3); margin-bottom: 1px; font-size: 11px; }
-  .pf-value { color: var(--text); word-break: break-all; }
-  .profile-actions { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
-  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
-  .tab { padding: 9px 16px; font-size: 13px; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; align-items: center; gap: 6px; transition: all 0.12s; }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
-  .tab-badge { background: var(--bg); color: var(--text3); font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
-  .note-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 8px; }
-  .note-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-  .note-author { font-size: 12px; font-weight: 500; color: var(--text2); }
-  .note-date { font-size: 11px; color: var(--text3); }
-  .note-text { font-size: 13px; line-height: 1.65; }
-  .job-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.875rem 1rem; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
-  .job-info { flex: 1; min-width: 0; }
-  .job-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .job-meta { font-size: 11px; color: var(--text3); }
-  .job-cost { font-size: 14px; font-weight: 500; font-family: 'DM Mono', monospace; white-space: nowrap; }
-  .search-bar { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 1rem; }
-  .search-bar i { color: var(--text3); font-size: 16px; }
-  .search-bar input { background: none; border: none; outline: none; font-size: 13px; color: var(--text); flex: 1; font-family: inherit; }
-  .empty { text-align: center; padding: 2.5rem 1rem; color: var(--text3); }
-  .empty i { font-size: 36px; display: block; margin-bottom: 8px; }
-  .empty p { font-size: 13px; }
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
-  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; width: 500px; max-width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.3); }
-  .modal-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
-  .modal-hdr h3 { font-size: 16px; font-weight: 600; }
-  .modal-x { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 20px; display: flex; }
-  .modal-x:hover { color: var(--text); }
-  .form-group { margin-bottom: 14px; }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  label.lbl { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 5px; }
-  input.fi, select.fi, textarea.fi { width: 100%; padding: 8px 11px; border: 1px solid var(--border2); border-radius: var(--radius); font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.12s; }
-  input.fi:focus, select.fi:focus, textarea.fi:focus { border-color: var(--accent); }
-  textarea.fi { resize: vertical; min-height: 90px; line-height: 1.6; }
-  .modal-ftr { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
-  .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-  .ai-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; background: var(--accent-light); color: var(--accent); padding: 3px 9px; border-radius: 20px; }
-  .ai-msg-user { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 8px; font-size: 13px; }
-  .ai-msg-user strong { font-weight: 500; color: var(--text2); font-size: 11px; display: block; margin-bottom: 3px; }
-  .ai-msg-ai { background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 0 var(--radius) var(--radius) 0; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
-  .ai-msg-ai strong { font-weight: 500; color: var(--accent); font-size: 11px; display: block; margin-bottom: 3px; }
-  .ai-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-  .ai-sug { background: var(--surface); border: 1px solid var(--border2); border-radius: 20px; padding: 5px 12px; font-size: 12px; cursor: pointer; color: var(--text2); transition: all 0.12s; }
-  .ai-sug:hover { background: var(--accent-light); color: var(--accent); }
-  .ai-input-row { display: flex; gap: 8px; margin-top: 1rem; }
-  .ai-input-row input { flex: 1; padding: 9px 13px; border: 1px solid var(--border2); border-radius: var(--radius); font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); outline: none; }
-  .ai-input-row input:focus { border-color: var(--accent); }
-  .ai-history { max-height: 380px; overflow-y: auto; margin-bottom: 0.5rem; }
-  .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: var(--radius); font-size: 13px; z-index: 9999; display: flex; align-items: center; gap: 8px; animation: slideIn 0.2s ease; }
-  @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+/* ============================================================
+   VARIABLES & RESET
+============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f4f3ef; --surface: #fff; --surface2: #f9f8f5;
+  --border: #e5e3dc; --border2: #d0cec6;
+  --text: #1a1916; --text2: #6b6960; --text3: #9e9b93;
+  --accent: #1a4f8a; --accent-light: #e8f0fa; --accent-text: #1a4f8a;
+  --green: #2d6a2d; --green-light: #eaf3ea;
+  --amber: #7a4a00; --amber-light: #fef3e2;
+  --red: #8a1a1a; --red-light: #faeaea;
+  --radius: 8px; --radius-lg: 12px;
+  --sidebar-w: 240px;
+}
+html.dark {
+  --bg: #111110; --surface: #1c1c1a; --surface2: #242422;
+  --border: #2e2e2b; --border2: #3a3a36;
+  --text: #e8e6e1; --text2: #9e9b93; --text3: #6b6960;
+  --accent: #4a8fd4; --accent-light: #1a2d42; --accent-text: #7ab3e8;
+  --green: #5a9e5a; --green-light: #1a2e1a;
+  --amber: #c4903a; --amber-light: #2e2010;
+  --red: #c46060; --red-light: #2e1a1a;
+}
+body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; min-height: 100vh; }
+
+/* ============================================================
+   LOADING / AUTH SCREENS
+============================================================ */
+.full-screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 9000; }
+.auth-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; width: 380px; max-width: 95vw; box-shadow: 0 8px 40px rgba(0,0,0,0.15); }
+.auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
+.auth-logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; }
+.auth-logo h1 { font-size: 18px; font-weight: 600; }
+.auth-logo p { font-size: 11px; color: var(--text3); }
+.spinner-wrap { text-align: center; }
+.spinner { width: 32px; height: 32px; border: 3px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   APP LAYOUT
+============================================================ */
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+/* ── Sidebar ── */
+.sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; transition: transform 0.25s ease; }
+.logo { padding: 1.25rem 1rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.logo-icon { width: 30px; height: 30px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; flex-shrink: 0; }
+.logo h1 { font-size: 14px; font-weight: 600; }
+.logo p { font-size: 10px; color: var(--text3); }
+nav { padding: 0.75rem 0.5rem; overflow-y: auto; flex: 1; }
+.nav-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); padding: 8px 0.75rem 4px; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 0.75rem; border-radius: var(--radius); font-size: 13px; cursor: pointer; color: var(--text2); transition: all 0.12s; user-select: none; }
+.nav-item i { font-size: 17px; flex-shrink: 0; }
+.nav-item:hover { background: var(--bg); color: var(--text); }
+.nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+.sidebar-footer { border-top: 1px solid var(--border); padding: 0.75rem; }
+.user-chip { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: var(--radius); font-size: 12px; }
+.user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; flex-shrink: 0; }
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-role { font-size: 10px; color: var(--text3); text-transform: capitalize; }
+
+/* ── Main ── */
+.main { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.75rem 1.25rem; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.topbar-menu { display: none; background: none; border: none; cursor: pointer; color: var(--text2); font-size: 20px; padding: 4px; }
+.topbar h2 { font-size: 15px; font-weight: 600; flex: 1; }
+.topbar-actions { display: flex; gap: 6px; align-items: center; }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.sync-dot.syncing { background: var(--amber); animation: pulse 1s infinite; }
+.sync-dot.error { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.content { flex: 1; overflow-y: auto; padding: 1.25rem; }
+
+/* ============================================================
+   BUTTONS
+============================================================ */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius); border: 1px solid var(--border2); background: var(--surface); color: var(--text); font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.12s; font-weight: 400; white-space: nowrap; text-decoration: none; }
+.btn:hover { background: var(--bg); }
+.btn i { font-size: 15px; }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: #163f70; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-danger { color: var(--red); border-color: #f0b8b8; }
+.btn-danger:hover { background: var(--red-light); }
+.btn-icon { padding: 6px; border-radius: var(--radius); }
+.dark-toggle { background: none; border: 1px solid var(--border2); border-radius: var(--radius); padding: 5px 9px; cursor: pointer; color: var(--text2); display: flex; align-items: center; font-size: 12px; font-family: inherit; }
+.dark-toggle:hover { background: var(--bg); }
+
+/* ============================================================
+   PAGES
+============================================================ */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ============================================================
+   STATS GRID
+============================================================ */
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 1.25rem; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem; }
+.stat-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.stat-value { font-size: 26px; font-weight: 300; letter-spacing: -1px; }
+.stat-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* ============================================================
+   CARDS
+============================================================ */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1rem; }
+.card-head { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--border); gap: 8px; }
+.card-head h3 { font-size: 13px; font-weight: 600; }
+.card-body { padding: 1.25rem; }
+.card-head-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+/* ============================================================
+   TABLES
+============================================================ */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 1rem; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface2); }
+td { padding: 10px 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: var(--bg); }
+
+/* ============================================================
+   BADGES
+============================================================ */
+.badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+.badge-blue { background: var(--accent-light); color: var(--accent-text); }
+.badge-green { background: var(--green-light); color: var(--green); }
+.badge-amber { background: var(--amber-light); color: var(--amber); }
+.badge-red { background: var(--red-light); color: var(--red); }
+.badge-gray { background: var(--bg); color: var(--text2); border: 1px solid var(--border); }
+
+/* ============================================================
+   FORMS
+============================================================ */
+.form-group { margin-bottom: 14px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+label.lbl { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 5px; }
+input.fi, select.fi, textarea.fi {
+  width: 100%; padding: 8px 11px; border: 1px solid var(--border2); border-radius: var(--radius);
+  font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.12s;
+}
+input.fi:focus, select.fi:focus, textarea.fi:focus { border-color: var(--accent); }
+textarea.fi { resize: vertical; min-height: 80px; line-height: 1.6; }
+select.fi { cursor: pointer; }
+.form-error { font-size: 12px; color: var(--red); margin-top: 4px; }
+.checkbox-group { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 4px; }
+.checkbox-label { display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+.checkbox-label input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+
+/* ============================================================
+   MODAL
+============================================================ */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; width: 520px; max-width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.25); }
+.modal-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+.modal-hdr h3 { font-size: 16px; font-weight: 600; }
+.modal-x { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 20px; display: flex; padding: 2px; }
+.modal-x:hover { color: var(--text); }
+.modal-ftr { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+
+/* ============================================================
+   PROFILE / DETAIL VIEW
+============================================================ */
+.profile-layout { display: grid; grid-template-columns: 280px 1fr; gap: 1rem; align-items: start; }
+.profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; position: sticky; top: 0; }
+.profile-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600; margin-bottom: 10px; }
+.profile-name { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
+.profile-sub { font-size: 13px; color: var(--text2); margin-bottom: 12px; }
+.pf { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 12px; }
+.pf i { color: var(--text3); font-size: 15px; margin-top: 1px; flex-shrink: 0; }
+.pf-label { color: var(--text3); font-size: 11px; margin-bottom: 1px; }
+.pf-value { color: var(--text); word-break: break-word; }
+.profile-actions { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+
+/* ── Tabs ── */
+.tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1rem; overflow-x: auto; }
+.tab { padding: 9px 14px; font-size: 13px; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; align-items: center; gap: 6px; transition: all 0.12s; white-space: nowrap; flex-shrink: 0; }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+.tab-count { background: var(--bg); color: var(--text3); font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
+
+/* ── Notes ── */
+.note-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 8px; }
+.note-card.pinned { border-color: var(--accent); background: var(--accent-light); }
+.note-pinned-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+.note-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.note-author { font-size: 12px; font-weight: 500; color: var(--text2); }
+.note-date { font-size: 11px; color: var(--text3); }
+.note-text { font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
+.creds-edit { width: 100%; padding: 8px; border: 1px solid var(--border2); border-radius: var(--radius); font-size: 13px; font-family: 'DM Mono', monospace; background: var(--surface); color: var(--text); resize: vertical; min-height: 80px; outline: none; line-height: 1.6; }
+.creds-edit:focus { border-color: var(--accent); }
+
+/* ── Jobs ── */
+.job-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.875rem 1rem; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; }
+.job-body { flex: 1; min-width: 0; }
+.job-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+.job-meta { font-size: 11px; color: var(--text3); display: flex; flex-wrap: wrap; gap: 8px; }
+.job-cost { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; white-space: nowrap; }
+
+/* ── Sites ── */
+.site-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.875rem 1rem; margin-bottom: 8px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.site-body { flex: 1; min-width: 0; }
+.site-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+.site-detail { font-size: 12px; color: var(--text2); }
+
+/* ============================================================
+   SEARCH BAR
+============================================================ */
+.search-bar { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 1rem; }
+.search-bar i { color: var(--text3); font-size: 16px; }
+.search-bar input { background: none; border: none; outline: none; font-size: 13px; color: var(--text); flex: 1; font-family: inherit; }
+
+/* ============================================================
+   EMPTY STATE
+============================================================ */
+.empty { text-align: center; padding: 2.5rem 1rem; color: var(--text3); }
+.empty i { font-size: 36px; display: block; margin-bottom: 8px; }
+.empty p { font-size: 13px; }
+
+/* ============================================================
+   FILTERS
+============================================================ */
+.filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+.filter-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.12s; }
+.filter-btn:hover { background: var(--bg); }
+.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ============================================================
+   AUDIT LOG
+============================================================ */
+.audit-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.audit-item:last-child { border-bottom: none; }
+.audit-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 4px; }
+.audit-text { flex: 1; color: var(--text2); line-height: 1.5; }
+.audit-time { color: var(--text3); white-space: nowrap; }
+
+/* ============================================================
+   TOAST
+============================================================ */
+.toast { position: fixed; bottom: 1.25rem; right: 1.25rem; background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: var(--radius); font-size: 13px; z-index: 9999; display: flex; align-items: center; gap: 8px; animation: slideUp 0.2s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: calc(100vw - 2.5rem); }
+@keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* ============================================================
+   MOBILE
+============================================================ */
+@media (max-width: 768px) {
+  .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 500; transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,0.2); }
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 499; }
+  .sidebar-backdrop.visible { display: block; }
+  .topbar-menu { display: flex; }
+  .stats-grid { grid-template-columns: repeat(2,1fr); }
+  .profile-layout { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .profile-card { position: static; }
+  .content { padding: 1rem; }
+}
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .modal { padding: 1.25rem; }
+}
+
+/* ============================================================
+   SCROLLBAR
+============================================================ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 </style>
 </head>
 <body>
 
-<!-- Loading screen shown while Google auth initialises -->
-<div class="loading-screen" id="loading-screen">
-  <div style="text-align:center;font-family:'DM Sans',system-ui,sans-serif">
-    <div style="width:44px;height:44px;background:#1a4f8a;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;margin:0 auto 14px">
-      <i class="ti ti-signal-5g"></i>
-    </div>
-    <div style="font-size:16px;font-weight:600;margin-bottom:4px;color:var(--text)">TelcoCRM</div>
-<div style="font-size:13px;color:var(--text3);margin-bottom:24px">Sign in to continue</div>
-<button onclick="startAuth()" style="background:#1a4f8a;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-family:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:8px">
-  <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-21 0-1.3-.2-2.7-.5-4z"/></svg>
-  Sign in with Google
-</button>
+<!-- ============================================================
+     LOADING SCREEN
+============================================================ -->
+<div class="full-screen" id="screen-loading">
+  <div class="spinner-wrap">
+    <div class="spinner"></div>
+    <div style="font-size:13px;color:var(--text3)">Loading TelcoCRM...</div>
   </div>
 </div>
 
-<!-- Main App -->
-<div class="app" id="main-app" style="display:none">
-  <aside class="sidebar">
+<!-- ============================================================
+     LOGIN SCREEN
+============================================================ -->
+<div class="full-screen" id="screen-login" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-icon"><i class="ti ti-signal-5g"></i></div>
+      <div>
+        <h1>TelcoCRM</h1>
+        <p>Ops Manager Portal</p>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="lbl">Email</label>
+      <input class="fi" type="email" id="login-email" placeholder="you@company.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="lbl">Password</label>
+      <input class="fi" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div id="login-error" class="form-error" style="margin-bottom:10px;display:none"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="doLogin()" id="login-btn">
+      <i class="ti ti-login"></i> Sign in
+    </button>
+    <p style="font-size:12px;color:var(--text3);margin-top:12px;text-align:center">Contact your admin to create an account.</p>
+  </div>
+</div>
+
+<!-- ============================================================
+     SET PASSWORD SCREEN (for invite links)
+============================================================ -->
+<div class="full-screen" id="screen-set-password" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-icon"><i class="ti ti-signal-5g"></i></div>
+      <div><h1>TelcoCRM</h1><p>Set your password</p></div>
+    </div>
+    <div class="form-group">
+      <label class="lbl">New password</label>
+      <input class="fi" type="password" id="newpw-input" placeholder="Choose a password" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label class="lbl">Confirm password</label>
+      <input class="fi" type="password" id="newpw-confirm" placeholder="Repeat password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSetPassword()">
+    </div>
+    <div id="newpw-error" class="form-error" style="margin-bottom:10px;display:none"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="doSetPassword()">
+      <i class="ti ti-check"></i> Set password & sign in
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MOBILE SIDEBAR BACKDROP
+============================================================ -->
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+<!-- ============================================================
+     MAIN APP
+============================================================ -->
+<div class="app" id="app" style="display:none">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar" id="sidebar">
     <div class="logo">
-      <div class="logo-mark"><div class="logo-icon"><i class="ti ti-signal-5g"></i></div><h1>TelcoCRM</h1></div>
-      <p>Ops Manager Portal</p>
+      <div class="logo-icon"><i class="ti ti-signal-5g"></i></div>
+      <div><h1>TelcoCRM</h1><p>Ops Manager Portal</p></div>
     </div>
     <nav>
       <div class="nav-label">Main</div>
       <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
       <div class="nav-item" data-page="clients" onclick="showPage('clients',this)"><i class="ti ti-users"></i> Clients</div>
-      <div class="nav-item" data-page="jobs" onclick="showPage('jobs',this)"><i class="ti ti-tool"></i> Jobs</div>
-      <div class="nav-label" style="margin-top:8px">Tools</div>
-      <div class="nav-item" data-page="assistant" onclick="showPage('assistant',this)"><i class="ti ti-robot"></i> AI Assistant</div>
+      <div class="nav-item" data-page="jobs" onclick="showPage('jobs',this)"><i class="ti ti-tool"></i> Jobs & Tickets</div>
+      <div class="nav-label" id="nav-admin-label" style="display:none">Admin</div>
+      <div class="nav-item" data-page="users" id="nav-users" onclick="showPage('users',this)" style="display:none"><i class="ti ti-shield-lock"></i> Users</div>
+      <div class="nav-item" data-page="audit" id="nav-audit" onclick="showPage('audit',this)" style="display:none"><i class="ti ti-history"></i> Audit Log</div>
     </nav>
-    <div class="client-jump">
-      <div class="cj-label">Recent clients</div>
-      <div id="sidebar-clients"></div>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-info">
+          <div class="user-name" id="user-name">Loading...</div>
+          <div class="user-role" id="user-role"></div>
+        </div>
+        <button class="btn-icon btn" onclick="doLogout()" title="Sign out" style="border:none;background:none;color:var(--text3)"><i class="ti ti-logout" style="font-size:16px"></i></button>
+      </div>
     </div>
   </aside>
 
+  <!-- ── Main ── -->
   <div class="main">
     <div class="topbar">
+      <button class="topbar-menu" onclick="openSidebar()"><i class="ti ti-menu-2"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-text">Synced</span></div>
+        <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
-        <button class="btn btn-sm" onclick="loadAll()" title="Refresh"><i class="ti ti-refresh"></i></button>
-        <div id="topbar-actions"><button class="btn btn-primary" onclick="openModal('add-client')"><i class="ti ti-plus"></i> Add client</button></div>
+        <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
+        <div id="topbar-cta"></div>
       </div>
     </div>
 
     <div class="content">
 
-      <!-- Dashboard -->
+      <!-- ══════════════════════════════════════════
+           DASHBOARD
+      ══════════════════════════════════════════ -->
       <div class="page active" id="page-dashboard">
         <div class="stats-grid">
-          <div class="stat-card"><div class="stat-label">Total clients</div><div class="stat-value" id="s-clients">—</div><div class="stat-sub">Active accounts</div></div>
-          <div class="stat-card"><div class="stat-label">Total jobs</div><div class="stat-value" id="s-jobs">—</div><div class="stat-sub">All time</div></div>
-          <div class="stat-card"><div class="stat-label">In progress</div><div class="stat-value" id="s-progress">—</div><div class="stat-sub">Active jobs</div></div>
-          <div class="stat-card"><div class="stat-label">Notes logged</div><div class="stat-value" id="s-notes">—</div><div class="stat-sub">Across all clients</div></div>
+          <div class="stat-card"><div class="stat-label">Clients</div><div class="stat-value" id="stat-clients">—</div><div class="stat-sub">Active accounts</div></div>
+          <div class="stat-card"><div class="stat-label">Open jobs</div><div class="stat-value" id="stat-open">—</div><div class="stat-sub">Pending + In Progress</div></div>
+          <div class="stat-card"><div class="stat-label">New installs</div><div class="stat-value" id="stat-installs">—</div><div class="stat-sub">All time</div></div>
+          <div class="stat-card"><div class="stat-label">Service tickets</div><div class="stat-value" id="stat-service">—</div><div class="stat-sub">All time</div></div>
         </div>
         <div class="card">
           <div class="card-head"><h3>Recent jobs</h3><button class="btn btn-sm" onclick="showPage('jobs',document.querySelector('[data-page=jobs]'))">View all</button></div>
@@ -218,441 +412,1067 @@
         </div>
         <div class="card">
           <div class="card-head"><h3>Recent clients</h3><button class="btn btn-sm" onclick="showPage('clients',document.querySelector('[data-page=clients]'))">View all</button></div>
-          <div class="table-wrap"><table><thead><tr><th>Company</th><th>Name</th><th>Phone</th><th>Notes</th><th>Jobs</th></tr></thead><tbody id="dash-clients"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Company</th><th>Account #</th><th>Services</th><th>Sites</th><th>Jobs</th></tr></thead><tbody id="dash-clients"></tbody></table></div>
         </div>
       </div>
 
-      <!-- Clients -->
+      <!-- ══════════════════════════════════════════
+           CLIENTS LIST
+      ══════════════════════════════════════════ -->
       <div class="page" id="page-clients">
-        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="client-search" placeholder="Search by company, name, phone, account #..." oninput="renderClients()"></div>
+        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="client-search" placeholder="Search company, account #, phone..." oninput="renderClientsList()"></div>
         <div class="card">
-          <div class="card-head"><h3 id="clients-count">All clients</h3><button class="btn btn-primary btn-sm" onclick="openModal('add-client')"><i class="ti ti-plus"></i> Add client</button></div>
-          <div class="table-wrap"><table><thead><tr><th>Company</th><th>Name</th><th>Phone</th><th>Account #</th><th>Services</th><th>Notes</th><th>Jobs</th><th></th></tr></thead><tbody id="clients-tbody"></tbody></table></div>
+          <div class="card-head">
+            <h3 id="clients-count">All clients</h3>
+            <div class="card-head-actions">
+              <button class="btn btn-primary btn-sm" id="btn-add-client" onclick="openClientModal()" style="display:none"><i class="ti ti-plus"></i> Add client</button>
+            </div>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Company</th><th>Account #</th><th>Phone</th><th>Services</th><th>Sites</th><th>Jobs</th><th></th></tr></thead><tbody id="clients-tbody"></tbody></table></div>
         </div>
       </div>
 
-      <!-- Profile -->
-      <div class="page" id="page-profile">
-        <div class="profile-grid">
-          <div id="profile-sidebar"></div>
+      <!-- ══════════════════════════════════════════
+           CLIENT PROFILE
+      ══════════════════════════════════════════ -->
+      <div class="page" id="page-client-profile">
+        <div class="profile-layout">
+          <!-- Left: client card -->
           <div>
-            <div class="tabs" id="profile-tabs">
-              <div class="tab active" onclick="switchTab('notes',this)"><i class="ti ti-notes" style="font-size:15px"></i> Notes <span class="tab-badge" id="tab-notes-count">0</span></div>
-              <div class="tab" onclick="switchTab('jobs',this)"><i class="ti ti-tool" style="font-size:15px"></i> Jobs <span class="tab-badge" id="tab-jobs-count">0</span></div>
+            <div class="profile-card" id="client-profile-card"></div>
+          </div>
+          <!-- Right: tabs -->
+          <div>
+            <div class="tabs">
+              <div class="tab active" onclick="switchClientTab('notes',this)"><i class="ti ti-notes" style="font-size:15px"></i> Notes <span class="tab-count" id="tab-notes-count">0</span></div>
+              <div class="tab" onclick="switchClientTab('jobs',this)"><i class="ti ti-tool" style="font-size:15px"></i> Jobs <span class="tab-count" id="tab-jobs-count">0</span></div>
+              <div class="tab" onclick="switchClientTab('sites',this)"><i class="ti ti-map-pin" style="font-size:15px"></i> Sites <span class="tab-count" id="tab-sites-count">0</span></div>
             </div>
-            <div id="tab-notes-content">
-              <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="openModal('add-note')"><i class="ti ti-plus"></i> Add note</button></div>
+
+            <!-- Notes tab -->
+            <div id="client-tab-notes">
+              <!-- System Credentials (pinned) -->
+              <div class="note-card pinned" id="creds-card">
+                <div class="note-pinned-label"><i class="ti ti-lock" style="font-size:13px"></i> System Credentials</div>
+                <div id="creds-display" class="note-text" style="min-height:40px;color:var(--text2);font-family:'DM Mono',monospace;font-size:12px"></div>
+                <textarea class="creds-edit" id="creds-edit" placeholder="Enter credentials, IPs, passwords, router logins..." style="display:none"></textarea>
+                <div style="display:flex;gap:6px;margin-top:8px" id="creds-actions">
+                  <button class="btn btn-sm" id="creds-edit-btn" onclick="editCreds()"><i class="ti ti-edit"></i> Edit</button>
+                  <button class="btn btn-sm btn-primary" id="creds-save-btn" onclick="saveCreds()" style="display:none"><i class="ti ti-check"></i> Save</button>
+                  <button class="btn btn-sm" id="creds-cancel-btn" onclick="cancelCreds()" style="display:none">Cancel</button>
+                </div>
+              </div>
+              <!-- Regular notes -->
+              <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+                <button class="btn btn-primary btn-sm" onclick="openNoteModal()"><i class="ti ti-plus"></i> Add note</button>
+              </div>
               <div id="notes-list"></div>
             </div>
-            <div id="tab-jobs-content" style="display:none">
-              <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="openModal('add-job')"><i class="ti ti-plus"></i> Log job</button></div>
-              <div id="jobs-list"></div>
+
+            <!-- Jobs tab -->
+            <div id="client-tab-jobs" style="display:none">
+              <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+                <button class="btn btn-primary btn-sm" id="btn-add-job-profile" onclick="openJobModal()"><i class="ti ti-plus"></i> Log job</button>
+              </div>
+              <div id="client-jobs-list"></div>
+            </div>
+
+            <!-- Sites tab -->
+            <div id="client-tab-sites" style="display:none">
+              <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+                <button class="btn btn-primary btn-sm" id="btn-add-site" onclick="openSiteModal()" style="display:none"><i class="ti ti-plus"></i> Add site</button>
+              </div>
+              <div id="sites-list"></div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Jobs -->
+      <!-- ══════════════════════════════════════════
+           JOBS LIST
+      ══════════════════════════════════════════ -->
       <div class="page" id="page-jobs">
-        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search" placeholder="Search jobs by title or client..." oninput="renderJobs()"></div>
-        <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap" id="job-filters">
-          <button class="btn btn-sm" style="background:var(--accent);color:#fff;border-color:var(--accent)" onclick="setJobFilter('all',this)">All</button>
-          <button class="btn btn-sm" onclick="setJobFilter('Pending',this)">Pending</button>
-          <button class="btn btn-sm" onclick="setJobFilter('In progress',this)">In progress</button>
-          <button class="btn btn-sm" onclick="setJobFilter('Complete',this)">Complete</button>
+        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search" placeholder="Search job title or client..." oninput="renderJobsList()"></div>
+        <div class="filter-bar" id="job-type-filters">
+          <button class="filter-btn active" onclick="setJobFilter('type','all',this)">All types</button>
+          <button class="filter-btn" onclick="setJobFilter('type','New Install',this)">New Install</button>
+          <button class="filter-btn" onclick="setJobFilter('type','Service',this)">Service</button>
+        </div>
+        <div class="filter-bar" id="job-status-filters">
+          <button class="filter-btn active" onclick="setJobFilter('status','all',this)">All statuses</button>
+          <button class="filter-btn" onclick="setJobFilter('status','Pending',this)">Pending</button>
+          <button class="filter-btn" onclick="setJobFilter('status','In Progress',this)">In Progress</button>
+          <button class="filter-btn" onclick="setJobFilter('status','Complete',this)">Complete</button>
         </div>
         <div class="card">
-          <div class="card-head"><h3 id="jobs-count">All jobs</h3><button class="btn btn-primary btn-sm" onclick="openModal('add-job-any')"><i class="ti ti-plus"></i> Log job</button></div>
-          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Date</th><th>Status</th><th>Cost</th><th>Notes</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div>
-        </div>
-      </div>
-
-      <!-- AI Assistant -->
-      <div class="page" id="page-assistant">
-        <div class="card">
-          <div class="card-head"><h3>AI assistant <span class="ai-chip"><i class="ti ti-sparkles" style="font-size:13px"></i> Claude</span></h3></div>
-          <div class="card-body">
-            <p style="font-size:13px;color:var(--text2);margin-bottom:1rem">Ask anything about your clients, jobs, or get help drafting messages.</p>
-            <div class="ai-history" id="ai-history"></div>
-            <div class="ai-input-row">
-              <input type="text" id="ai-input" placeholder='e.g. "Which clients have no recent activity?"' onkeydown="if(event.key==='Enter')sendAI()">
-              <button class="btn btn-primary" onclick="sendAI()"><i class="ti ti-send"></i> Send</button>
-            </div>
-            <div class="ai-suggestions">
-              <div class="ai-sug" onclick="setAIQ('Summarise all open and in-progress jobs')">Open jobs</div>
-              <div class="ai-sug" onclick="setAIQ('Which clients have no notes logged?')">Clients with no notes</div>
-              <div class="ai-sug" onclick="setAIQ('List all completed jobs with their costs')">Completed job costs</div>
-              <div class="ai-sug" onclick="setAIQ('Draft a professional follow-up email for my most recent client')">Draft follow-up</div>
-              <div class="ai-sug" onclick="setAIQ('Which client has the most jobs?')">Most active client</div>
-            </div>
+          <div class="card-head">
+            <h3 id="jobs-count">All jobs</h3>
+            <button class="btn btn-primary btn-sm" id="btn-add-job-list" onclick="openJobModal(null)" style="display:none"><i class="ti ti-plus"></i> Log job</button>
           </div>
+          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Type</th><th>Client</th><th>Site</th><th>Status</th><th>Assigned</th><th>Scheduled</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div>
         </div>
       </div>
 
-    </div>
-  </div>
-</div>
+      <!-- ══════════════════════════════════════════
+           USERS (admin only)
+      ══════════════════════════════════════════ -->
+      <div class="page" id="page-users">
+        <div class="card">
+          <div class="card-head">
+            <h3>Team members</h3>
+            <button class="btn btn-primary btn-sm" onclick="openInviteModal()"><i class="ti ti-user-plus"></i> Invite user</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th></th></tr></thead><tbody id="users-tbody"></tbody></table></div>
+        </div>
+      </div>
 
+      <!-- ══════════════════════════════════════════
+           AUDIT LOG (admin only)
+      ══════════════════════════════════════════ -->
+      <div class="page" id="page-audit">
+        <div class="card">
+          <div class="card-head"><h3>Audit log</h3><button class="btn btn-sm" onclick="loadAuditLog()"><i class="ti ti-refresh"></i> Refresh</button></div>
+          <div class="card-body" id="audit-list"><div class="empty"><i class="ti ti-history"></i><p>Loading...</p></div></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- Modal container -->
 <div id="modal-root"></div>
 
 <script>
-// ── Credentials — injected by GitHub Actions, never commit real values here ──
-const SHEET_ID  = '__SHEET_ID__';
-const API_KEY   = '__API_KEY__';
-const CLIENT_ID = '__CLIENT_ID__';
-const USERNAME  = 'Ops Manager';
-const SCOPES    = 'https://www.googleapis.com/auth/spreadsheets';
+// ============================================================
+//  SUPABASE INIT
+//  Credentials injected by GitHub Actions — do not hardcode
+// ============================================================
+const SUPABASE_URL  = '__SUPABASE_URL__';
+const SUPABASE_ANON = '__SUPABASE_ANON__';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-let tokenClient, accessToken = null;
-let db = { clients: [], jobs: [], notes: [] };
-let activeClientId = null, jobFilter = 'all', aiHistory = [];
+// ============================================================
+//  STATE
+// ============================================================
+let currentUser    = null;   // auth user
+let currentProfile = null;   // profiles row
+let currentPage    = 'dashboard';
+let activeClientId = null;
+let activeClientData = null;
+let jobFilters     = { type: 'all', status: 'all' };
+let allClients     = [];
+let allJobs        = [];
+let allProfiles    = [];
 
-// ── Dark mode (runs immediately so there's no flash) ──────────
+// ============================================================
+//  DARK MODE (runs before anything renders)
+// ============================================================
 (function(){
-  const saved = localStorage.getItem('tcrm_dark');
-  if (saved === null || saved === '1') document.documentElement.classList.add('dark');
+  const s = localStorage.getItem('tcrm_dark');
+  if (s === null || s === '1') document.documentElement.classList.add('dark');
 })();
+function syncDarkIcon(){ const i=document.getElementById('dark-icon'); if(i) i.className=document.documentElement.classList.contains('dark')?'ti ti-sun':'ti ti-moon'; }
+function toggleDark(){ const d=document.documentElement.classList.toggle('dark'); localStorage.setItem('tcrm_dark',d?'1':'0'); syncDarkIcon(); }
 
-// ── Google Identity Services ──────────────────────────────────
-function loadGIS() {
-  if (typeof google !== 'undefined' && google.accounts) return;
-  if (document.getElementById('gis-script')) return;
-  const s = document.createElement('script');
-  s.id = 'gis-script'; s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
-  s.onerror = () => toast('Could not load Google auth. Check your internet connection.', 'ti-alert-circle');
-  document.head.appendChild(s);
+// ============================================================
+//  HELPERS
+// ============================================================
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function initials(s){ return String(s||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(d){ return d ? new Date(d).toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
+function fmtDateTime(d){ return d ? new Date(d).toLocaleString('en-AU',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'; }
+function isAdmin(){ return currentProfile?.role === 'admin'; }
+
+function setSyncStatus(s){
+  const dot = document.getElementById('sync-dot');
+  if (!dot) return;
+  dot.className = 'sync-dot' + (s==='syncing'?' syncing':s==='error'?' error':'');
+  dot.title = s==='syncing'?'Syncing…':s==='error'?'Sync error':'Synced';
 }
 
-function startAuth() {
-  if (typeof google === 'undefined' || !google.accounts) {
-    toast('Google auth not ready — please wait a moment and try again.', 'ti-alert-circle');
-    return;
-  }
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (resp) => {
-      if (resp.error) { toast('Auth error: ' + resp.error, 'ti-alert-circle'); return; }
-      accessToken = resp.access_token;
-      document.getElementById('loading-screen').style.display = 'none';
-      document.getElementById('main-app').style.display = 'flex';
-      syncDarkIcon();
-      loadAll();
-    },
+function toast(msg, type='ok'){
+  const t = document.createElement('div'); t.className = 'toast';
+  const icon = type==='error'?'ti-alert-circle':type==='warn'?'ti-alert-triangle':'ti-check';
+  t.innerHTML = `<i class="ti ${icon}"></i> ${esc(msg)}`;
+  document.body.appendChild(t); setTimeout(()=>t.remove(), 3000);
+}
+
+function showScreen(name){
+  ['loading','login','set-password'].forEach(s=>{
+    document.getElementById('screen-'+s).style.display = s===name?'flex':'none';
   });
-  tokenClient.requestAccessToken({ prompt: 'consent' });
+  document.getElementById('app').style.display = name==='app'?'flex':'none';
+  if(name==='app') syncDarkIcon();
 }
 
-function initTokenClient() {
-  if (typeof google === 'undefined' || !google.accounts) { toast('Google auth not ready — please refresh.', 'ti-alert-circle'); return; }
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (resp) => {
-      if (resp.error) { toast('Auth error: ' + resp.error, 'ti-alert-circle'); return; }
-      accessToken = resp.access_token;
-      document.getElementById('loading-screen').style.display = 'none';
-      document.getElementById('main-app').style.display = 'flex';
-      syncDarkIcon();
-      loadAll();
-    },
-  });
-  tokenClient.requestAccessToken({ prompt: '' });
+// ============================================================
+//  STATUS BADGES
+// ============================================================
+function statusBadge(s){
+  const map = { 'Pending':'badge-amber', 'In Progress':'badge-blue', 'Complete':'badge-green' };
+  return `<span class="badge ${map[s]||'badge-gray'}">${esc(s)}</span>`;
+}
+function typeBadge(t){
+  return t==='New Install' ? `<span class="badge badge-blue">New Install</span>` : `<span class="badge badge-gray">Service</span>`;
+}
+function svcBadges(c){
+  let b = '';
+  if(c.svc_internet) b += `<span class="badge badge-blue" style="margin-right:3px">Internet</span>`;
+  if(c.svc_webex)    b += `<span class="badge badge-green" style="margin-right:3px">Webex</span>`;
+  if(c.svc_nec)      b += `<span class="badge badge-amber" style="margin-right:3px">NEC</span>`;
+  return b || '<span style="color:var(--text3);font-size:12px">None</span>';
 }
 
-// ── Dark mode toggle ──────────────────────────────────────────
-function syncDarkIcon() {
-  const icon = document.getElementById('dark-icon');
-  if (icon) icon.className = document.documentElement.classList.contains('dark') ? 'ti ti-sun' : 'ti ti-moon';
-}
-function toggleDark() {
-  const d = document.documentElement.classList.toggle('dark');
-  localStorage.setItem('tcrm_dark', d ? '1' : '0');
-  syncDarkIcon();
+// ============================================================
+//  AUTH
+// ============================================================
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pw    = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn   = document.getElementById('login-btn');
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 0.7s linear infinite"></i> Signing in...';
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  btn.disabled = false; btn.innerHTML = '<i class="ti ti-login"></i> Sign in';
+  if(error){ errEl.textContent = error.message; errEl.style.display = 'block'; }
 }
 
-// ── Sheets API ────────────────────────────────────────────────
-const BASE = 'https://sheets.googleapis.com/v4/spreadsheets';
-function authHdr() { return { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' }; }
+async function doSetPassword(){
+  const pw  = document.getElementById('newpw-input').value;
+  const pw2 = document.getElementById('newpw-confirm').value;
+  const err = document.getElementById('newpw-error');
+  err.style.display = 'none';
+  if(!pw || pw.length < 6){ err.textContent='Password must be at least 6 characters.'; err.style.display='block'; return; }
+  if(pw !== pw2){ err.textContent='Passwords do not match.'; err.style.display='block'; return; }
+  const { error } = await sb.auth.updateUser({ password: pw });
+  if(error){ err.textContent=error.message; err.style.display='block'; return; }
+  toast('Password set! Welcome to TelcoCRM.');
+  await initApp();
+}
 
-async function sheetsGet(range) {
-  const r = await fetch(`${BASE}/${SHEET_ID}/values/${encodeURIComponent(range)}?key=${API_KEY}`, { headers: authHdr() });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+async function doLogout(){
+  await sb.auth.signOut();
+  currentUser = null; currentProfile = null;
+  showScreen('login');
 }
-async function sheetsAppend(sheet, rows) {
-  const r = await fetch(`${BASE}/${SHEET_ID}/values/${encodeURIComponent(sheet+'!A1')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS&key=${API_KEY}`, { method: 'POST', headers: authHdr(), body: JSON.stringify({ values: rows }) });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function sheetsUpdate(range, rows) {
-  const r = await fetch(`${BASE}/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=RAW&key=${API_KEY}`, { method: 'PUT', headers: authHdr(), body: JSON.stringify({ values: rows }) });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function sheetsClear(range) {
-  const r = await fetch(`${BASE}/${SHEET_ID}/values/${encodeURIComponent(range)}:clear?key=${API_KEY}`, { method: 'POST', headers: authHdr() });
-  if (!r.ok) throw new Error(await r.text());
-}
-function colLetter(n) { let s = ''; while (n > 0) { s = String.fromCharCode(64 + (n % 26 || 26)) + s; n = Math.floor((n - 1) / 26); } return s; }
 
-async function ensureSheets() {
-  const meta = await fetch(`${BASE}/${SHEET_ID}?key=${API_KEY}`, { headers: authHdr() }).then(r => r.json());
-  const existing = (meta.sheets || []).map(s => s.properties.title);
-  const toAdd = ['Clients', 'Jobs', 'Notes'].filter(n => !existing.includes(n));
-  if (toAdd.length) await fetch(`${BASE}/${SHEET_ID}:batchUpdate?key=${API_KEY}`, { method: 'POST', headers: authHdr(), body: JSON.stringify({ requests: toAdd.map(title => ({ addSheet: { properties: { title } } })) }) });
-  const hdrs = {
-    Clients: ['id','name','company','phone','email','address','accountNumber','svcInternet','svcWebex','svcNec','since'],
-    Jobs:    ['id','clientId','title','type','date','status','cost','notes'],
-    Notes:   ['id','clientId','text','author','date'],
-  };
-  for (const [sheet, hdr] of Object.entries(hdrs)) {
-    try {
-      const res = await sheetsGet(`${sheet}!A1:A1`);
-      if (!res.values || !res.values[0] || res.values[0][0] !== hdr[0]) await sheetsUpdate(`${sheet}!A1:${colLetter(hdr.length)}1`, [hdr]);
-    } catch(e) { await sheetsUpdate(`${sheet}!A1:${colLetter(hdr.length)}1`, [hdr]); }
+// ============================================================
+//  BOOT
+// ============================================================
+async function boot(){
+  showScreen('loading');
+
+  // Check for invite/recovery token in URL
+  const hash = window.location.hash;
+  if(hash.includes('type=invite') || hash.includes('type=recovery')){
+    const { data, error } = await sb.auth.getSessionFromUrl();
+    if(!error && data.session){
+      showScreen('set-password');
+      return;
+    }
   }
+
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){
+    currentUser = session.user;
+    await initApp();
+  } else {
+    showScreen('login');
+  }
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if(event === 'SIGNED_IN' && session){
+      currentUser = session.user;
+      await initApp();
+    } else if(event === 'SIGNED_OUT'){
+      showScreen('login');
+    } else if(event === 'PASSWORD_RECOVERY'){
+      showScreen('set-password');
+    }
+  });
 }
 
-// ── Sync status ───────────────────────────────────────────────
-function setSyncStatus(s) {
-  const dot = document.getElementById('sync-dot'), txt = document.getElementById('sync-text');
-  dot.className = 'sync-dot' + (s === 'syncing' ? ' syncing' : s === 'error' ? ' error' : '');
-  txt.textContent = s === 'syncing' ? 'Syncing…' : s === 'error' ? 'Sync error' : 'Synced';
+async function initApp(){
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentProfile = profile;
+
+  // Update UI with user info
+  document.getElementById('user-name').textContent  = profile?.full_name || currentUser.email;
+  document.getElementById('user-role').textContent  = profile?.role || 'technician';
+  document.getElementById('user-avatar').textContent = initials(profile?.full_name || currentUser.email);
+
+  // Show admin nav items
+  if(isAdmin()){
+    document.getElementById('nav-admin-label').style.display = '';
+    document.getElementById('nav-users').style.display = '';
+    document.getElementById('nav-audit').style.display = '';
+    document.getElementById('btn-add-client').style.display = '';
+    document.getElementById('btn-add-job-list').style.display = '';
+  }
+
+  showScreen('app');
+  await loadDashboard();
 }
 
-// ── Load ──────────────────────────────────────────────────────
-async function loadAll() {
+// ============================================================
+//  NAVIGATION
+// ============================================================
+function showPage(name, el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+  currentPage = name;
+  const titles = { dashboard:'Dashboard', clients:'Clients', jobs:'Jobs & Tickets', users:'Team members', audit:'Audit log', 'client-profile':'Client profile' };
+  document.getElementById('topbar-title').textContent = titles[name] || name;
+  // Update top CTA
+  const cta = document.getElementById('topbar-cta');
+  if(name==='clients' && isAdmin()) cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openClientModal()"><i class="ti ti-plus"></i> Add client</button>`;
+  else if(name==='jobs' && isAdmin()) cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openJobModal(null)"><i class="ti ti-plus"></i> Log job</button>`;
+  else cta.innerHTML = '';
+  closeSidebar();
+  refreshCurrentPage();
+}
+
+function refreshCurrentPage(){
+  if(currentPage==='dashboard') loadDashboard();
+  else if(currentPage==='clients') loadClients();
+  else if(currentPage==='client-profile' && activeClientId) loadClientProfile(activeClientId);
+  else if(currentPage==='jobs') loadJobs();
+  else if(currentPage==='users') loadUsers();
+  else if(currentPage==='audit') loadAuditLog();
+}
+
+function openClientProfile(id){
+  activeClientId = id;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-client-profile').classList.add('active');
+  document.getElementById('topbar-title').textContent = 'Client profile';
+  document.getElementById('topbar-cta').innerHTML = '';
+  currentPage = 'client-profile';
+  closeSidebar();
+  loadClientProfile(id);
+}
+
+// ── Mobile sidebar ──
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-backdrop').classList.add('visible'); }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-backdrop').classList.remove('visible'); }
+
+// ── Client profile tabs ──
+function switchClientTab(tab, el){
+  document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('client-tab-notes').style.display  = tab==='notes'?'block':'none';
+  document.getElementById('client-tab-jobs').style.display   = tab==='jobs'?'block':'none';
+  document.getElementById('client-tab-sites').style.display  = tab==='sites'?'block':'none';
+}
+
+// ── Job filters ──
+function setJobFilter(key, val, el){
+  jobFilters[key] = val;
+  const group = key==='type' ? 'job-type-filters' : 'job-status-filters';
+  document.querySelectorAll(`#${group} .filter-btn`).forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderJobsList();
+}
+
+// ============================================================
+//  DASHBOARD
+// ============================================================
+async function loadDashboard(){
   setSyncStatus('syncing');
   try {
-    await ensureSheets();
-    const [cr, jr, nr] = await Promise.all([sheetsGet('Clients!A2:K'), sheetsGet('Jobs!A2:H'), sheetsGet('Notes!A2:E')]);
-    db.clients = (cr.values || []).filter(r => r[0]).map(r => ({ id:r[0], name:r[1]||'', company:r[2]||'', phone:r[3]||'', email:r[4]||'', address:r[5]||'', accountNumber:r[6]||'', services:{ internet:r[7]==='TRUE', webex:r[8]==='TRUE', nec:r[9]==='TRUE' }, since:r[10]||'' }));
-    db.jobs    = (jr.values || []).filter(r => r[0]).map(r => ({ id:r[0], clientId:r[1]||'', title:r[2]||'', type:r[3]||'', date:r[4]||'', status:r[5]||'Pending', cost:r[6]||'', notes:r[7]||'' }));
-    db.notes   = (nr.values || []).filter(r => r[0]).map(r => ({ id:r[0], clientId:r[1]||'', text:r[2]||'', author:r[3]||'', date:r[4]||'' }));
-    setSyncStatus('ok'); renderAll();
-  } catch(e) { setSyncStatus('error'); toast('Load error: ' + e.message, 'ti-alert-circle'); console.error(e); }
+    const [{ data: clients }, { data: jobs }] = await Promise.all([
+      sb.from('clients').select('*,sites(id),jobs(id,type,status)'),
+      sb.from('jobs').select('*,clients(company),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('created_at',{ascending:false}).limit(6)
+    ]);
+    allClients = clients || [];
+    allJobs    = jobs    || [];
+
+    document.getElementById('stat-clients').textContent  = allClients.length;
+    document.getElementById('stat-open').textContent     = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.status!=='Complete').length, 0);
+    document.getElementById('stat-installs').textContent = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.type==='New Install').length, 0);
+    document.getElementById('stat-service').textContent  = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.type==='Service').length, 0);
+
+    // Recent jobs
+    document.getElementById('dash-jobs').innerHTML = allJobs.length
+      ? allJobs.map(j=>`<div class="job-card">
+          ${typeBadge(j.type)}
+          <div class="job-body">
+            <div class="job-title">${esc(j.title)}</div>
+            <div class="job-meta">
+              <span>${esc(j.clients?.company||'Unknown')}</span>
+              ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
+              <span>${statusBadge(j.status)}</span>
+              ${j.profiles?.full_name?`<span><i class="ti ti-user" style="font-size:11px"></i> ${esc(j.profiles.full_name)}</span>`:''}
+            </div>
+          </div>
+          ${j.cost?`<div class="job-cost">$${Number(j.cost).toFixed(2)}</div>`:''}
+        </div>`).join('')
+      : `<div class="empty"><i class="ti ti-tool"></i><p>No jobs yet.</p></div>`;
+
+    // Recent clients
+    document.getElementById('dash-clients').innerHTML = [...allClients].slice(0,5).map(c=>`
+      <tr class="clickable" onclick="openClientProfile('${c.id}')">
+        <td><strong style="font-weight:500">${esc(c.company)}</strong></td>
+        <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.account_number)||'—'}</td>
+        <td>${svcBadges(c)}</td>
+        <td>${(c.sites||[]).length}</td>
+        <td>${(c.jobs||[]).length}</td>
+      </tr>`).join('') || `<tr><td colspan="5"><div class="empty"><i class="ti ti-users"></i><p>No clients yet.</p></div></td></tr>`;
+
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Dashboard load error: '+e.message,'error'); }
 }
 
-// ── Row helpers ───────────────────────────────────────────────
-const C_HDR = ['id','name','company','phone','email','address','accountNumber','svcInternet','svcWebex','svcNec','since'];
-const J_HDR = ['id','clientId','title','type','date','status','cost','notes'];
-const N_HDR = ['id','clientId','text','author','date'];
-const clientRow = c => [c.id, c.name, c.company, c.phone, c.email, c.address, c.accountNumber, c.services.internet?'TRUE':'FALSE', c.services.webex?'TRUE':'FALSE', c.services.nec?'TRUE':'FALSE', c.since];
-const jobRow    = j => [j.id, j.clientId, j.title, j.type, j.date, j.status, j.cost, j.notes];
-const noteRow   = n => [n.id, n.clientId, n.text, n.author, n.date];
-async function rewriteSheet(sheet, hdr, rows) { await sheetsClear(`${sheet}!A1:Z`); await sheetsUpdate(`${sheet}!A1:${colLetter(hdr.length)}${rows.length + 1}`, [hdr, ...rows]); }
-
-// ── CRUD ──────────────────────────────────────────────────────
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
-
-async function addClient(data) {
+// ============================================================
+//  CLIENTS LIST
+// ============================================================
+async function loadClients(){
   setSyncStatus('syncing');
-  try { const c = { id: uid(), ...data }; db.clients.push(c); await sheetsAppend('Clients', [clientRow(c)]); setSyncStatus('ok'); toast('Client added'); closeModal(); renderAll(); }
-  catch(e) { setSyncStatus('error'); toast('Save failed: ' + e.message, 'ti-alert-circle'); }
-}
-async function updateClient(id, data) {
-  setSyncStatus('syncing');
-  try { const i = db.clients.findIndex(c => c.id === id); db.clients[i] = { ...db.clients[i], ...data }; await rewriteSheet('Clients', C_HDR, db.clients.map(clientRow)); setSyncStatus('ok'); toast('Client updated'); closeModal(); renderAll(); if (activeClientId === id) renderProfile(id); }
-  catch(e) { setSyncStatus('error'); toast('Save failed: ' + e.message, 'ti-alert-circle'); }
-}
-async function deleteClient(id) {
-  if (!confirm('Delete this client and all their notes and jobs?')) return;
-  setSyncStatus('syncing');
-  try { db.clients = db.clients.filter(c => c.id !== id); db.notes = db.notes.filter(n => n.clientId !== id); db.jobs = db.jobs.filter(j => j.clientId !== id); await Promise.all([rewriteSheet('Clients', C_HDR, db.clients.map(clientRow)), rewriteSheet('Notes', N_HDR, db.notes.map(noteRow)), rewriteSheet('Jobs', J_HDR, db.jobs.map(jobRow))]); setSyncStatus('ok'); toast('Client deleted', 'ti-trash'); if (activeClientId === id) { activeClientId = null; showPage('clients', document.querySelector('[data-page=clients]')); } else renderAll(); }
-  catch(e) { setSyncStatus('error'); toast('Delete failed: ' + e.message, 'ti-alert-circle'); }
-}
-async function addNote(data) {
-  setSyncStatus('syncing');
-  try { const n = { id: uid(), clientId: activeClientId, ...data }; db.notes.push(n); await sheetsAppend('Notes', [noteRow(n)]); setSyncStatus('ok'); toast('Note saved'); closeModal(); renderAll(); renderProfile(activeClientId); }
-  catch(e) { setSyncStatus('error'); toast('Save failed: ' + e.message, 'ti-alert-circle'); }
-}
-async function deleteNote(id) {
-  if (!confirm('Delete this note?')) return;
-  setSyncStatus('syncing');
-  try { db.notes = db.notes.filter(n => n.id !== id); await rewriteSheet('Notes', N_HDR, db.notes.map(noteRow)); setSyncStatus('ok'); toast('Note deleted', 'ti-trash'); renderAll(); renderProfile(activeClientId); }
-  catch(e) { setSyncStatus('error'); toast('Delete failed: ' + e.message, 'ti-alert-circle'); }
-}
-async function addJob(data) {
-  setSyncStatus('syncing');
-  try { const j = { id: uid(), ...data }; db.jobs.push(j); await sheetsAppend('Jobs', [jobRow(j)]); setSyncStatus('ok'); toast('Job logged'); closeModal(); renderAll(); if (activeClientId) renderProfile(activeClientId); }
-  catch(e) { setSyncStatus('error'); toast('Save failed: ' + e.message, 'ti-alert-circle'); }
-}
-async function deleteJob(id) {
-  if (!confirm('Delete this job?')) return;
-  setSyncStatus('syncing');
-  try { db.jobs = db.jobs.filter(j => j.id !== id); await rewriteSheet('Jobs', J_HDR, db.jobs.map(jobRow)); setSyncStatus('ok'); toast('Job deleted', 'ti-trash'); renderAll(); if (activeClientId) renderProfile(activeClientId); }
-  catch(e) { setSyncStatus('error'); toast('Delete failed: ' + e.message, 'ti-alert-circle'); }
-}
-async function cycleJobStatus(id) {
-  const j = db.jobs.find(x => x.id === id); if (!j) return;
-  j.status = ['Pending','In progress','Complete'][(['Pending','In progress','Complete'].indexOf(j.status) + 1) % 3];
-  setSyncStatus('syncing');
-  try { await rewriteSheet('Jobs', J_HDR, db.jobs.map(jobRow)); setSyncStatus('ok'); toast('Status → ' + j.status); renderAll(); if (activeClientId) renderProfile(activeClientId); }
-  catch(e) { setSyncStatus('error'); toast('Save failed: ' + e.message, 'ti-alert-circle'); }
+  try {
+    const { data } = await sb.from('clients').select('*,sites(id),jobs(id)').order('company');
+    allClients = data || [];
+    renderClientsList();
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading clients: '+e.message,'error'); }
 }
 
-// ── Render helpers ────────────────────────────────────────────
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function initials(n) { return String(n||'?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2); }
-function statusBadge(s) { return s === 'Complete' ? `<span class="badge badge-green">${s}</span>` : s === 'In progress' ? `<span class="badge badge-blue">${s}</span>` : `<span class="badge badge-amber">${s}</span>`; }
-function today() { return new Date().toISOString().slice(0, 10); }
-function renderAll() { renderSidebar(); renderDashboard(); renderClients(); renderJobs(); }
-
-function renderSidebar() {
-  document.getElementById('sidebar-clients').innerHTML = [...db.clients].slice(-7).reverse().map(c => `<div class="cj-item ${c.id === activeClientId ? 'active' : ''}" onclick="openProfile('${c.id}')"><div class="av-xs">${initials(c.company||c.name)}</div><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.company||c.name)}</span></div>`).join('');
-}
-
-function renderDashboard() {
-  document.getElementById('s-clients').textContent  = db.clients.length;
-  document.getElementById('s-jobs').textContent     = db.jobs.length;
-  document.getElementById('s-progress').textContent = db.jobs.filter(j => j.status === 'In progress').length;
-  document.getElementById('s-notes').textContent    = db.notes.length;
-  const rj = [...db.jobs].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 6);
-  document.getElementById('dash-jobs').innerHTML = rj.length ? rj.map(j => { const c = db.clients.find(x => x.id === j.clientId) || {}; return `<div class="job-card">${statusBadge(j.status)}<div class="job-info"><div class="job-title">${esc(j.title)}</div><div class="job-meta">${esc(c.company||c.name||'Unknown')} · ${j.date}${j.type ? ' · ' + j.type : ''}</div></div>${j.cost ? `<div class="job-cost">$${j.cost}</div>` : ''}</div>`; }).join('') : `<div class="empty"><i class="ti ti-tool"></i><p>No jobs yet.</p></div>`;
-  document.getElementById('dash-clients').innerHTML = [...db.clients].slice(-5).reverse().map(c => `<tr class="clickable" onclick="openProfile('${c.id}')"><td><div style="display:flex;align-items:center;gap:8px"><div class="av-xs">${initials(c.company||c.name)}</div>${esc(c.company||'—')}</div></td><td style="color:var(--text2)">${esc(c.name)}</td><td style="color:var(--text2);font-family:'DM Mono',monospace;font-size:12px">${esc(c.phone)}</td><td>${db.notes.filter(n => n.clientId === c.id).length}</td><td>${db.jobs.filter(j => j.clientId === c.id).length}</td></tr>`).join('');
-}
-
-function renderClients() {
-  const q = (document.getElementById('client-search') || {}).value || '';
-  const f = db.clients.filter(c => !q || (c.company||'').toLowerCase().includes(q.toLowerCase()) || (c.name||'').toLowerCase().includes(q.toLowerCase()) || (c.phone||'').includes(q) || (c.accountNumber||'').toLowerCase().includes(q.toLowerCase()));
+function renderClientsList(){
+  const q = (document.getElementById('client-search')||{}).value?.toLowerCase()||'';
+  const f = allClients.filter(c=>!q || c.company.toLowerCase().includes(q) || (c.account_number||'').toLowerCase().includes(q) || (c.phone||'').includes(q));
   document.getElementById('clients-count').textContent = `All clients (${f.length})`;
-  const tb = document.getElementById('clients-tbody'); if (!tb) return;
-  tb.innerHTML = f.length ? f.map(c => `<tr class="clickable" onclick="openProfile('${c.id}')"><td><div style="display:flex;align-items:center;gap:8px"><div class="av-xs">${initials(c.company||c.name)}</div><strong style="font-weight:500">${esc(c.company||'—')}</strong></div></td><td style="color:var(--text2)">${esc(c.name)}</td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.phone)}</td><td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.accountNumber)||'—'}</td><td><div style="display:flex;gap:4px;flex-wrap:wrap">${(c.services||{}).internet?'<span class="badge badge-blue">Internet</span>':''}${(c.services||{}).webex?'<span class="badge badge-green">Webex</span>':''}${(c.services||{}).nec?'<span class="badge badge-amber">NEC</span>':''}</div></td><td>${db.notes.filter(n => n.clientId === c.id).length}</td><td>${db.jobs.filter(j => j.clientId === c.id).length}</td><td><div style="display:flex;gap:4px"><button class="btn btn-sm" onclick="event.stopPropagation();openModal('edit-client','${c.id}')"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteClient('${c.id}')"><i class="ti ti-trash"></i></button></div></td></tr>`).join('') : `<tr><td colspan="8"><div class="empty"><i class="ti ti-search"></i><p>No clients found.</p></div></td></tr>`;
+  const tb = document.getElementById('clients-tbody');
+  if(!tb) return;
+  tb.innerHTML = f.length ? f.map(c=>`
+    <tr class="clickable" onclick="openClientProfile('${c.id}')">
+      <td><strong style="font-weight:500">${esc(c.company)}</strong></td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.account_number)||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.phone)||'—'}</td>
+      <td>${svcBadges(c)}</td>
+      <td>${(c.sites||[]).length}</td>
+      <td>${(c.jobs||[]).length}</td>
+      <td><div style="display:flex;gap:4px">
+        ${isAdmin()?`<button class="btn btn-sm" onclick="event.stopPropagation();openClientModal('${c.id}')"><i class="ti ti-edit"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteClient('${c.id}')"><i class="ti ti-trash"></i></button>`:''}
+      </div></td>
+    </tr>`).join('')
+    : `<tr><td colspan="7"><div class="empty"><i class="ti ti-search"></i><p>No clients found.</p></div></td></tr>`;
 }
 
-function renderJobs() {
-  const q = (document.getElementById('job-search') || {}).value || '';
-  const f = db.jobs.filter(j => { const c = db.clients.find(x => x.id === j.clientId) || {}; return (!q || j.title.toLowerCase().includes(q.toLowerCase()) || (c.company||c.name||'').toLowerCase().includes(q.toLowerCase())) && (jobFilter === 'all' || j.status === jobFilter); }).sort((a,b) => b.date.localeCompare(a.date));
-  document.getElementById('jobs-count').textContent = `All jobs (${f.length})`;
-  const tb = document.getElementById('jobs-tbody'); if (!tb) return;
-  tb.innerHTML = f.length ? f.map(j => { const c = db.clients.find(x => x.id === j.clientId) || {}; return `<tr><td><strong style="font-weight:500">${esc(j.title)}</strong>${j.type ? `<span class="badge badge-gray" style="margin-left:6px">${esc(j.type)}</span>` : ''}</td><td><span style="color:var(--accent);cursor:pointer" onclick="openProfile('${c.id}')">${esc(c.company||c.name||'Unknown')}</span></td><td style="color:var(--text2);font-size:12px">${j.date}</td><td>${statusBadge(j.status)}</td><td style="font-family:'DM Mono',monospace;font-size:12px">${j.cost ? '$' + j.cost : '—'}</td><td style="color:var(--text2);font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(j.notes)||'—'}</td><td><div style="display:flex;gap:4px"><button class="btn btn-sm" onclick="cycleJobStatus('${j.id}')"><i class="ti ti-refresh"></i></button><button class="btn btn-sm btn-danger" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button></div></td></tr>`; }).join('') : `<tr><td colspan="7"><div class="empty"><i class="ti ti-tool"></i><p>No jobs found.</p></div></td></tr>`;
-}
-
-function renderProfile(cid) {
-  const c = db.clients.find(x => x.id === cid); if (!c) return;
-  activeClientId = cid;
-  function pf(icon, label, val) { return val ? `<div class="pf"><i class="ti ${icon}"></i><div><div class="pf-label">${label}</div><div class="pf-value">${esc(val)}</div></div></div>` : ''; }
-  document.getElementById('profile-sidebar').innerHTML = `<div class="profile-card"><div class="av-lg">${initials(c.company||c.name)}</div><div class="profile-name">${esc(c.company||c.name)}</div><div class="profile-company">${c.company ? esc(c.name) : ''}</div>${pf('ti-hash','Account number',c.accountNumber)}${pf('ti-phone','Phone',c.phone)}${pf('ti-mail','Email',c.email)}${pf('ti-map-pin','Address',c.address)}${pf('ti-calendar','Client since',c.since)}<div class="pf"><i class="ti ti-apps"></i><div><div class="pf-label">Services</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px">${(c.services||{}).internet?'<span class="badge badge-blue">Internet</span>':'<span class="badge badge-gray" style="opacity:.4">Internet</span>'}${(c.services||{}).webex?'<span class="badge badge-green">Webex</span>':'<span class="badge badge-gray" style="opacity:.4">Webex</span>'}${(c.services||{}).nec?'<span class="badge badge-amber">NEC</span>':'<span class="badge badge-gray" style="opacity:.4">NEC</span>'}</div></div></div><div class="profile-actions"><button class="btn btn-sm" onclick="openModal('edit-client','${c.id}')"><i class="ti ti-edit"></i> Edit</button><button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')"><i class="ti ti-trash"></i> Delete</button></div></div>`;
-  const notes = db.notes.filter(n => n.clientId === cid).sort((a,b) => b.date.localeCompare(a.date));
-  const jobs  = db.jobs.filter(j => j.clientId === cid).sort((a,b) => b.date.localeCompare(a.date));
-  document.getElementById('tab-notes-count').textContent = notes.length;
-  document.getElementById('tab-jobs-count').textContent  = jobs.length;
-  document.getElementById('notes-list').innerHTML = notes.length ? notes.map(n => `<div class="note-card"><div class="note-meta"><span class="note-author"><i class="ti ti-user" style="font-size:13px"></i> ${esc(n.author)}</span><div style="display:flex;align-items:center;gap:8px"><span class="note-date">${n.date}</span><button class="btn btn-sm btn-danger" onclick="deleteNote('${n.id}')"><i class="ti ti-trash"></i></button></div></div><div class="note-text">${esc(n.text)}</div></div>`).join('') : `<div class="empty"><i class="ti ti-notes"></i><p>No notes yet.</p></div>`;
-  document.getElementById('jobs-list').innerHTML = jobs.length ? jobs.map(j => `<div class="job-card">${statusBadge(j.status)}<div class="job-info"><div class="job-title">${esc(j.title)}${j.type ? ` <span class="badge badge-gray">${esc(j.type)}</span>` : ''}</div><div class="job-meta">${j.date}${j.notes ? ' · ' + esc(j.notes) : ''}</div></div>${j.cost ? `<div class="job-cost">$${j.cost}</div>` : ''}<div style="display:flex;gap:4px"><button class="btn btn-sm" onclick="cycleJobStatus('${j.id}')"><i class="ti ti-refresh"></i></button><button class="btn btn-sm btn-danger" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button></div></div>`).join('') : `<div class="empty"><i class="ti ti-tool"></i><p>No jobs yet.</p></div>`;
-  renderSidebar();
-}
-
-// ── Navigation ────────────────────────────────────────────────
-function showPage(name, el) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  if (el) el.classList.add('active');
-  document.getElementById('topbar-title').textContent = { dashboard:'Dashboard', clients:'Clients', jobs:'Jobs', assistant:'AI Assistant', profile:'Client profile' }[name] || name;
-  const ta = document.getElementById('topbar-actions');
-  if (name === 'clients')   ta.innerHTML = `<button class="btn btn-primary" onclick="openModal('add-client')"><i class="ti ti-plus"></i> Add client</button>`;
-  else if (name === 'jobs') ta.innerHTML = `<button class="btn btn-primary" onclick="openModal('add-job-any')"><i class="ti ti-plus"></i> Log job</button>`;
-  else if (name === 'dashboard') ta.innerHTML = `<button class="btn btn-primary" onclick="openModal('add-client')"><i class="ti ti-plus"></i> Add client</button>`;
-  else ta.innerHTML = '';
-  renderAll();
-}
-function openProfile(cid) {
-  activeClientId = cid;
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-profile').classList.add('active');
-  const c = db.clients.find(x => x.id === cid);
-  document.getElementById('topbar-title').textContent = c ? (c.company || c.name) : 'Client profile';
-  document.getElementById('topbar-actions').innerHTML = `<button class="btn btn-primary btn-sm" onclick="openModal('add-note')"><i class="ti ti-plus"></i> Note</button><button class="btn btn-primary btn-sm" onclick="openModal('add-job')"><i class="ti ti-plus"></i> Log job</button>`;
-  switchTab('notes', document.querySelector('#profile-tabs .tab'));
-  renderProfile(cid);
-}
-function switchTab(tab, el) {
-  document.querySelectorAll('#profile-tabs .tab').forEach(t => t.classList.remove('active'));
-  if (el) el.classList.add('active');
-  document.getElementById('tab-notes-content').style.display = tab === 'notes' ? 'block' : 'none';
-  document.getElementById('tab-jobs-content').style.display  = tab === 'jobs'  ? 'block' : 'none';
-}
-function setJobFilter(f, el) {
-  jobFilter = f;
-  document.querySelectorAll('#job-filters .btn').forEach(b => { b.style.background = ''; b.style.color = ''; b.style.borderColor = ''; });
-  if (el) { el.style.background = 'var(--accent)'; el.style.color = '#fff'; el.style.borderColor = 'var(--accent)'; }
-  renderJobs();
-}
-
-// ── Modals ────────────────────────────────────────────────────
-function svcChecks(c = {}) {
-  return `<div class="form-group"><label class="lbl">Services</label><div style="display:flex;gap:18px;margin-top:6px">
-    <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;font-weight:400"><input type="checkbox" id="f-svc-internet" ${(c.services||{}).internet?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)"> Internet</label>
-    <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;font-weight:400"><input type="checkbox" id="f-svc-webex" ${(c.services||{}).webex?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)"> Webex</label>
-    <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;font-weight:400"><input type="checkbox" id="f-svc-nec" ${(c.services||{}).nec?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)"> NEC</label>
-  </div></div>`;
-}
-
-function openModal(type, id) {
-  const root = document.getElementById('modal-root'); let body = '';
-  if (type === 'add-client' || type === 'edit-client') {
-    const c = id ? db.clients.find(x => x.id === id) || {} : {}; const isEdit = type === 'edit-client';
-    body = `<div class="modal-hdr"><h3>${isEdit ? 'Edit client' : 'New client'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
-      <div class="form-group"><label class="lbl">Account number</label><input class="fi" id="f-account" value="${esc(c.accountNumber||'')}" placeholder="e.g. ACC-10042"></div>
-      <div class="form-row"><div class="form-group"><label class="lbl">Full name *</label><input class="fi" id="f-name" value="${esc(c.name||'')}" placeholder="Jane Smith"></div><div class="form-group"><label class="lbl">Company</label><input class="fi" id="f-company" value="${esc(c.company||'')}" placeholder="Acme Pty Ltd"></div></div>
-      <div class="form-group"><label class="lbl">Phone *</label><input class="fi" id="f-phone" value="${esc(c.phone||'')}" placeholder="02 9000 0000"></div>
-      <div class="form-group"><label class="lbl">Email</label><input class="fi" id="f-email" value="${esc(c.email||'')}" placeholder="name@company.com.au"></div>
-      <div class="form-group"><label class="lbl">Address</label><input class="fi" id="f-address" value="${esc(c.address||'')}" placeholder="123 Main St, Sydney NSW 2000"></div>
-      <div class="form-group"><label class="lbl">Client since</label><input class="fi" type="date" id="f-since" value="${c.since||today()}"></div>
-      ${svcChecks(c)}
-      <div class="modal-ftr"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="${isEdit ? `submitEditClient('${id}')` : 'submitAddClient()'}">${isEdit ? 'Save changes' : 'Add client'}</button></div>`;
-  } else if (type === 'add-note') {
-    const c = db.clients.find(x => x.id === activeClientId);
-    body = `<div class="modal-hdr"><h3>Add note${c ? ' — ' + esc(c.company||c.name) : ''}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
-      <div class="form-group"><label class="lbl">Note *</label><textarea class="fi" id="f-note" placeholder="Enter details about this interaction..."></textarea></div>
-      <div class="form-row"><div class="form-group"><label class="lbl">Author</label><input class="fi" id="f-author" value="${esc(USERNAME)}"></div><div class="form-group"><label class="lbl">Date</label><input class="fi" type="date" id="f-date" value="${today()}"></div></div>
-      <div class="modal-ftr"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitNote()">Save note</button></div>`;
-  } else if (type === 'add-job' || type === 'add-job-any') {
-    const opts = db.clients.map(c => `<option value="${c.id}"${c.id === activeClientId ? ' selected' : ''}>${esc(c.company||c.name)}</option>`).join('');
-    body = `<div class="modal-hdr"><h3>Log job</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
-      <div class="form-group"><label class="lbl">Client *</label><select class="fi" id="f-job-client">${opts}</select></div>
-      <div class="form-group"><label class="lbl">Job title *</label><input class="fi" id="f-job-title" placeholder="e.g. NBN line installation"></div>
-      <div class="form-row"><div class="form-group"><label class="lbl">Type</label><select class="fi" id="f-job-type"><option value="">— Select —</option><option>Installation</option><option>Fault</option><option>Hardware</option><option>VoIP</option><option>Support</option><option>Upgrade</option><option>Other</option></select></div><div class="form-group"><label class="lbl">Date</label><input class="fi" type="date" id="f-job-date" value="${today()}"></div></div>
-      <div class="form-row"><div class="form-group"><label class="lbl">Status</label><select class="fi" id="f-job-status"><option>Pending</option><option>In progress</option><option>Complete</option></select></div><div class="form-group"><label class="lbl">Cost ($)</label><input class="fi" type="number" id="f-job-cost" placeholder="0"></div></div>
-      <div class="form-group"><label class="lbl">Notes</label><textarea class="fi" id="f-job-notes" placeholder="Job details, outcome..."></textarea></div>
-      <div class="modal-ftr"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="submitJob()">Log job</button></div>`;
-  }
-  root.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">${body}</div></div>`;
-}
-function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
-function collectClient() { return { name: document.getElementById('f-name').value.trim(), company: document.getElementById('f-company').value.trim(), phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), address: document.getElementById('f-address').value.trim(), accountNumber: document.getElementById('f-account').value.trim(), since: document.getElementById('f-since').value, services: { internet: document.getElementById('f-svc-internet').checked, webex: document.getElementById('f-svc-webex').checked, nec: document.getElementById('f-svc-nec').checked } }; }
-function submitAddClient() { const d = collectClient(); if (!d.name) { alert('Name is required.'); return; } addClient(d); }
-function submitEditClient(id) { updateClient(id, collectClient()); }
-function submitNote() { const t = document.getElementById('f-note').value.trim(); if (!t) { alert('Note cannot be empty.'); return; } addNote({ text: t, author: document.getElementById('f-author').value || USERNAME, date: document.getElementById('f-date').value }); }
-function submitJob() { const t = document.getElementById('f-job-title').value.trim(); if (!t) { alert('Job title is required.'); return; } addJob({ clientId: document.getElementById('f-job-client').value || activeClientId, title: t, type: document.getElementById('f-job-type').value, date: document.getElementById('f-job-date').value, status: document.getElementById('f-job-status').value, cost: document.getElementById('f-job-cost').value, notes: document.getElementById('f-job-notes').value.trim() }); }
-
-// ── AI Assistant ──────────────────────────────────────────────
-function setAIQ(t) { document.getElementById('ai-input').value = t; document.getElementById('ai-input').focus(); }
-async function sendAI() {
-  const inp = document.getElementById('ai-input'), q = inp.value.trim(); if (!q) return; inp.value = '';
-  const h = document.getElementById('ai-history');
-  h.innerHTML += `<div class="ai-msg-user"><strong>You</strong>${esc(q)}</div>`;
-  const tid = 'ai-' + Date.now();
-  h.innerHTML += `<div class="ai-msg-ai" id="${tid}"><strong>Claude</strong>Thinking...</div>`;
-  h.scrollTop = h.scrollHeight;
-  aiHistory.push({ role: 'user', content: q });
+// ============================================================
+//  CLIENT PROFILE
+// ============================================================
+async function loadClientProfile(id){
+  setSyncStatus('syncing');
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, system: `You are an AI assistant for a Telco Ops Manager CRM.\nCLIENTS:${JSON.stringify(db.clients)}\nJOBS:${JSON.stringify(db.jobs)}\nNOTES:${JSON.stringify(db.notes)}\nToday:${today()}. Be concise. Australian business context.`, messages: aiHistory }) });
-    const d = await res.json();
-    const reply = (d.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-    aiHistory.push({ role: 'assistant', content: reply });
-    document.getElementById(tid).innerHTML = `<strong>Claude</strong>${esc(reply)}`;
-  } catch(e) { document.getElementById(tid).innerHTML = `<strong>Claude</strong>Error: ${e.message}`; }
-  h.scrollTop = h.scrollHeight;
+    const [{ data: client }, { data: sites }, { data: jobs }, { data: notes }] = await Promise.all([
+      sb.from('clients').select('*').eq('id',id).single(),
+      sb.from('sites').select('*').eq('client_id',id).order('name'),
+      sb.from('jobs').select('*,sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('client_id',id).order('created_at',{ascending:false}),
+      sb.from('notes').select('*,profiles(full_name)').eq('client_id',id).order('created_at',{ascending:false})
+    ]);
+    activeClientData = client;
+
+    // ── Profile card ──
+    function pf(icon,label,val){ return val?`<div class="pf"><i class="ti ${icon}"></i><div><div class="pf-label">${label}</div><div class="pf-value">${esc(val)}</div></div></div>`:''; }
+    document.getElementById('client-profile-card').innerHTML = `
+      <div class="profile-avatar">${initials(client.company)}</div>
+      <div class="profile-name">${esc(client.company)}</div>
+      <div class="profile-sub">Business client</div>
+      ${pf('ti-hash','Account number',client.account_number)}
+      ${pf('ti-phone','Phone',client.phone)}
+      ${pf('ti-mail','Email',client.email)}
+      ${pf('ti-calendar','Client since',fmtDate(client.created_at))}
+      <div class="pf"><i class="ti ti-apps"></i><div><div class="pf-label">Services</div><div style="margin-top:4px">${svcBadges(client)}</div></div></div>
+      <div class="profile-actions">
+        ${isAdmin()?`<button class="btn btn-sm" onclick="openClientModal('${client.id}')"><i class="ti ti-edit"></i> Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteClient('${client.id}')"><i class="ti ti-trash"></i> Delete</button>`:''}
+      </div>`;
+
+    // ── Tab counts ──
+    document.getElementById('tab-notes-count').textContent = (notes||[]).length;
+    document.getElementById('tab-jobs-count').textContent  = (jobs||[]).length;
+    document.getElementById('tab-sites-count').textContent = (sites||[]).length;
+
+    // ── System credentials ──
+    const credsDisplay = document.getElementById('creds-display');
+    const credsEdit    = document.getElementById('creds-edit');
+    credsDisplay.textContent = client.system_credentials || 'No credentials stored yet.';
+    credsEdit.value = client.system_credentials || '';
+    // Show edit button only to admins and assigned technicians
+    document.getElementById('creds-edit-btn').style.display = (isAdmin() || jobs?.some(j=>j.assigned_to===currentUser?.id)) ? '' : 'none';
+
+    // ── Notes ──
+    document.getElementById('notes-list').innerHTML = (notes||[]).length
+      ? (notes||[]).map(n=>`<div class="note-card">
+          <div class="note-meta">
+            <span class="note-author"><i class="ti ti-user" style="font-size:12px"></i> ${esc(n.profiles?.full_name||'Unknown')}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="note-date">${fmtDate(n.created_at)}</span>
+              ${isAdmin()||n.created_by===currentUser?.id?`<button class="btn btn-sm btn-danger" onclick="deleteNote('${n.id}')"><i class="ti ti-trash"></i></button>`:''}
+            </div>
+          </div>
+          <div class="note-text">${esc(n.text)}</div>
+        </div>`).join('')
+      : `<div class="empty"><i class="ti ti-notes"></i><p>No notes yet.</p></div>`;
+
+    // ── Jobs ──
+    document.getElementById('btn-add-job-profile').style.display = isAdmin() ? '' : 'none';
+    document.getElementById('client-jobs-list').innerHTML = (jobs||[]).length
+      ? (jobs||[]).map(j=>`<div class="job-card">
+          ${typeBadge(j.type)}
+          <div class="job-body">
+            <div class="job-title">${esc(j.title)}</div>
+            <div class="job-meta">
+              ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
+              ${statusBadge(j.status)}
+              ${j.profiles?.full_name?`<span><i class="ti ti-user" style="font-size:11px"></i> ${esc(j.profiles.full_name)}</span>`:''}
+              ${j.scheduled_date?`<span><i class="ti ti-calendar" style="font-size:11px"></i> ${fmtDate(j.scheduled_date)}</span>`:''}
+            </div>
+          </div>
+          ${j.cost?`<div class="job-cost">$${Number(j.cost).toFixed(2)}</div>`:''}
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-sm" onclick="openJobModal('${j.id}')"><i class="ti ti-edit"></i></button>
+            ${isAdmin()?`<button class="btn btn-sm btn-danger" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button>`:''}
+          </div>
+        </div>`).join('')
+      : `<div class="empty"><i class="ti ti-tool"></i><p>No jobs yet.</p></div>`;
+
+    // ── Sites ──
+    document.getElementById('btn-add-site').style.display = isAdmin() ? '' : 'none';
+    document.getElementById('sites-list').innerHTML = (sites||[]).length
+      ? (sites||[]).map(s=>`<div class="site-card">
+          <div class="site-body">
+            <div class="site-name">${esc(s.name)}</div>
+            ${s.address?`<div class="site-detail"><i class="ti ti-map-pin" style="font-size:12px"></i> ${esc(s.address)}</div>`:''}
+            ${s.contact_name?`<div class="site-detail"><i class="ti ti-user" style="font-size:12px"></i> ${esc(s.contact_name)}${s.contact_phone?' · '+esc(s.contact_phone):''}</div>`:''}
+            ${s.contact_email?`<div class="site-detail"><i class="ti ti-mail" style="font-size:12px"></i> ${esc(s.contact_email)}</div>`:''}
+          </div>
+          ${isAdmin()?`<div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="btn btn-sm" onclick="openSiteModal('${s.id}')"><i class="ti ti-edit"></i></button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSite('${s.id}')"><i class="ti ti-trash"></i></button>
+          </div>`:''}
+        </div>`).join('')
+      : `<div class="empty"><i class="ti ti-map-pin"></i><p>No sites yet.</p></div>`;
+
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading profile: '+e.message,'error'); }
 }
 
-// ── Toast ─────────────────────────────────────────────────────
-function toast(msg, icon = 'ti-check') { const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = `<i class="ti ${icon}"></i> ${msg}`; document.body.appendChild(t); setTimeout(() => t.remove(), 2800); }
+// ── System Credentials ──
+function editCreds(){
+  document.getElementById('creds-display').style.display = 'none';
+  document.getElementById('creds-edit').style.display    = '';
+  document.getElementById('creds-edit-btn').style.display   = 'none';
+  document.getElementById('creds-save-btn').style.display   = '';
+  document.getElementById('creds-cancel-btn').style.display = '';
+}
+function cancelCreds(){
+  document.getElementById('creds-display').style.display = '';
+  document.getElementById('creds-edit').style.display    = 'none';
+  document.getElementById('creds-edit-btn').style.display   = '';
+  document.getElementById('creds-save-btn').style.display   = 'none';
+  document.getElementById('creds-cancel-btn').style.display = 'none';
+}
+async function saveCreds(){
+  const val = document.getElementById('creds-edit').value;
+  setSyncStatus('syncing');
+  try {
+    await sb.from('clients').update({ system_credentials: val }).eq('id', activeClientId);
+    await logAudit('updated','clients',activeClientId,{ system_credentials: activeClientData?.system_credentials },{ system_credentials: val });
+    activeClientData.system_credentials = val;
+    document.getElementById('creds-display').textContent = val || 'No credentials stored yet.';
+    cancelCreds();
+    setSyncStatus('ok'); toast('Credentials saved');
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
 
-// ── Boot ──────────────────────────────────────────────────────
-loadGIS(); // pre-loads the GIS script so it's ready when the user clicks Sign In
+// ============================================================
+//  JOBS LIST
+// ============================================================
+async function loadJobs(){
+  setSyncStatus('syncing');
+  try {
+    const { data } = await sb.from('jobs').select('*,clients(company),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('created_at',{ascending:false});
+    allJobs = data || [];
+    renderJobsList();
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading jobs: '+e.message,'error'); }
+}
+
+function renderJobsList(){
+  const q = (document.getElementById('job-search')||{}).value?.toLowerCase()||'';
+  const f = allJobs.filter(j=>{
+    const matchQ = !q || j.title.toLowerCase().includes(q) || (j.clients?.company||'').toLowerCase().includes(q);
+    const matchType   = jobFilters.type==='all'   || j.type===jobFilters.type;
+    const matchStatus = jobFilters.status==='all' || j.status===jobFilters.status;
+    return matchQ && matchType && matchStatus;
+  });
+  document.getElementById('jobs-count').textContent = `All jobs (${f.length})`;
+  const tb = document.getElementById('jobs-tbody');
+  if(!tb) return;
+  tb.innerHTML = f.length ? f.map(j=>`
+    <tr>
+      <td><strong style="font-weight:500">${esc(j.title)}</strong></td>
+      <td>${typeBadge(j.type)}</td>
+      <td><span style="color:var(--accent);cursor:pointer" onclick="openClientProfile('${j.client_id}')">${esc(j.clients?.company||'Unknown')}</span></td>
+      <td style="color:var(--text2);font-size:12px">${esc(j.sites?.name||'—')}</td>
+      <td>${statusBadge(j.status)}</td>
+      <td style="font-size:12px;color:var(--text2)">${esc(j.profiles?.full_name||'—')}</td>
+      <td style="font-size:12px;color:var(--text2)">${fmtDate(j.scheduled_date)}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${j.cost?'$'+Number(j.cost).toFixed(2):'—'}</td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-sm" onclick="openJobModal('${j.id}')"><i class="ti ti-edit"></i></button>
+        ${isAdmin()?`<button class="btn btn-sm btn-danger" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button>`:''}
+      </div></td>
+    </tr>`).join('')
+    : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No jobs found.</p></div></td></tr>`;
+}
+
+// ============================================================
+//  USERS
+// ============================================================
+async function loadUsers(){
+  setSyncStatus('syncing');
+  try {
+    const { data } = await sb.from('profiles').select('*').order('full_name');
+    allProfiles = data || [];
+    const tb = document.getElementById('users-tbody');
+    tb.innerHTML = allProfiles.map(p=>`
+      <tr>
+        <td><div style="display:flex;align-items:center;gap:8px"><div class="user-avatar" style="width:28px;height:28px;font-size:10px">${initials(p.full_name)}</div>${esc(p.full_name)}</div></td>
+        <td style="color:var(--text2)">${esc(p.email)}</td>
+        <td><span class="badge ${p.role==='admin'?'badge-blue':'badge-gray'}">${esc(p.role)}</span></td>
+        <td style="font-size:12px;color:var(--text2)">${fmtDate(p.created_at)}</td>
+        <td>
+          ${p.id !== currentUser?.id ? `
+            <select class="fi" style="width:120px;padding:4px 8px;font-size:12px" onchange="updateUserRole('${p.id}',this.value)">
+              <option ${p.role==='technician'?'selected':''}>technician</option>
+              <option ${p.role==='admin'?'selected':''}>admin</option>
+            </select>` : '<span style="font-size:12px;color:var(--text3)">You</span>'}
+        </td>
+      </tr>`).join('');
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading users: '+e.message,'error'); }
+}
+
+async function updateUserRole(id, role){
+  try {
+    await sb.from('profiles').update({ role }).eq('id', id);
+    await logAudit('updated','profiles',id,{},{role});
+    toast('Role updated');
+  } catch(e){ toast('Failed: '+e.message,'error'); }
+}
+
+// ============================================================
+//  AUDIT LOG
+// ============================================================
+async function loadAuditLog(){
+  setSyncStatus('syncing');
+  try {
+    const { data } = await sb.from('audit_log').select('*').order('created_at',{ascending:false}).limit(100);
+    const el = document.getElementById('audit-list');
+    el.innerHTML = (data||[]).length ? (data||[]).map(a=>`
+      <div class="audit-item">
+        <div class="audit-dot"></div>
+        <div class="audit-text">
+          <strong>${esc(a.user_email||'System')}</strong>
+          ${esc(a.action)} a <strong>${esc(a.table_name)}</strong> record
+          ${a.new_data?.title||a.new_data?.company||a.new_data?.name ? `(${esc(a.new_data?.title||a.new_data?.company||a.new_data?.name)})` : ''}
+        </div>
+        <div class="audit-time">${fmtDateTime(a.created_at)}</div>
+      </div>`).join('')
+      : `<div class="empty"><i class="ti ti-history"></i><p>No activity yet.</p></div>`;
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading audit log: '+e.message,'error'); }
+}
+
+async function logAudit(action, table, recordId, oldData, newData){
+  try {
+    await sb.from('audit_log').insert({
+      user_id: currentUser?.id, user_email: currentProfile?.email || currentUser?.email,
+      action, table_name: table, record_id: recordId,
+      old_data: oldData, new_data: newData
+    });
+  } catch(e){ console.warn('Audit log failed:', e); }
+}
+
+// ============================================================
+//  MODAL HELPERS
+// ============================================================
+function openModal(html){ document.getElementById('modal-root').innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()">${html}</div>`; }
+function closeModal(){ document.getElementById('modal-root').innerHTML = ''; }
+
+// ============================================================
+//  CLIENT MODAL
+// ============================================================
+function openClientModal(id){
+  const c = id ? allClients.find(x=>x.id===id)||{} : {};
+  const isEdit = !!id;
+  openModal(`<div class="modal">
+    <div class="modal-hdr"><h3>${isEdit?'Edit client':'New client'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+    <div class="form-group"><label class="lbl">Account number</label><input class="fi" id="f-acct" value="${esc(c.account_number||'')}" placeholder="ACC-10042"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="lbl">Company name *</label><input class="fi" id="f-company" value="${esc(c.company||'')}" placeholder="Acme Pty Ltd"></div>
+      <div class="form-group"><label class="lbl">Phone</label><input class="fi" id="f-phone" value="${esc(c.phone||'')}" placeholder="02 9000 0000"></div>
+    </div>
+    <div class="form-group"><label class="lbl">Email</label><input class="fi" id="f-email" value="${esc(c.email||'')}" placeholder="info@company.com.au"></div>
+    <div class="form-group"><label class="lbl">Services</label>
+      <div class="checkbox-group">
+        <label class="checkbox-label"><input type="checkbox" id="f-internet" ${c.svc_internet?'checked':''}> Internet</label>
+        <label class="checkbox-label"><input type="checkbox" id="f-webex"    ${c.svc_webex?'checked':''}> Webex</label>
+        <label class="checkbox-label"><input type="checkbox" id="f-nec"      ${c.svc_nec?'checked':''}> NEC</label>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="${isEdit?`submitEditClient('${id}')`:'submitAddClient()'}">${isEdit?'Save changes':'Add client'}</button>
+    </div>
+  </div>`);
+}
+
+async function submitAddClient(){
+  const company = document.getElementById('f-company').value.trim();
+  if(!company){ toast('Company name is required','warn'); return; }
+  const payload = { company, account_number: document.getElementById('f-acct').value.trim(), phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), svc_internet: document.getElementById('f-internet').checked, svc_webex: document.getElementById('f-webex').checked, svc_nec: document.getElementById('f-nec').checked, created_by: currentUser.id };
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await sb.from('clients').insert(payload).select().single();
+    if(error) throw error;
+    await logAudit('created','clients',data.id,{},payload);
+    closeModal(); toast('Client added'); loadClients();
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function submitEditClient(id){
+  const payload = { company: document.getElementById('f-company').value.trim(), account_number: document.getElementById('f-acct').value.trim(), phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), svc_internet: document.getElementById('f-internet').checked, svc_webex: document.getElementById('f-webex').checked, svc_nec: document.getElementById('f-nec').checked };
+  setSyncStatus('syncing');
+  try {
+    const old = allClients.find(c=>c.id===id)||{};
+    await sb.from('clients').update(payload).eq('id',id);
+    await logAudit('updated','clients',id,old,payload);
+    closeModal(); toast('Client updated');
+    if(currentPage==='client-profile') loadClientProfile(id); else loadClients();
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function deleteClient(id){
+  if(!confirm('Delete this client and all their data?')) return;
+  setSyncStatus('syncing');
+  try {
+    await sb.from('clients').delete().eq('id',id);
+    await logAudit('deleted','clients',id,{},{});
+    toast('Client deleted'); closeModal();
+    showPage('clients', document.querySelector('[data-page=clients]'));
+  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
+}
+
+// ============================================================
+//  SITE MODAL
+// ============================================================
+function openSiteModal(id){
+  // Load sites for current client
+  sb.from('sites').select('*').eq('client_id', activeClientId).then(({data})=>{
+    const s = id ? (data||[]).find(x=>x.id===id)||{} : {};
+    const isEdit = !!id;
+    openModal(`<div class="modal">
+      <div class="modal-hdr"><h3>${isEdit?'Edit site':'New site'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+      <div class="form-group"><label class="lbl">Site name *</label><input class="fi" id="f-site-name" value="${esc(s.name||'')}" placeholder="e.g. Head Office, Warehouse"></div>
+      <div class="form-group"><label class="lbl">Address</label><input class="fi" id="f-site-addr" value="${esc(s.address||'')}" placeholder="123 Main St, Sydney NSW 2000"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="lbl">Contact name</label><input class="fi" id="f-site-cname" value="${esc(s.contact_name||'')}" placeholder="Jane Smith"></div>
+        <div class="form-group"><label class="lbl">Contact phone</label><input class="fi" id="f-site-cphone" value="${esc(s.contact_phone||'')}" placeholder="02 9000 0000"></div>
+      </div>
+      <div class="form-group"><label class="lbl">Contact email</label><input class="fi" id="f-site-cemail" value="${esc(s.contact_email||'')}" placeholder="site@company.com.au"></div>
+      <div class="modal-ftr">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="${isEdit?`submitEditSite('${id}')`:'submitAddSite()'}">${isEdit?'Save changes':'Add site'}</button>
+      </div>
+    </div>`);
+  });
+}
+
+async function submitAddSite(){
+  const name = document.getElementById('f-site-name').value.trim();
+  if(!name){ toast('Site name is required','warn'); return; }
+  const payload = { client_id: activeClientId, name, address: document.getElementById('f-site-addr').value.trim(), contact_name: document.getElementById('f-site-cname').value.trim(), contact_phone: document.getElementById('f-site-cphone').value.trim(), contact_email: document.getElementById('f-site-cemail').value.trim() };
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await sb.from('sites').insert(payload).select().single();
+    if(error) throw error;
+    await logAudit('created','sites',data.id,{},payload);
+    closeModal(); toast('Site added'); loadClientProfile(activeClientId);
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function submitEditSite(id){
+  const payload = { name: document.getElementById('f-site-name').value.trim(), address: document.getElementById('f-site-addr').value.trim(), contact_name: document.getElementById('f-site-cname').value.trim(), contact_phone: document.getElementById('f-site-cphone').value.trim(), contact_email: document.getElementById('f-site-cemail').value.trim() };
+  setSyncStatus('syncing');
+  try {
+    await sb.from('sites').update(payload).eq('id',id);
+    await logAudit('updated','sites',id,{},payload);
+    closeModal(); toast('Site updated'); loadClientProfile(activeClientId);
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function deleteSite(id){
+  if(!confirm('Delete this site?')) return;
+  setSyncStatus('syncing');
+  try {
+    await sb.from('sites').delete().eq('id',id);
+    await logAudit('deleted','sites',id,{},{});
+    toast('Site deleted'); loadClientProfile(activeClientId);
+  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
+}
+
+// ============================================================
+//  JOB MODAL
+// ============================================================
+async function openJobModal(id){
+  // Load needed data
+  const [{ data: clients }, { data: profiles }] = await Promise.all([
+    sb.from('clients').select('id,company').order('company'),
+    sb.from('profiles').select('id,full_name').order('full_name')
+  ]);
+  allProfiles = profiles || [];
+
+  let j = {};
+  let sites = [];
+  if(id){
+    const { data } = await sb.from('jobs').select('*').eq('id',id).single();
+    j = data || {};
+    if(j.client_id){
+      const { data: s } = await sb.from('sites').select('id,name').eq('client_id',j.client_id);
+      sites = s || [];
+    }
+  } else if(activeClientId) {
+    const { data: s } = await sb.from('sites').select('id,name').eq('client_id',activeClientId);
+    sites = s || [];
+  }
+
+  const clientOpts = (clients||[]).map(c=>`<option value="${c.id}"${(j.client_id||activeClientId)===c.id?' selected':''}>${esc(c.company)}</option>`).join('');
+  const siteOpts   = sites.map(s=>`<option value="${s.id}"${j.site_id===s.id?' selected':''}>${esc(s.name)}</option>`).join('');
+  const staffOpts  = `<option value="">— Unassigned —</option>` + (profiles||[]).map(p=>`<option value="${p.id}"${j.assigned_to===p.id?' selected':''}>${esc(p.full_name)}</option>`).join('');
+  const isEdit     = !!id;
+
+  openModal(`<div class="modal">
+    <div class="modal-hdr"><h3>${isEdit?'Edit job':'New job'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+    <div class="form-row">
+      <div class="form-group"><label class="lbl">Type *</label>
+        <select class="fi" id="f-job-type">
+          <option ${j.type==='New Install'?'selected':''}>New Install</option>
+          <option ${j.type==='Service'||!j.type?'selected':''}>Service</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="lbl">Status *</label>
+        <select class="fi" id="f-job-status">
+          <option ${j.status==='Pending'||!j.status?'selected':''}>Pending</option>
+          <option ${j.status==='In Progress'?'selected':''}>In Progress</option>
+          <option ${j.status==='Complete'?'selected':''}>Complete</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label class="lbl">Title *</label><input class="fi" id="f-job-title" value="${esc(j.title||'')}" placeholder="e.g. NBN line installation"></div>
+    <div class="form-group"><label class="lbl">Client *</label>
+      <select class="fi" id="f-job-client" onchange="loadSitesForJob(this.value)">${clientOpts}</select>
+    </div>
+    <div class="form-group"><label class="lbl">Site</label>
+      <select class="fi" id="f-job-site"><option value="">— No site —</option>${siteOpts}</select>
+    </div>
+    <div class="form-group"><label class="lbl">Assigned to</label>
+      <select class="fi" id="f-job-assigned">${staffOpts}</select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="lbl">Scheduled date</label><input class="fi" type="date" id="f-job-sched" value="${j.scheduled_date||''}"></div>
+      <div class="form-group"><label class="lbl">Cost ($)</label><input class="fi" type="number" id="f-job-cost" value="${j.cost||''}" placeholder="0.00"></div>
+    </div>
+    <div class="form-group"><label class="lbl">Description</label><textarea class="fi" id="f-job-desc" placeholder="Job details...">${esc(j.description||'')}</textarea></div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="${isEdit?`submitEditJob('${id}')`:'submitAddJob()'}">${isEdit?'Save changes':'Log job'}</button>
+    </div>
+  </div>`);
+}
+
+async function loadSitesForJob(clientId){
+  const { data: sites } = await sb.from('sites').select('id,name').eq('client_id',clientId);
+  const el = document.getElementById('f-job-site');
+  if(!el) return;
+  el.innerHTML = `<option value="">— No site —</option>` + (sites||[]).map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+}
+
+async function submitAddJob(){
+  const title = document.getElementById('f-job-title').value.trim();
+  if(!title){ toast('Job title is required','warn'); return; }
+  const clientId = document.getElementById('f-job-client').value;
+  if(!clientId){ toast('Please select a client','warn'); return; }
+  const siteVal     = document.getElementById('f-job-site').value;
+  const assignedVal = document.getElementById('f-job-assigned').value;
+  const payload = {
+    title, type: document.getElementById('f-job-type').value,
+    status: document.getElementById('f-job-status').value,
+    client_id: clientId, site_id: siteVal||null,
+    assigned_to: assignedVal||null,
+    scheduled_date: document.getElementById('f-job-sched').value||null,
+    cost: document.getElementById('f-job-cost').value||null,
+    description: document.getElementById('f-job-desc').value.trim(),
+    created_by: currentUser.id
+  };
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await sb.from('jobs').insert(payload).select().single();
+    if(error) throw error;
+    await logAudit('created','jobs',data.id,{},payload);
+    // Send email notification if assigned
+    if(assignedVal) await sendAssignmentEmail(data, assignedVal);
+    closeModal(); toast('Job logged');
+    if(currentPage==='client-profile') loadClientProfile(activeClientId); else loadJobs();
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function submitEditJob(id){
+  const siteVal     = document.getElementById('f-job-site').value;
+  const assignedVal = document.getElementById('f-job-assigned').value;
+  const payload = {
+    title: document.getElementById('f-job-title').value.trim(),
+    type: document.getElementById('f-job-type').value,
+    status: document.getElementById('f-job-status').value,
+    client_id: document.getElementById('f-job-client').value,
+    site_id: siteVal||null, assigned_to: assignedVal||null,
+    scheduled_date: document.getElementById('f-job-sched').value||null,
+    cost: document.getElementById('f-job-cost').value||null,
+    description: document.getElementById('f-job-desc').value.trim()
+  };
+  setSyncStatus('syncing');
+  try {
+    const old = allJobs.find(j=>j.id===id)||{};
+    await sb.from('jobs').update(payload).eq('id',id);
+    await logAudit('updated','jobs',id,old,payload);
+    // Notify if assignee changed
+    if(assignedVal && assignedVal !== old.assigned_to) await sendAssignmentEmail({id,...payload}, assignedVal);
+    closeModal(); toast('Job updated');
+    if(currentPage==='client-profile') loadClientProfile(activeClientId); else loadJobs();
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function deleteJob(id){
+  if(!confirm('Delete this job?')) return;
+  setSyncStatus('syncing');
+  try {
+    await sb.from('jobs').delete().eq('id',id);
+    await logAudit('deleted','jobs',id,{},{});
+    toast('Job deleted');
+    if(currentPage==='client-profile') loadClientProfile(activeClientId); else loadJobs();
+  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
+}
+
+// ============================================================
+//  NOTE MODAL
+// ============================================================
+function openNoteModal(){
+  openModal(`<div class="modal">
+    <div class="modal-hdr"><h3>Add note</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+    <div class="form-group"><label class="lbl">Note *</label><textarea class="fi" id="f-note" placeholder="Enter details about this interaction..."></textarea></div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAddNote()">Save note</button>
+    </div>
+  </div>`);
+}
+
+async function submitAddNote(){
+  const text = document.getElementById('f-note').value.trim();
+  if(!text){ toast('Note cannot be empty','warn'); return; }
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await sb.from('notes').insert({ client_id: activeClientId, text, created_by: currentUser.id }).select().single();
+    if(error) throw error;
+    await logAudit('created','notes',data.id,{},{text});
+    closeModal(); toast('Note saved'); loadClientProfile(activeClientId);
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function deleteNote(id){
+  if(!confirm('Delete this note?')) return;
+  setSyncStatus('syncing');
+  try {
+    await sb.from('notes').delete().eq('id',id);
+    await logAudit('deleted','notes',id,{},{});
+    toast('Note deleted'); loadClientProfile(activeClientId);
+  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
+}
+
+// ============================================================
+//  INVITE USER MODAL
+// ============================================================
+function openInviteModal(){
+  openModal(`<div class="modal">
+    <div class="modal-hdr"><h3>Invite team member</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+    <div class="form-group"><label class="lbl">Full name *</label><input class="fi" id="f-inv-name" placeholder="Jane Smith"></div>
+    <div class="form-group"><label class="lbl">Email *</label><input class="fi" type="email" id="f-inv-email" placeholder="jane@company.com.au"></div>
+    <div class="form-group"><label class="lbl">Role *</label>
+      <select class="fi" id="f-inv-role"><option value="technician">Technician</option><option value="admin">Admin</option></select>
+    </div>
+    <div id="inv-error" class="form-error" style="display:none"></div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitInvite()"><i class="ti ti-send"></i> Send invite</button>
+    </div>
+  </div>`);
+}
+
+async function submitInvite(){
+  const name  = document.getElementById('f-inv-name').value.trim();
+  const email = document.getElementById('f-inv-email').value.trim();
+  const role  = document.getElementById('f-inv-role').value;
+  const err   = document.getElementById('inv-error');
+  err.style.display = 'none';
+  if(!name||!email){ err.textContent='Name and email are required.'; err.style.display='block'; return; }
+  setSyncStatus('syncing');
+  try {
+    const { error } = await sb.auth.admin.inviteUserByEmail(email, { data: { full_name: name, role } });
+    if(error) throw error;
+    closeModal(); toast(`Invite sent to ${email}`); loadUsers();
+  } catch(e){
+    // admin.inviteUserByEmail requires service role key — use edge function approach
+    err.textContent = 'Invite failed: ' + e.message + '. Ensure the user is invited from the Supabase dashboard.';
+    err.style.display = 'block';
+    setSyncStatus('error');
+  }
+}
+
+// ============================================================
+//  EMAIL NOTIFICATIONS (via Supabase Edge Function)
+//  You'll set up the edge function separately — this just calls it
+// ============================================================
+async function sendAssignmentEmail(job, assignedUserId){
+  try {
+    const assignee = allProfiles.find(p=>p.id===assignedUserId);
+    if(!assignee) return;
+    const client = allClients.find(c=>c.id===job.client_id);
+    await sb.functions.invoke('send-assignment-email', {
+      body: {
+        to: assignee.email,
+        assignee_name: assignee.full_name,
+        job_title: job.title,
+        job_type: job.type,
+        client_name: client?.company || 'Unknown',
+        scheduled_date: job.scheduled_date,
+        assigned_by: currentProfile?.full_name
+      }
+    });
+  } catch(e){ console.warn('Email notification failed:', e); }
+}
+
+// ============================================================
+//  BOOT
+// ============================================================
+boot();
 </script>
 </body>
 </html>
