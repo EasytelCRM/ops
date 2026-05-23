@@ -18,7 +18,13 @@ jobs:
           sed -i "s|__SUPABASE_URL__|${{ secrets.SUPABASE_URL }}|g" index.html
           sed -i "s|__SUPABASE_ANON__|${{ secrets.SUPABASE_ANON }}|g" index.html
 
+      - name: Verify injection
+        run: grep -c "supabase.co" index.html && echo "Injection OK" || echo "Injection FAILED"
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages
+          force_orphan: true
