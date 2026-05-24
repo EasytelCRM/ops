@@ -1353,16 +1353,15 @@ async function openJobModal(id){
   const staffOpts  = `<option value="">— Unassigned —</option>` + (profiles||[]).map(p=>`<option value="${p.id}"${(j.assigned_to||( autoAssign?currentUser?.id:''))===p.id?' selected':''}>${esc(p.full_name)}</option>`).join('');
   const isEdit     = !!id;
 
-  openModal(`<div class="modal" style="width:860px${isEdit?';position:relative':''}">
+  openModal(`<div class="modal" style="width:860px">
     ${isEdit
-      ? `<div class="modal-hdr" style="align-items:flex-end;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:1.25rem">
-           <h3 style="font-size:24px;padding-bottom:10px">${esc(clientName)}</h3>
-           <div style="display:flex;margin-bottom:-1px">
-             <div class="modal-tab active" style="margin-bottom:0" onclick="switchJobTab('desc',this)">Description</div>
-             <div class="modal-tab" style="margin-bottom:0" onclick="switchJobTab('notes',this)">Job Notes</div>
+      ? `<div class="modal-hdr" style="align-items:center;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:1.25rem">
+           <h3 style="font-size:24px">${esc(clientName)}</h3>
+           <div style="display:flex">
+             <div class="modal-tab active" onclick="switchJobTab('desc',this)">Description</div>
+             <div class="modal-tab" onclick="switchJobTab('notes',this)">Job Notes</div>
            </div>
          </div>
-         <button class="modal-x" style="position:absolute;top:1rem;right:1rem" onclick="closeModal()"><i class="ti ti-x"></i></button>
          <input type="hidden" id="f-job-client" value="${j.client_id}">`
       : `<div class="modal-hdr"><h3>New job</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>`
     }
