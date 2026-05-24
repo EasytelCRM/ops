@@ -218,7 +218,6 @@ select.fi { cursor: pointer; }
 .modal-tab.active { color: var(--text); border-bottom-color: var(--accent); }
 .modal-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .modal-col { display: flex; flex-direction: column; gap: 12px; }
-.job-tab-panel { min-height: 390px; }
 
 /* ── Sites ── */
 .site-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.875rem 1rem; margin-bottom: 8px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -826,8 +825,10 @@ function switchClientTab(tab){
 function switchJobTab(tab, el){
   document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
   if(el) el.classList.add('active');
-  document.getElementById('job-tab-details').style.display = tab==='details'?'':'none';
-  document.getElementById('job-tab-notes').style.display   = tab==='notes'?'':'none';
+  const descPanel  = document.getElementById('job-tab-desc');
+  const notesPanel = document.getElementById('job-tab-notes');
+  if(descPanel)  descPanel.style.display  = tab==='desc'  ? 'flex' : 'none';
+  if(notesPanel) notesPanel.style.display = tab==='notes' ? 'flex' : 'none';
 }
 
 // ── Job filters ──
@@ -1351,55 +1352,49 @@ async function openJobModal(id){
 
   openModal(`<div class="modal" style="width:860px">
     <div class="modal-hdr"><h3>${isEdit?'Edit job':'New job'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
-    <div class="modal-tabs">
-      <div class="modal-tab active" onclick="switchJobTab('details',this)">Details</div>
-      <div class="modal-tab" onclick="switchJobTab('notes',this)">Job Notes</div>
-    </div>
-    <div id="job-tab-details" class="job-tab-panel">
-      <div class="modal-2col">
-        <div class="modal-col">
-          <div class="form-row">
-            <div class="form-group"><label class="lbl">Type *</label>
-              <select class="fi" id="f-job-type">
-                <option ${j.type==='New Install'?'selected':''}>New Install</option>
-                <option ${j.type==='Service'||!j.type?'selected':''}>Service</option>
-              </select>
-            </div>
-            <div class="form-group"><label class="lbl">Status *</label>
-              <select class="fi" id="f-job-status">
-                <option ${j.status==='Pending'||!j.status?'selected':''}>Pending</option>
-                <option ${j.status==='In Progress'?'selected':''}>In Progress</option>
-                <option ${j.status==='Complete'?'selected':''}>Complete</option>
-              </select>
-            </div>
+    <div class="modal-2col">
+      <div class="modal-col">
+        <div class="form-row">
+          <div class="form-group"><label class="lbl">Type *</label>
+            <select class="fi" id="f-job-type">
+              <option ${j.type==='New Install'?'selected':''}>New Install</option>
+              <option ${j.type==='Service'||!j.type?'selected':''}>Service</option>
+            </select>
           </div>
-          <div class="form-group"><label class="lbl">Title *</label><input class="fi" id="f-job-title" value="${esc(j.title||'')}" placeholder="e.g. NBN line installation"></div>
-          <div class="form-group"><label class="lbl">Client *</label>
-            <select class="fi" id="f-job-client" onchange="loadSitesForJob(this.value)">${clientOpts}</select>
-          </div>
-          <div class="form-group"><label class="lbl">Site</label>
-            <select class="fi" id="f-job-site">${siteOpts}</select>
-          </div>
-          <div class="form-group"><label class="lbl">Assigned to</label>
-            <select class="fi" id="f-job-assigned">${staffOpts}</select>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label class="lbl">Scheduled date</label><input class="fi" type="date" id="f-job-sched" value="${j.scheduled_date||''}"></div>
-            <div class="form-group"><label class="lbl">Cost ($)</label><input class="fi" type="number" id="f-job-cost" value="${j.cost||''}" placeholder="0.00"></div>
+          <div class="form-group"><label class="lbl">Status *</label>
+            <select class="fi" id="f-job-status">
+              <option ${j.status==='Pending'||!j.status?'selected':''}>Pending</option>
+              <option ${j.status==='In Progress'?'selected':''}>In Progress</option>
+              <option ${j.status==='Complete'?'selected':''}>Complete</option>
+            </select>
           </div>
         </div>
-        <div class="modal-col">
-          <div class="form-group" style="display:flex;flex-direction:column;flex:1">
-            <label class="lbl">Description</label>
-            <textarea class="fi" id="f-job-desc" placeholder="Job details..." style="flex:1;min-height:320px;resize:vertical">${esc(j.description||'')}</textarea>
-          </div>
+        <div class="form-group"><label class="lbl">Title *</label><input class="fi" id="f-job-title" value="${esc(j.title||'')}" placeholder="e.g. NBN line installation"></div>
+        <div class="form-group"><label class="lbl">Client *</label>
+          <select class="fi" id="f-job-client" onchange="loadSitesForJob(this.value)">${clientOpts}</select>
+        </div>
+        <div class="form-group"><label class="lbl">Site</label>
+          <select class="fi" id="f-job-site">${siteOpts}</select>
+        </div>
+        <div class="form-group"><label class="lbl">Assigned to</label>
+          <select class="fi" id="f-job-assigned">${staffOpts}</select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="lbl">Scheduled date</label><input class="fi" type="date" id="f-job-sched" value="${j.scheduled_date||''}"></div>
+          <div class="form-group"><label class="lbl">Cost ($)</label><input class="fi" type="number" id="f-job-cost" value="${j.cost||''}" placeholder="0.00"></div>
         </div>
       </div>
-    </div>
-    <div id="job-tab-notes" class="job-tab-panel" style="display:none">
-      <div class="form-group" style="display:flex;flex-direction:column;height:100%">
-        <label class="lbl">Job Notes</label>
-        <textarea class="fi" id="f-job-notes" placeholder="Internal notes, progress updates, follow-ups..." style="flex:1;min-height:350px;resize:vertical">${esc(j.job_notes||'')}</textarea>
+      <div class="modal-col" style="display:flex;flex-direction:column">
+        <div class="modal-tabs" style="margin-bottom:8px">
+          <div class="modal-tab active" onclick="switchJobTab('desc',this)">Description</div>
+          <div class="modal-tab" onclick="switchJobTab('notes',this)">Job Notes</div>
+        </div>
+        <div id="job-tab-desc" style="display:flex;flex-direction:column;flex:1">
+          <textarea class="fi" id="f-job-desc" placeholder="Job details..." style="flex:1;min-height:280px;resize:vertical">${esc(j.description||'')}</textarea>
+        </div>
+        <div id="job-tab-notes" style="display:none;flex-direction:column;flex:1">
+          <textarea class="fi" id="f-job-notes" placeholder="Internal notes, progress updates, follow-ups..." style="flex:1;min-height:280px;resize:vertical">${esc(j.job_notes||'')}</textarea>
+        </div>
       </div>
     </div>
     <div class="modal-ftr">
