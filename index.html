@@ -1370,15 +1370,20 @@ async function openJobModal(id){
             </select>
           </div>
         </div>
-        <div class="form-group"><label class="lbl">Title *</label><input class="fi" id="f-job-title" value="${esc(j.title||'')}" placeholder="e.g. NBN line installation"></div>
         ${isEdit
-          ? `<div class="form-group"><label class="lbl">Client</label>
-               <div style="font-size:14px;font-weight:500;color:var(--text);padding:6px 0">${esc(clientName)}</div>
+          ? `<div class="form-group">
+               <div class="lbl">Client</div>
+               <div style="font-size:18px;font-weight:600;color:var(--text);padding:4px 0 2px">${esc(clientName)}</div>
                <input type="hidden" id="f-job-client" value="${j.client_id}">
              </div>`
-          : `<div class="form-group"><label class="lbl">Client *</label>
+          : ''
+        }
+        <div class="form-group"><label class="lbl">Title *</label><input class="fi" id="f-job-title" value="${esc(j.title||'')}" placeholder="e.g. NBN line installation"></div>
+        ${!isEdit
+          ? `<div class="form-group"><label class="lbl">Client *</label>
                <select class="fi" id="f-job-client" onchange="loadSitesForJob(this.value)">${clientOpts}</select>
              </div>`
+          : ''
         }
         <div class="form-group"><label class="lbl">Site</label>
           <select class="fi" id="f-job-site">${siteOpts}</select>
