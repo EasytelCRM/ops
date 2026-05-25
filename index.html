@@ -414,7 +414,7 @@ select.fi { cursor: pointer; }
       <div class="page active" id="page-dashboard">
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">Clients</div><div class="stat-value" id="stat-clients">—</div><div class="stat-sub">Active accounts</div></div>
-          <div class="stat-card"><div class="stat-label">Open jobs</div><div class="stat-value" id="stat-open">—</div><div class="stat-sub">Pending + In Progress</div></div>
+          <div class="stat-card"><div class="stat-label">Open jobs</div><div class="stat-value" id="stat-open">—</div><div class="stat-sub">Pending</div></div>
           <div class="stat-card"><div class="stat-label">New installs</div><div class="stat-value" id="stat-installs">—</div><div class="stat-sub">All time</div></div>
           <div class="stat-card"><div class="stat-label">Service tickets</div><div class="stat-value" id="stat-service">—</div><div class="stat-sub">All time</div></div>
         </div>
@@ -511,10 +511,9 @@ select.fi { cursor: pointer; }
           <button class="filter-btn" onclick="setJobFilter('type','Service',this)">Service</button>
         </div>
         <div class="filter-bar" id="job-status-filters">
-          <button class="filter-btn active" onclick="setJobFilter('status','all',this)">All statuses</button>
-          <button class="filter-btn" onclick="setJobFilter('status','Pending',this)">Pending</button>
-          <button class="filter-btn" onclick="setJobFilter('status','In Progress',this)">In Progress</button>
+          <button class="filter-btn active" onclick="setJobFilter('status','Pending',this)">Pending</button>
           <button class="filter-btn" onclick="setJobFilter('status','Complete',this)">Complete</button>
+          <button class="filter-btn" onclick="setJobFilter('status','all',this)">All statuses</button>
         </div>
         <div class="card">
           <div class="card-head">
@@ -572,7 +571,7 @@ let currentProfile = null;   // profiles row
 let currentPage    = 'dashboard';
 let activeClientId = null;
 let activeClientData = null;
-let jobFilters     = { type: 'all', status: 'all' };
+let jobFilters     = { type: 'all', status: 'Pending' };
 let allClients     = [];
 let allJobs        = [];
 let allProfiles    = [];
@@ -636,7 +635,7 @@ function showScreen(name){
 //  STATUS BADGES
 // ============================================================
 function statusBadge(s){
-  const map = { 'Pending':'badge-amber', 'In Progress':'badge-blue', 'Complete':'badge-green' };
+  const map = { 'Pending':'badge-amber', 'Complete':'badge-green' };
   return `<span class="badge ${map[s]||'badge-gray'}">${esc(s)}</span>`;
 }
 function typeBadge(t){
@@ -1411,7 +1410,6 @@ async function openJobModal(id){
           <div class="form-group"><label class="lbl">Status *</label>
             <select class="fi" id="f-job-status">
               <option ${j.status==='Pending'||!j.status?'selected':''}>Pending</option>
-              <option ${j.status==='In Progress'?'selected':''}>In Progress</option>
               <option ${j.status==='Complete'?'selected':''}>Complete</option>
             </select>
           </div>
