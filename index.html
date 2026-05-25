@@ -521,7 +521,7 @@ select.fi { cursor: pointer; }
             <h3 id="jobs-count">All jobs</h3>
             <button class="btn btn-primary btn-sm" id="btn-add-job-list" onclick="openJobModal(null)" style="display:none"><i class="ti ti-plus"></i> Log job</button>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Type</th><th>Client</th><th>Site</th><th>Status</th><th>Assigned</th><th>Scheduled</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Type</th><th>Client</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div>
         </div>
       </div>
 
@@ -871,7 +871,7 @@ async function loadDashboard(){
   try {
     const [{ data: clients }, { data: jobs }] = await Promise.all([
       sb.from('clients').select('*,sites(id),jobs(id,type,status)'),
-      sb.from('jobs').select('*,clients(company),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('created_at',{ascending:false}).limit(6)
+      sb.from('jobs').select('*,clients(company),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('due_date',{ascending:true,nullsFirst:false}).limit(6)
     ]);
     allClients = clients || [];
     allJobs    = jobs    || [];
@@ -956,7 +956,7 @@ async function loadClientProfile(id){
     const [{ data: client }, { data: sites }, { data: jobs }, { data: notes }] = await Promise.all([
       sb.from('clients').select('*').eq('id',id).single(),
       sb.from('sites').select('*').eq('client_id',id).order('created_at',{ascending:true}),
-      sb.from('jobs').select('*,sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('client_id',id).order('created_at',{ascending:false}),
+      sb.from('jobs').select('*,sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('client_id',id).order('due_date',{ascending:true,nullsFirst:false}),
       sb.from('notes').select('*,profiles(full_name)').eq('client_id',id).order('created_at',{ascending:false})
     ]);
     activeClientData = client;
@@ -1018,7 +1018,7 @@ async function loadClientProfile(id){
               ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
               ${statusBadge(j.status)}
               ${j.profiles?.full_name?`<span><i class="ti ti-user" style="font-size:11px"></i> ${esc(j.profiles.full_name)}</span>`:''}
-              ${j.scheduled_date?`<span><i class="ti ti-calendar" style="font-size:11px"></i> ${fmtDate(j.scheduled_date)}</span>`:''}
+              ${j.due_date?`<span><i class="ti ti-calendar" style="font-size:11px"></i> ${fmtDate(j.due_date)}</span>`:''}
             </div>
           </div>
           ${j.cost?`<div class="job-cost">$${Number(j.cost).toFixed(2)}</div>`:''}
@@ -1081,7 +1081,7 @@ async function saveCreds(){
 async function loadJobs(){
   setSyncStatus('syncing');
   try {
-    const { data } = await sb.from('jobs').select('*,clients(company),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('created_at',{ascending:false});
+    const { data } = await sb.from('jobs').select('*,clients(company),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('due_date',{ascending:true,nullsFirst:false});
     allJobs = data || [];
     renderJobsList();
     setSyncStatus('ok');
@@ -1107,7 +1107,7 @@ function renderJobsList(){
       <td style="color:var(--text2);font-size:12px">${esc(j.sites?.name||'—')}</td>
       <td>${statusBadge(j.status)}</td>
       <td style="font-size:12px;color:var(--text2)">${esc(j.profiles?.full_name||'—')}</td>
-      <td style="font-size:12px;color:var(--text2)">${fmtDate(j.scheduled_date)}</td>
+      <td style="font-size:12px;color:var(--text2)">${fmtDate(j.due_date)}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px">${j.cost?'$'+Number(j.cost).toFixed(2):'—'}</td>
       <td>${isAdmin()?`<button class="btn btn-sm btn-danger hover-del" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button>`:''}</td>
     </tr>`).join('')
@@ -1424,7 +1424,7 @@ async function openJobModal(id){
           <select class="fi" id="f-job-assigned">${staffOpts}</select>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="lbl">Scheduled date</label><input class="fi" type="date" id="f-job-sched" value="${j.scheduled_date||''}"></div>
+          <div class="form-group"><label class="lbl">Due date</label><input class="fi" type="date" id="f-job-sched" value="${j.due_date || (!isEdit ? new Date().toLocaleDateString('en-CA') : '')}"></div>
           <div class="form-group"><label class="lbl">Cost ($)</label><input class="fi" type="number" id="f-job-cost" step="1" min="0" value="${j.cost||''}" placeholder="0"></div>
         </div>
       </div>
@@ -1472,7 +1472,7 @@ async function submitAddJob(){
     status: document.getElementById('f-job-status').value,
     client_id: clientId, site_id: siteVal||null,
     assigned_to: assignedVal||null,
-    scheduled_date: document.getElementById('f-job-sched').value||null,
+    due_date: document.getElementById('f-job-sched').value||null,
     cost: document.getElementById('f-job-cost').value||null,
     description: document.getElementById('f-job-desc').value.trim(),
     job_notes: document.getElementById('f-job-notes').value.trim(),
@@ -1499,7 +1499,7 @@ async function submitEditJob(id){
     status: document.getElementById('f-job-status').value,
     client_id: document.getElementById('f-job-client').value,
     site_id: siteVal||null, assigned_to: assignedVal||null,
-    scheduled_date: document.getElementById('f-job-sched').value||null,
+    due_date: document.getElementById('f-job-sched').value||null,
     cost: document.getElementById('f-job-cost').value||null,
     description: document.getElementById('f-job-desc').value.trim(),
     job_notes: document.getElementById('f-job-notes').value.trim()
@@ -1618,7 +1618,7 @@ async function sendAssignmentEmail(job, assignedUserId){
         job_title: job.title,
         job_type: job.type,
         client_name: client?.company || 'Unknown',
-        scheduled_date: job.scheduled_date,
+        due_date: job.due_date,
         assigned_by: currentProfile?.full_name
       }
     });
