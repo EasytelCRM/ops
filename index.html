@@ -377,6 +377,7 @@ select.fi { cursor: pointer; }
       <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
       <div class="nav-item" data-page="clients" onclick="showPage('clients',this)"><i class="ti ti-users"></i> Clients</div>
       <div class="nav-item" data-page="jobs" onclick="showPage('jobs',this)"><i class="ti ti-tool"></i> Jobs & Tickets</div>
+      <div class="nav-item" data-page="porting" onclick="showPage('porting',this)"><i class="ti ti-phone-outgoing"></i> Porting</div>
       <div class="nav-label" id="nav-admin-label" style="display:none">Admin</div>
       <div class="nav-item" data-page="users" id="nav-users" onclick="showPage('users',this)" style="display:none"><i class="ti ti-shield-lock"></i> Users</div>
       <div class="nav-item" data-page="audit" id="nav-audit" onclick="showPage('audit',this)" style="display:none"><i class="ti ti-history"></i> Audit Log</div>
@@ -525,6 +526,26 @@ select.fi { cursor: pointer; }
       </div>
 
       <!-- ══════════════════════════════════════════
+           PORTING
+      ══════════════════════════════════════════ -->
+      <div class="page" id="page-porting">
+        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="porting-search" placeholder="Search client or phone number..." oninput="renderPortingList()"></div>
+        <div class="filter-bar" id="porting-status-filters">
+          <button class="filter-btn active" onclick="setPortingFilter('Pending',this)">Pending</button>
+          <button class="filter-btn" onclick="setPortingFilter('In Progress',this)">In Progress</button>
+          <button class="filter-btn" onclick="setPortingFilter('Complete',this)">Complete</button>
+          <button class="filter-btn" onclick="setPortingFilter('all',this)">All</button>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3 id="porting-count">Porting tickets</h3>
+            <button class="btn btn-primary btn-sm" id="btn-add-porting" onclick="openPortingModal(null)" style="display:none"><i class="ti ti-plus"></i> Log port</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Client</th><th>Phone number(s)</th><th>Losing carrier</th><th>Port date</th><th>Status</th><th></th></tr></thead><tbody id="porting-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
            USERS (admin only)
       ══════════════════════════════════════════ -->
       <div class="page" id="page-users">
@@ -576,6 +597,8 @@ let activeClientData = null;
 let jobFilters     = { type: 'all', status: 'Pending' };
 let allClients     = [];
 let allJobs        = [];
+let allPorting     = [];
+let portingFilter  = 'Pending';
 let allProfiles    = [];
 let _ignoreNextPop = false;  // prevents popstate loop when closeModal calls history.back()
 
@@ -774,6 +797,7 @@ async function initApp(){
   }
   if(isAdminOrOps()) document.getElementById('btn-add-client').style.display = '';
   document.getElementById('btn-add-job-list').style.display = '';
+  document.getElementById('btn-add-porting').style.display = '';
 
   // Seed history so the dashboard is the base state
   history.replaceState({ type: 'page', name: 'dashboard' }, '');
@@ -804,12 +828,13 @@ function showPage(name, el, _push=true){
   document.getElementById('page-'+name).classList.add('active');
   if(el) el.classList.add('active');
   currentPage = name;
-  const titles = { dashboard:'Dashboard', clients:'Clients', jobs:'Jobs & Tickets', users:'Team members', audit:'Audit log', 'client-profile':'Client profile' };
+  const titles = { dashboard:'Dashboard', clients:'Clients', jobs:'Jobs & Tickets', porting:'Porting', users:'Team members', audit:'Audit log', 'client-profile':'Client profile' };
   document.getElementById('topbar-title').textContent = titles[name] || name;
   // Update top CTA
   const cta = document.getElementById('topbar-cta');
   if(name==='clients' && isAdminOrOps()) cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openClientModal()"><i class="ti ti-plus"></i> Add client</button>`;
   else if(name==='jobs') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openJobModal(null)"><i class="ti ti-plus"></i> Log job</button>`;
+  else if(name==='porting') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openPortingModal(null)"><i class="ti ti-plus"></i> Log port</button>`;
   else cta.innerHTML = '';
   closeSidebar();
   if(_push) history.pushState({ type: 'page', name }, '');
@@ -821,6 +846,7 @@ function refreshCurrentPage(){
   else if(currentPage==='clients') loadClients();
   else if(currentPage==='client-profile' && activeClientId) loadClientProfile(activeClientId);
   else if(currentPage==='jobs') loadJobs();
+  else if(currentPage==='porting') loadPorting();
   else if(currentPage==='users') loadUsers();
   else if(currentPage==='audit') loadAuditLog();
 }
@@ -1118,6 +1144,130 @@ function renderJobsList(){
       <td>${isAdmin()?`<button class="btn btn-sm btn-danger hover-del" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button>`:''}</td>
     </tr>`).join('')
     : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No jobs found.</p></div></td></tr>`;
+}
+
+// ============================================================
+//  PORTING LIST
+// ============================================================
+function setPortingFilter(val, el){
+  portingFilter = val;
+  document.querySelectorAll('#porting-status-filters .filter-btn').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderPortingList();
+}
+
+async function loadPorting(){
+  setSyncStatus('syncing');
+  try {
+    const [{ data: ports }, { data: clients }] = await Promise.all([
+      sb.from('porting').select('*,clients(company)').order('port_date',{ascending:true,nullsFirst:false}),
+      sb.from('clients').select('id,company').order('company')
+    ]);
+    allPorting = ports || [];
+    if(clients) allClients = clients;
+    renderPortingList();
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading porting tickets: '+e.message,'error'); }
+}
+
+function renderPortingList(){
+  const q = (document.getElementById('porting-search')||{}).value?.toLowerCase()||'';
+  const f = allPorting.filter(p=>{
+    const matchQ = !q || (p.clients?.company||'').toLowerCase().includes(q) || p.phone_numbers.toLowerCase().includes(q);
+    const matchStatus = portingFilter==='all' || p.status===portingFilter;
+    return matchQ && matchStatus;
+  });
+  document.getElementById('porting-count').textContent = `Porting tickets (${f.length})`;
+  const tb = document.getElementById('porting-tbody');
+  if(!tb) return;
+  tb.innerHTML = f.length ? f.map(p=>`
+    <tr class="job-row" onclick="openPortingModal('${p.id}')" style="cursor:pointer">
+      <td><span style="color:var(--accent);cursor:pointer" onclick="event.stopPropagation();openClientProfile('${p.client_id}')">${esc(p.clients?.company||'Unknown')}</span></td>
+      <td style="font-weight:500">${esc(p.phone_numbers)}</td>
+      <td style="color:var(--text2);font-size:12px">${esc(p.losing_carrier)}</td>
+      <td style="font-size:12px;color:var(--text2)">${fmtDate(p.port_date)}</td>
+      <td>${portingStatusBadge(p.status)}</td>
+      <td>${isAdminOrOps()?`<button class="btn btn-sm btn-danger hover-del" onclick="event.stopPropagation();deletePorting('${p.id}')"><i class="ti ti-trash"></i></button>`:''}</td>
+    </tr>`).join('')
+    : `<tr><td colspan="6"><div class="empty"><i class="ti ti-phone-outgoing"></i><p>No porting tickets found.</p></div></td></tr>`;
+}
+
+function portingStatusBadge(s){
+  const map = { 'Pending':'badge-amber', 'In Progress':'badge-blue', 'Complete':'badge-green', 'Cancelled':'badge-gray' };
+  return `<span class="badge ${map[s]||'badge-gray'}">${esc(s)}</span>`;
+}
+
+async function openPortingModal(id){
+  const isEdit = !!id;
+  let rec = null;
+  if(isEdit){
+    const { data } = await sb.from('porting').select('*,clients(company)').eq('id',id).single();
+    rec = data;
+  }
+  // Ensure allClients is populated (user may navigate directly to Porting)
+  if(!allClients.length){
+    const { data: clients } = await sb.from('clients').select('id,company').order('company');
+    if(clients) allClients = clients;
+  }
+  const clientOptions = allClients.map(c=>`<option value="${c.id}" ${rec?.client_id===c.id?'selected':''}>${esc(c.company)}</option>`).join('');
+  openModal(`<div class="modal">
+    <div class="modal-hdr"><h3>${isEdit?'Edit porting ticket':'Log porting ticket'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+    <div class="form-group"><label class="lbl">Client *</label>
+      <select class="fi" id="f-port-client" ${isEdit?'disabled':''}>
+        <option value="">— select client —</option>${clientOptions}
+      </select>
+    </div>
+    <div class="form-group"><label class="lbl">Phone number(s) *</label><input class="fi" id="f-port-numbers" value="${esc(rec?.phone_numbers||'')}" placeholder="e.g. 02 9876 5432, 0412 345 678"></div>
+    <div class="form-group"><label class="lbl">Losing carrier *</label><input class="fi" id="f-port-carrier" value="${esc(rec?.losing_carrier||'')}" placeholder="e.g. Telstra"></div>
+    <div class="form-group"><label class="lbl">Port date</label><input class="fi" type="date" id="f-port-date" value="${rec?.port_date||''}"></div>
+    <div class="form-group"><label class="lbl">Status</label>
+      <select class="fi" id="f-port-status">
+        ${['Pending','In Progress','Complete','Cancelled'].map(s=>`<option value="${s}" ${(rec?.status||'Pending')===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label class="lbl">Notes</label><textarea class="fi" id="f-port-notes" rows="3" placeholder="Any notes about this port...">${esc(rec?.notes||'')}</textarea></div>
+    <div id="port-error" class="form-error" style="display:none"></div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPorting('${id||''}')"><i class="ti ti-check"></i> ${isEdit?'Save changes':'Log port'}</button>
+    </div>
+  </div>`);
+}
+
+async function submitPorting(id){
+  const clientId = document.getElementById('f-port-client').value;
+  const numbers  = document.getElementById('f-port-numbers').value.trim();
+  const carrier  = document.getElementById('f-port-carrier').value.trim();
+  const portDate = document.getElementById('f-port-date').value || null;
+  const status   = document.getElementById('f-port-status').value;
+  const notes    = document.getElementById('f-port-notes').value.trim() || null;
+  const err      = document.getElementById('port-error');
+  err.style.display = 'none';
+  if(!id && !clientId){ err.textContent='Please select a client.'; err.style.display='block'; return; }
+  if(!numbers){ err.textContent='Phone number(s) are required.'; err.style.display='block'; return; }
+  if(!carrier){  err.textContent='Losing carrier is required.';  err.style.display='block'; return; }
+  setSyncStatus('syncing');
+  try {
+    if(id){
+      await sb.from('porting').update({ phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, status, notes }).eq('id',id);
+      await logAudit('updated','porting',id,{},{phone_numbers:numbers,losing_carrier:carrier,port_date:portDate,status,notes});
+      toast('Porting ticket updated');
+    } else {
+      const { data } = await sb.from('porting').insert({ client_id:clientId, phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, status, notes, created_by:currentUser?.id }).select().single();
+      await logAudit('created','porting',data.id,{},{client_id:clientId,phone_numbers:numbers,losing_carrier:carrier,status});
+      toast('Porting ticket created');
+    }
+    closeModal(); loadPorting();
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function deletePorting(id){
+  if(!confirm('Delete this porting ticket?')) return;
+  try {
+    await sb.from('porting').delete().eq('id',id);
+    await logAudit('deleted','porting',id,{},{});
+    toast('Porting ticket deleted'); loadPorting();
+  } catch(e){ toast('Delete failed: '+e.message,'error'); }
 }
 
 // ============================================================
