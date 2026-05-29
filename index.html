@@ -1035,7 +1035,7 @@ async function loadClientProfile(id){
             <div class="job-title job-link">${esc(p.phone_numbers)}</div>
             <div class="job-meta">
               <span><i class="ti ti-building" style="font-size:11px"></i> ${esc(p.losing_carrier)}</span>
-              ${p.port_date?`<span><i class="ti ti-calendar" style="font-size:11px"></i> ${fmtDate(p.port_date)}</span>`:''}
+              ${p.port_date?`<span><i class="ti ti-calendar" style="font-size:11px"></i> ${fmtDate(p.port_date)}${p.port_time?' '+p.port_time.slice(0,5):''}</span>`:''}
             </div>
           </div>
           ${isAdminOrOps()?`<button class="btn btn-sm btn-danger hover-del" onclick="event.stopPropagation();deletePorting('${p.id}')"><i class="ti ti-trash"></i></button>`:''}
@@ -1210,7 +1210,7 @@ function renderPortingList(){
       <td><span style="color:var(--accent);cursor:pointer" onclick="event.stopPropagation();openClientProfile('${p.client_id}')">${esc(p.clients?.company||'Unknown')}</span></td>
       <td style="font-weight:500">${esc(p.phone_numbers)}</td>
       <td style="color:var(--text2);font-size:12px">${esc(p.losing_carrier)}</td>
-      <td style="font-size:12px;color:var(--text2)">${fmtDate(p.port_date)}</td>
+      <td style="font-size:12px;color:var(--text2)">${fmtDate(p.port_date)}${p.port_time?` <span style="color:var(--text3)">${p.port_time.slice(0,5)}</span>`:''}</td>
       <td>${portingStatusBadge(p.status)}</td>
       <td>${isAdminOrOps()?`<button class="btn btn-sm btn-danger hover-del" onclick="event.stopPropagation();deletePorting('${p.id}')"><i class="ti ti-trash"></i></button>`:''}</td>
     </tr>`).join('')
@@ -1248,7 +1248,10 @@ async function openPortingModal(id, prefillClientId){
         </div>
         <div class="form-group"><label class="lbl">Ticket number *</label><input class="fi" id="f-port-numbers" value="${esc(rec?.phone_numbers||'')}" placeholder="e.g. TKT-12345"></div>
         <div class="form-group"><label class="lbl">Losing carrier *</label><input class="fi" id="f-port-carrier" value="${esc(rec?.losing_carrier||'')}" placeholder="e.g. Telstra"></div>
-        <div class="form-group"><label class="lbl">Port date</label><input class="fi" type="date" id="f-port-date" value="${rec?.port_date||''}"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="lbl">Port date</label><input class="fi" type="date" id="f-port-date" value="${rec?.port_date||''}"></div>
+          <div class="form-group"><label class="lbl">Port time</label><input class="fi" type="time" id="f-port-time" value="${rec?.port_time||''}"></div>
+        </div>
         <div class="form-group"><label class="lbl">Status</label>
           <select class="fi" id="f-port-status">
             ${['Pending','Complete','Cancelled'].map(s=>`<option value="${s}" ${(rec?.status||'Pending')===s?'selected':''}>${s}</option>`).join('')}
@@ -1273,6 +1276,7 @@ async function submitPorting(id){
   const numbers  = document.getElementById('f-port-numbers').value.trim();
   const carrier  = document.getElementById('f-port-carrier').value.trim();
   const portDate = document.getElementById('f-port-date').value || null;
+  const portTime = document.getElementById('f-port-time').value || null;
   const status   = document.getElementById('f-port-status').value;
   const notes    = document.getElementById('f-port-notes').value.trim() || null;
   const err      = document.getElementById('port-error');
@@ -1285,11 +1289,11 @@ async function submitPorting(id){
   setSyncStatus('syncing');
   try {
     if(id){
-      await sb.from('porting').update({ phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, status, notes }).eq('id',id);
-      await logAudit('updated','porting',id,{},{phone_numbers:numbers,losing_carrier:carrier,port_date:portDate,status,notes});
+      await sb.from('porting').update({ phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, port_time:portTime, status, notes }).eq('id',id);
+      await logAudit('updated','porting',id,{},{phone_numbers:numbers,losing_carrier:carrier,port_date:portDate,port_time:portTime,status,notes});
       toast('Porting ticket updated');
     } else {
-      const { data } = await sb.from('porting').insert({ client_id:resolvedClientId, phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, status, notes, created_by:currentUser?.id }).select().single();
+      const { data } = await sb.from('porting').insert({ client_id:resolvedClientId, phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, port_time:portTime, status, notes, created_by:currentUser?.id }).select().single();
       await logAudit('created','porting',data.id,{},{client_id:resolvedClientId,phone_numbers:numbers,losing_carrier:carrier,status});
       toast('Porting ticket created');
     }
