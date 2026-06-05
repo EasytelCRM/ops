@@ -515,11 +515,6 @@ select.fi { cursor: pointer; }
       ══════════════════════════════════════════ -->
       <div class="page" id="page-jobs">
         <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search" placeholder="Search job title or client..." oninput="renderJobsList()"></div>
-        <div class="filter-bar" id="job-type-filters">
-          <button class="filter-btn active" onclick="setJobFilter('type','all',this)">All types</button>
-          <button class="filter-btn" onclick="setJobFilter('type','New Install',this)">New Install</button>
-          <button class="filter-btn" onclick="setJobFilter('type','Service',this)">Service</button>
-        </div>
         <div class="filter-bar" id="job-status-filters">
           <button class="filter-btn active" onclick="setJobFilter('status','Pending',this)">Pending</button>
           <button class="filter-btn" onclick="setJobFilter('status','Complete',this)">Complete</button>
@@ -527,10 +522,16 @@ select.fi { cursor: pointer; }
         </div>
         <div class="card">
           <div class="card-head">
-            <h3 id="jobs-count">All jobs</h3>
+            <h3 id="jobs-installs-count">New Installs</h3>
             <button class="btn btn-primary btn-sm" id="btn-add-job-list" onclick="openJobModal(null)" style="display:none"><i class="ti ti-plus"></i> Log job</button>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Type</th><th>Client</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-tbody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-installs-tbody"></tbody></table></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-head">
+            <h3 id="jobs-service-count">Service Tickets</h3>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-service-tbody"></tbody></table></div>
         </div>
       </div>
 
@@ -602,7 +603,7 @@ let currentProfile = null;   // profiles row
 let currentPage    = 'dashboard';
 let activeClientId = null;
 let activeClientData = null;
-let jobFilters     = { type: 'all', status: 'Pending' };
+let jobFilters     = { status: 'Pending' };
 let allClients     = [];
 let allJobs        = [];
 let allPorting     = [];
@@ -897,8 +898,7 @@ function switchJobTab(tab, el){
 // ── Job filters ──
 function setJobFilter(key, val, el){
   jobFilters[key] = val;
-  const group = key==='type' ? 'job-type-filters' : 'job-status-filters';
-  document.querySelectorAll(`#${group} .filter-btn`).forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll(`#job-status-filters .filter-btn`).forEach(b=>b.classList.remove('active'));
   if(el) el.classList.add('active');
   renderJobsList();
 }
@@ -1147,19 +1147,9 @@ async function loadJobs(){
 
 function renderJobsList(){
   const q = (document.getElementById('job-search')||{}).value?.toLowerCase()||'';
-  const f = allJobs.filter(j=>{
-    const matchQ = !q || j.title.toLowerCase().includes(q) || (j.clients?.company||'').toLowerCase().includes(q);
-    const matchType   = jobFilters.type==='all'   || j.type===jobFilters.type;
-    const matchStatus = jobFilters.status==='all' || j.status===jobFilters.status;
-    return matchQ && matchType && matchStatus;
-  });
-  document.getElementById('jobs-count').textContent = `All jobs (${f.length})`;
-  const tb = document.getElementById('jobs-tbody');
-  if(!tb) return;
-  tb.innerHTML = f.length ? f.map(j=>`
+  const jobRow = j => `
     <tr class="job-row">
       <td>${isAdminOrOps()||j.assigned_to===currentUser?.id?`<span class="job-link" onclick="openJobModal('${j.id}')">${esc(j.title)}</span>`:`<span style="font-weight:500">${esc(j.title)}</span>`}</td>
-      <td>${typeBadge(j.type)}</td>
       <td><span style="color:var(--accent);cursor:pointer" onclick="openClientProfile('${j.client_id}')">${esc(j.clients?.company||'Unknown')}</span></td>
       <td style="color:var(--text2);font-size:12px">${esc(j.sites?.name||'—')}</td>
       <td>${statusBadge(j.status)}</td>
@@ -1167,8 +1157,21 @@ function renderJobsList(){
       <td style="font-size:12px;color:var(--text2)">${fmtDate(j.due_date)}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px">${j.cost?'$'+Number(j.cost).toFixed(2):'—'}</td>
       <td>${isAdmin()?`<button class="btn btn-sm btn-danger hover-del" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button>`:''}</td>
-    </tr>`).join('')
-    : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No jobs found.</p></div></td></tr>`;
+    </tr>`;
+  const match = j => {
+    const matchQ = !q || j.title.toLowerCase().includes(q) || (j.clients?.company||'').toLowerCase().includes(q);
+    const matchStatus = jobFilters.status==='all' || j.status===jobFilters.status;
+    return matchQ && matchStatus;
+  };
+  const installs = allJobs.filter(j=>j.type==='New Install' && match(j));
+  const service  = allJobs.filter(j=>j.type!=='New Install' && match(j));
+  const tbI = document.getElementById('jobs-installs-tbody');
+  const tbS = document.getElementById('jobs-service-tbody');
+  if(!tbI||!tbS) return;
+  document.getElementById('jobs-installs-count').textContent = `New Installs (${installs.length})`;
+  document.getElementById('jobs-service-count').textContent  = `Service Tickets (${service.length})`;
+  tbI.innerHTML = installs.length ? installs.map(jobRow).join('') : `<tr><td colspan="8"><div class="empty"><i class="ti ti-tool"></i><p>No new installs found.</p></div></td></tr>`;
+  tbS.innerHTML = service.length  ? service.map(jobRow).join('')  : `<tr><td colspan="8"><div class="empty"><i class="ti ti-tool"></i><p>No service tickets found.</p></div></td></tr>`;
 }
 
 // ============================================================
