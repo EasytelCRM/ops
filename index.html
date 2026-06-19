@@ -942,7 +942,7 @@ async function loadDashboard(){
     document.getElementById('stat-service').textContent  = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.type==='Service').length, 0);
 
     // Recent jobs
-    const installCard = j => `<div class="job-card" onclick="openJobModal('${j.id}')" style="cursor:pointer;${j.status==='Pending'&&j.approval_date&&(new Date()-new Date(j.approval_date))>604800000?'border-left:3px solid var(--red)':''}">
+    const installCard = j => `<div class="job-card" onclick="openJobModal('${j.id}')" style="cursor:pointer;${j.status==='Pending'&&j.approval_date&&(new Date()-new Date(j.approval_date))>604800000&&!j.due_date?'border-left:3px solid var(--red)':''}">
           <div class="job-body">
             <div class="job-title">${esc(j.clients?.company||'Unknown')}</div>
             <div class="job-meta">
