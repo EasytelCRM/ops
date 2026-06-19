@@ -1632,7 +1632,7 @@ async function openJobModal(id){
           <select class="fi" id="f-job-assigned">${staffOpts}</select>
         </div>
         <div class="form-row">
-          <div class="form-group"><label class="lbl">Due date</label><input class="fi" type="date" id="f-job-sched" value="${j.due_date || (!isEdit ? new Date().toLocaleDateString('en-CA') : '')}"></div>
+          <div class="form-group"><label class="lbl">Due date</label><input class="fi" type="date" id="f-job-sched" value="${j.due_date||''}"></div>
           <div class="form-group" id="f-cost-wrap" style="${j.type==='New Install'?'display:none':''}"><label class="lbl">Cost ($)</label><input class="fi" type="number" id="f-job-cost" step="1" min="0" value="${j.cost||''}" placeholder="0"></div>
           <div class="form-group" id="f-approval-wrap" style="${j.type!=='New Install'?'display:none':''}"><label class="lbl">Approval date *</label><input class="fi" type="date" id="f-job-approval" value="${j.approval_date||''}" required></div>
         </div>
@@ -1713,7 +1713,9 @@ async function submitAddJob(){
 }
 
 async function submitEditJob(id){
-  if(document.getElementById('f-job-type').value==='New Install' && !document.getElementById('f-job-approval').value){ toast('Approval date is required for New Installs','warn'); return; }
+  const editType = document.getElementById('f-job-type').value;
+  if(editType==='New Install' && !document.getElementById('f-job-approval').value){ toast('Approval date is required for New Installs','warn'); return; }
+  if(editType==='Service' && !document.getElementById('f-job-title').value.trim()){ toast('Job title is required','warn'); return; }
   const siteVal     = document.getElementById('f-job-site').value;
   const assignedVal = document.getElementById('f-job-assigned').value;
   const jobType = document.getElementById('f-job-type').value;
