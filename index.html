@@ -420,7 +420,7 @@ select.fi { cursor: pointer; }
           <div class="stat-card"><div class="stat-label">Service tickets</div><div class="stat-value" id="stat-service">—</div><div class="stat-sub">All time</div></div>
         </div>
         <div class="card">
-          <div class="card-head"><h3>Recent jobs</h3><button class="btn btn-sm" onclick="showPage('jobs',document.querySelector('[data-page=jobs]'))">View all</button></div>
+          <div class="card-head"><h3>Pending Installs</h3><button class="btn btn-sm" onclick="showPage('jobs',document.querySelector('[data-page=jobs]'))">View all</button></div>
           <div id="dash-jobs"><div class="empty"><i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i><p>Loading...</p></div></div>
         </div>
         <div class="card">
@@ -911,7 +911,7 @@ async function loadDashboard(){
   try {
     const [{ data: clients }, { data: jobs }] = await Promise.all([
       sb.from('clients').select('*,sites(id),jobs(id,type,status)'),
-      sb.from('jobs').select('*,clients(company,account_number),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('due_date',{ascending:true,nullsFirst:false}).limit(6)
+      sb.from('jobs').select('*,clients(company,account_number),sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('type','New Install').eq('status','Pending').order('due_date',{ascending:true,nullsFirst:false})
     ]);
     allClients = clients || [];
     allJobs    = jobs    || [];
@@ -923,20 +923,21 @@ async function loadDashboard(){
 
     // Recent jobs
     document.getElementById('dash-jobs').innerHTML = allJobs.length
-      ? allJobs.map(j=>`<div class="job-card">
-          ${typeBadge(j.type)}
+      ? allJobs.map(j=>`<div class="job-card" onclick="openJobModal('${j.id}')" style="cursor:pointer">
           <div class="job-body">
             <div class="job-title">${esc(j.title)}</div>
             <div class="job-meta">
               <span>${esc(j.clients?.company||'Unknown')}</span>
               ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
-              <span>${statusBadge(j.status)}</span>
               ${j.profiles?.full_name?`<span><i class="ti ti-user" style="font-size:11px"></i> ${esc(j.profiles.full_name)}</span>`:''}
             </div>
           </div>
-          ${j.cost?`<div class="job-cost">$${Number(j.cost).toFixed(2)}</div>`:''}
+          <div style="text-align:right;font-size:12px;color:var(--text2);flex-shrink:0">
+            ${j.due_date?`<div>Due: ${fmtDate(j.due_date)}</div>`:''}
+            ${j.approval_date?`<div style="color:var(--accent)">Approved: ${fmtDate(j.approval_date)}</div>`:''}
+          </div>
         </div>`).join('')
-      : `<div class="empty"><i class="ti ti-tool"></i><p>No jobs yet.</p></div>`;
+      : `<div class="empty"><i class="ti ti-tool"></i><p>No pending installs.</p></div>`;
 
     // Recent clients
     document.getElementById('dash-clients').innerHTML = [...allClients].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5).map(c=>`
