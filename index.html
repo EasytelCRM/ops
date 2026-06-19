@@ -1075,7 +1075,7 @@ async function loadClientProfile(id){
       ? (jobs||[]).map(j=>`<div class="job-card">
           ${typeBadge(j.type)}
           <div class="job-body">
-            <div class="job-title${isAdminOrOps()||j.assigned_to===currentUser?.id?' job-link':''}" ${isAdminOrOps()||j.assigned_to===currentUser?.id?`onclick="openJobModal('${j.id}')"`:''} >${esc(j.title)}</div>
+            <div class="job-title${isAdminOrOps()||j.assigned_to===currentUser?.id?' job-link':''}" ${isAdminOrOps()||j.assigned_to===currentUser?.id?`onclick="openJobModal('${j.id}')"`:''} >${j.type==='New Install'?svcLabel(client):esc(j.title)}</div>
             <div class="job-meta">
               ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
               ${statusBadge(j.status)}
@@ -1083,7 +1083,7 @@ async function loadClientProfile(id){
               ${j.due_date?`<span><i class="ti ti-calendar" style="font-size:11px"></i> ${fmtDate(j.due_date)}</span>`:''}
             </div>
           </div>
-          ${j.cost?`<div class="job-cost">$${Number(j.cost).toFixed(2)}</div>`:''}
+          ${j.type==='New Install'?(j.approval_date?`<div class="job-cost">${fmtDate(j.approval_date)}</div>`:''):(j.cost?`<div class="job-cost">$${Number(j.cost).toFixed(2)}</div>`:'')}
           ${isAdmin()?`<button class="btn btn-sm btn-danger hover-del" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button>`:''}
         </div>`).join('')
       : `<div class="empty"><i class="ti ti-tool"></i><p>No jobs yet.</p></div>`;
