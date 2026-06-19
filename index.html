@@ -517,6 +517,7 @@ select.fi { cursor: pointer; }
         <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search" placeholder="Search job title or client..." oninput="renderJobsList()"></div>
         <div class="filter-bar" id="job-status-filters">
           <button class="filter-btn active" onclick="setJobFilter('status','Pending',this)">Pending</button>
+          <button class="filter-btn" onclick="setJobFilter('status','Incomplete',this)">Incomplete</button>
           <button class="filter-btn" onclick="setJobFilter('status','Complete',this)">Complete</button>
           <button class="filter-btn" onclick="setJobFilter('status','all',this)">All statuses</button>
         </div>
@@ -669,8 +670,17 @@ function showScreen(name){
 //  STATUS BADGES
 // ============================================================
 function statusBadge(s){
-  const map = { 'Pending':'badge-amber', 'Complete':'badge-green' };
+  const map = { 'Pending':'badge-amber', 'Incomplete':'badge-red', 'Complete':'badge-green' };
   return `<span class="badge ${map[s]||'badge-gray'}">${esc(s)}</span>`;
+}
+function svcLabel(c){
+  const svcs = [];
+  if(c?.svc_internet) svcs.push('Internet');
+  if(c?.svc_webex)    svcs.push('Webex');
+  if(c?.svc_nec)      svcs.push('NEC');
+  if(!svcs.length) return '—';
+  if(svcs.length === 1) return svcs[0];
+  return svcs.slice(0,-1).join(', ') + ' and ' + svcs[svcs.length-1];
 }
 function typeBadge(t){
   return t==='New Install' ? `<span class="badge badge-blue">New Install</span>` : `<span class="badge badge-gray">Service</span>`;
@@ -911,7 +921,7 @@ async function loadDashboard(){
   try {
     const [{ data: clients }, { data: jobs }] = await Promise.all([
       sb.from('clients').select('*,sites(id),jobs(id,type,status)'),
-      sb.from('jobs').select('*,clients(company,account_number),sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('type','New Install').eq('status','Pending').order('due_date',{ascending:true,nullsFirst:false})
+      sb.from('jobs').select('*,clients(company,account_number,svc_internet,svc_webex,svc_nec),sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('type','New Install').in('status',['Pending','Incomplete']).order('due_date',{ascending:true,nullsFirst:false})
     ]);
     allClients = clients || [];
     allJobs    = jobs    || [];
@@ -925,7 +935,7 @@ async function loadDashboard(){
     document.getElementById('dash-jobs').innerHTML = allJobs.length
       ? allJobs.map(j=>`<div class="job-card" onclick="openJobModal('${j.id}')" style="cursor:pointer">
           <div class="job-body">
-            <div class="job-title">${esc(j.title)}</div>
+            <div class="job-title">${svcLabel(j.clients)}</div>
             <div class="job-meta">
               <span>${esc(j.clients?.company||'Unknown')}</span>
               ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
@@ -1139,7 +1149,7 @@ async function saveCreds(){
 async function loadJobs(){
   setSyncStatus('syncing');
   try {
-    const { data } = await sb.from('jobs').select('*,clients(company,account_number),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('due_date',{ascending:true,nullsFirst:false});
+    const { data } = await sb.from('jobs').select('*,clients(company,account_number,svc_internet,svc_webex,svc_nec),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('due_date',{ascending:true,nullsFirst:false});
     allJobs = data || [];
     renderJobsList();
     setSyncStatus('ok');
@@ -1150,7 +1160,7 @@ function renderJobsList(){
   const q = (document.getElementById('job-search')||{}).value?.toLowerCase()||'';
   const jobRow = (j, isInstall=false) => `
     <tr class="job-row">
-      <td>${isAdminOrOps()||j.assigned_to===currentUser?.id?`<span class="job-link" onclick="openJobModal('${j.id}')">${esc(j.title)}</span>`:`<span style="font-weight:500">${esc(j.title)}</span>`}</td>
+      <td>${isAdminOrOps()||j.assigned_to===currentUser?.id?`<span class="job-link" onclick="openJobModal('${j.id}')">${isInstall?svcLabel(j.clients):esc(j.title)}</span>`:`<span style="font-weight:500">${isInstall?svcLabel(j.clients):esc(j.title)}</span>`}</td>
       <td><span style="color:var(--accent);cursor:pointer" onclick="openClientProfile('${j.client_id}')">${esc(j.clients?.company||'Unknown')}</span></td>
       <td style="font-size:12px;color:var(--text2)">${esc(j.clients?.account_number||'—')}</td>
       <td style="color:var(--text2);font-size:12px">${esc(j.sites?.name||'—')}</td>
@@ -1161,7 +1171,7 @@ function renderJobsList(){
       <td>${isAdmin()?`<button class="btn btn-sm btn-danger hover-del" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button>`:''}</td>
     </tr>`;
   const match = j => {
-    const matchQ = !q || j.title.toLowerCase().includes(q) || (j.clients?.company||'').toLowerCase().includes(q);
+    const matchQ = !q || (j.title||'').toLowerCase().includes(q) || (j.clients?.company||'').toLowerCase().includes(q) || svcLabel(j.clients).toLowerCase().includes(q);
     const matchStatus = jobFilters.status==='all' || j.status===jobFilters.status;
     return matchQ && matchStatus;
   };
@@ -1615,11 +1625,12 @@ async function openJobModal(id){
           <div class="form-group"><label class="lbl">Status *</label>
             <select class="fi" id="f-job-status">
               <option ${j.status==='Pending'||!j.status?'selected':''}>Pending</option>
+              <option ${j.status==='Incomplete'?'selected':''}>Incomplete</option>
               <option ${j.status==='Complete'?'selected':''}>Complete</option>
             </select>
           </div>
         </div>
-        <div class="form-group"><label class="lbl">Title *</label><input class="fi" id="f-job-title" value="${esc(j.title||'')}" placeholder="e.g. NBN line installation"></div>
+        <div class="form-group" id="f-title-wrap" style="${j.type==='New Install'?'display:none':''}"><label class="lbl">Title *</label><input class="fi" id="f-job-title" value="${esc(j.title||'')}" placeholder="e.g. NBN line installation"></div>
         <div class="form-group"><label class="lbl">Site</label>
           <select class="fi" id="f-job-site">${siteOpts}</select>
         </div>
@@ -1664,31 +1675,33 @@ async function loadSitesForJob(clientId){
 
 function toggleJobCostApproval(type){
   const isInstall = type === 'New Install';
-  const costWrap = document.getElementById('f-cost-wrap');
+  const costWrap     = document.getElementById('f-cost-wrap');
   const approvalWrap = document.getElementById('f-approval-wrap');
-  if(costWrap) costWrap.style.display = isInstall ? 'none' : '';
+  const titleWrap    = document.getElementById('f-title-wrap');
+  if(costWrap)     costWrap.style.display     = isInstall ? 'none' : '';
   if(approvalWrap) approvalWrap.style.display = isInstall ? '' : 'none';
+  if(titleWrap)    titleWrap.style.display    = isInstall ? 'none' : '';
 }
 
 async function submitAddJob(){
+  const jobTypeVal = document.getElementById('f-job-type').value;
   const title = document.getElementById('f-job-title').value.trim();
-  if(!title){ toast('Job title is required','warn'); return; }
-  if(document.getElementById('f-job-type').value==='New Install' && !document.getElementById('f-job-approval').value){ toast('Approval date is required for New Installs','warn'); return; }
+  if(!title && jobTypeVal !== 'New Install'){ toast('Job title is required','warn'); return; }
+  if(jobTypeVal==='New Install' && !document.getElementById('f-job-approval').value){ toast('Approval date is required for New Installs','warn'); return; }
   const clientId = document.getElementById('f-job-client').value;
   if(!clientId){ toast('Please select a client','warn'); return; }
   const siteVal     = document.getElementById('f-job-site').value;
   const assignedVal = isAdminOrOps()
     ? document.getElementById('f-job-assigned').value
     : currentUser.id; // techs are always auto-assigned to jobs they create
-  const jobType = document.getElementById('f-job-type').value;
   const payload = {
-    title, type: jobType,
+    title: title||null, type: jobTypeVal,
     status: document.getElementById('f-job-status').value,
     client_id: clientId, site_id: siteVal||null,
     assigned_to: assignedVal||null,
     due_date: document.getElementById('f-job-sched').value||null,
-    cost: jobType==='New Install' ? null : (document.getElementById('f-job-cost').value||null),
-    approval_date: jobType==='New Install' ? (document.getElementById('f-job-approval').value||null) : null,
+    cost: jobTypeVal==='New Install' ? null : (document.getElementById('f-job-cost').value||null),
+    approval_date: jobTypeVal==='New Install' ? (document.getElementById('f-job-approval').value||null) : null,
     description: document.getElementById('f-job-desc').value.trim(),
     job_notes: document.getElementById('f-job-notes').value.trim(),
     created_by: currentUser.id
