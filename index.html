@@ -525,7 +525,7 @@ select.fi { cursor: pointer; }
             <h3 id="jobs-installs-count">New Installs</h3>
             <button class="btn btn-primary btn-sm" id="btn-add-job-list" onclick="openJobModal(null)" style="display:none"><i class="ti ti-plus"></i> Log job</button>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Account #</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-installs-tbody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Account #</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Approval Date</th><th></th></tr></thead><tbody id="jobs-installs-tbody"></tbody></table></div>
         </div>
         <div class="card" style="margin-top:16px">
           <div class="card-head">
@@ -1147,7 +1147,7 @@ async function loadJobs(){
 
 function renderJobsList(){
   const q = (document.getElementById('job-search')||{}).value?.toLowerCase()||'';
-  const jobRow = j => `
+  const jobRow = (j, isInstall=false) => `
     <tr class="job-row">
       <td>${isAdminOrOps()||j.assigned_to===currentUser?.id?`<span class="job-link" onclick="openJobModal('${j.id}')">${esc(j.title)}</span>`:`<span style="font-weight:500">${esc(j.title)}</span>`}</td>
       <td><span style="color:var(--accent);cursor:pointer" onclick="openClientProfile('${j.client_id}')">${esc(j.clients?.company||'Unknown')}</span></td>
@@ -1156,7 +1156,7 @@ function renderJobsList(){
       <td>${statusBadge(j.status)}</td>
       <td style="font-size:12px;color:var(--text2)">${esc(j.profiles?.full_name||'—')}</td>
       <td style="font-size:12px;color:var(--text2)">${fmtDate(j.due_date)}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:12px">${j.cost?'$'+Number(j.cost).toFixed(2):'—'}</td>
+      <td style="font-size:12px;color:var(--text2)">${isInstall?(j.approval_date?fmtDate(j.approval_date):'—'):(j.cost?'$'+Number(j.cost).toFixed(2):'—')}</td>
       <td>${isAdmin()?`<button class="btn btn-sm btn-danger hover-del" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button>`:''}</td>
     </tr>`;
   const match = j => {
@@ -1171,8 +1171,8 @@ function renderJobsList(){
   if(!tbI||!tbS) return;
   document.getElementById('jobs-installs-count').textContent = `New Installs (${installs.length})`;
   document.getElementById('jobs-service-count').textContent  = `Service Tickets (${service.length})`;
-  tbI.innerHTML = installs.length ? installs.map(jobRow).join('') : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No new installs found.</p></div></td></tr>`;
-  tbS.innerHTML = service.length  ? service.map(jobRow).join('')  : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No service tickets found.</p></div></td></tr>`;
+  tbI.innerHTML = installs.length ? installs.map(j=>jobRow(j,true)).join('') : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No new installs found.</p></div></td></tr>`;
+  tbS.innerHTML = service.length  ? service.map(j=>jobRow(j,false)).join('')  : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No service tickets found.</p></div></td></tr>`;
 }
 
 // ============================================================
@@ -1606,7 +1606,7 @@ async function openJobModal(id){
         }
         <div class="form-row">
           <div class="form-group"><label class="lbl">Type *</label>
-            <select class="fi" id="f-job-type">
+            <select class="fi" id="f-job-type" onchange="toggleJobCostApproval(this.value)">
               <option ${j.type==='New Install'?'selected':''}>New Install</option>
               <option ${j.type==='Service'||!j.type?'selected':''}>Service</option>
             </select>
@@ -1627,7 +1627,8 @@ async function openJobModal(id){
         </div>
         <div class="form-row">
           <div class="form-group"><label class="lbl">Due date</label><input class="fi" type="date" id="f-job-sched" value="${j.due_date || (!isEdit ? new Date().toLocaleDateString('en-CA') : '')}"></div>
-          <div class="form-group"><label class="lbl">Cost ($)</label><input class="fi" type="number" id="f-job-cost" step="1" min="0" value="${j.cost||''}" placeholder="0"></div>
+          <div class="form-group" id="f-cost-wrap" style="${j.type==='New Install'?'display:none':''}"><label class="lbl">Cost ($)</label><input class="fi" type="number" id="f-job-cost" step="1" min="0" value="${j.cost||''}" placeholder="0"></div>
+          <div class="form-group" id="f-approval-wrap" style="${j.type!=='New Install'?'display:none':''}"><label class="lbl">Approval date</label><input class="fi" type="date" id="f-job-approval" value="${j.approval_date||''}"></div>
         </div>
       </div>
       <div class="modal-col" style="display:flex;flex-direction:column">
@@ -1660,6 +1661,14 @@ async function loadSitesForJob(clientId){
   el.innerHTML = (sites||[]).map((s,i)=>`<option value="${s.id}"${i===0?' selected':''}>${esc(s.name)}</option>`).join('');
 }
 
+function toggleJobCostApproval(type){
+  const isInstall = type === 'New Install';
+  const costWrap = document.getElementById('f-cost-wrap');
+  const approvalWrap = document.getElementById('f-approval-wrap');
+  if(costWrap) costWrap.style.display = isInstall ? 'none' : '';
+  if(approvalWrap) approvalWrap.style.display = isInstall ? '' : 'none';
+}
+
 async function submitAddJob(){
   const title = document.getElementById('f-job-title').value.trim();
   if(!title){ toast('Job title is required','warn'); return; }
@@ -1669,13 +1678,15 @@ async function submitAddJob(){
   const assignedVal = isAdminOrOps()
     ? document.getElementById('f-job-assigned').value
     : currentUser.id; // techs are always auto-assigned to jobs they create
+  const jobType = document.getElementById('f-job-type').value;
   const payload = {
-    title, type: document.getElementById('f-job-type').value,
+    title, type: jobType,
     status: document.getElementById('f-job-status').value,
     client_id: clientId, site_id: siteVal||null,
     assigned_to: assignedVal||null,
     due_date: document.getElementById('f-job-sched').value||null,
-    cost: document.getElementById('f-job-cost').value||null,
+    cost: jobType==='New Install' ? null : (document.getElementById('f-job-cost').value||null),
+    approval_date: jobType==='New Install' ? (document.getElementById('f-job-approval').value||null) : null,
     description: document.getElementById('f-job-desc').value.trim(),
     job_notes: document.getElementById('f-job-notes').value.trim(),
     created_by: currentUser.id
@@ -1695,14 +1706,16 @@ async function submitAddJob(){
 async function submitEditJob(id){
   const siteVal     = document.getElementById('f-job-site').value;
   const assignedVal = document.getElementById('f-job-assigned').value;
+  const jobType = document.getElementById('f-job-type').value;
   const payload = {
     title: document.getElementById('f-job-title').value.trim(),
-    type: document.getElementById('f-job-type').value,
+    type: jobType,
     status: document.getElementById('f-job-status').value,
     client_id: document.getElementById('f-job-client').value,
     site_id: siteVal||null, assigned_to: assignedVal||null,
     due_date: document.getElementById('f-job-sched').value||null,
-    cost: document.getElementById('f-job-cost').value||null,
+    cost: jobType==='New Install' ? null : (document.getElementById('f-job-cost').value||null),
+    approval_date: jobType==='New Install' ? (document.getElementById('f-job-approval').value||null) : null,
     description: document.getElementById('f-job-desc').value.trim(),
     job_notes: document.getElementById('f-job-notes').value.trim()
   };
