@@ -939,7 +939,7 @@ async function loadDashboard(){
       : `<div class="empty"><i class="ti ti-tool"></i><p>No jobs yet.</p></div>`;
 
     // Recent clients
-    document.getElementById('dash-clients').innerHTML = [...allClients].slice(0,5).map(c=>`
+    document.getElementById('dash-clients').innerHTML = [...allClients].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5).map(c=>`
       <tr class="clickable" onclick="openClientProfile('${c.id}')">
         <td><strong style="font-weight:500">${esc(c.company)}</strong></td>
         <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.account_number)||'—'}</td>
