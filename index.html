@@ -1427,7 +1427,7 @@ function openClientModal(id){
       <div class="form-group"><label class="lbl">Company name *</label>
         <div style="position:relative">
           <input class="fi" id="f-company" value="${esc(c.company||'')}" placeholder="Acme Pty Ltd" autocomplete="off" oninput="searchCompanySuggestions(this.value,'${id||''}')" onblur="setTimeout(()=>{const b=document.getElementById('company-suggestions');if(b)b.style.display='none'},150)">
-          <div id="company-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-top:4px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.2)"></div>
+          <div id="company-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:4px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.2)"></div>
         </div>
       </div>
       <div class="form-group"><label class="lbl">Phone</label><input class="fi" id="f-phone" value="${esc(c.phone||'')}" placeholder="02 9000 0000"></div>
