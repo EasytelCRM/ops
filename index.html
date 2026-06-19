@@ -921,7 +921,7 @@ async function loadDashboard(){
   try {
     const [{ data: clients }, { data: jobs }] = await Promise.all([
       sb.from('clients').select('*,sites(id),jobs(id,type,status)'),
-      sb.from('jobs').select('*,clients(company,account_number,svc_internet,svc_webex,svc_nec),sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('type','New Install').in('status',['Pending','Incomplete']).order('due_date',{ascending:true,nullsFirst:false})
+      sb.from('jobs').select('*,clients(company,account_number,svc_internet,svc_webex,svc_nec),sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('type','New Install').in('status',['Pending','Incomplete']).order('approval_date',{ascending:true,nullsFirst:false})
     ]);
     allClients = clients || [];
     allJobs    = jobs    || [];
