@@ -420,16 +420,12 @@ select.fi { cursor: pointer; }
           <div class="stat-card"><div class="stat-label">Service tickets</div><div class="stat-value" id="stat-service">—</div><div class="stat-sub">All time</div></div>
         </div>
         <div class="card">
-          <div class="card-head"><h3 style="color:var(--amber)">Pending Installs</h3><button class="btn btn-sm" onclick="showPage('jobs',document.querySelector('[data-page=jobs]'))">View all</button></div>
+          <div class="card-head"><h3 style="color:#d97706">Pending Installs</h3><button class="btn btn-sm" onclick="showPage('jobs',document.querySelector('[data-page=jobs]'))">View all</button></div>
           <div id="dash-installs-pending"><div class="empty"><i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i><p>Loading...</p></div></div>
         </div>
         <div class="card" id="dash-incomplete-card" style="margin-top:16px;display:none">
-          <div class="card-head"><h3 style="color:#f97316">Incomplete Installs</h3></div>
+          <div class="card-head"><h3 style="color:#ea580c">Incomplete Installs</h3></div>
           <div id="dash-installs-incomplete"></div>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>Recent clients</h3><button class="btn btn-sm" onclick="showPage('clients',document.querySelector('[data-page=clients]'))">View all</button></div>
-          <div class="table-wrap"><table><thead><tr><th>Company</th><th>Account #</th><th>Services</th><th>Sites</th><th>Jobs</th></tr></thead><tbody id="dash-clients"></tbody></table></div>
         </div>
       </div>
 
@@ -956,15 +952,6 @@ async function loadDashboard(){
     document.getElementById('dash-installs-incomplete').innerHTML = incomplete.length ? incomplete.map(installCard).join('') : '';
     document.getElementById('dash-incomplete-card').style.display = incomplete.length ? '' : 'none';
 
-    // Recent clients
-    document.getElementById('dash-clients').innerHTML = [...allClients].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5).map(c=>`
-      <tr class="clickable" onclick="openClientProfile('${c.id}')">
-        <td><strong style="font-weight:500">${esc(c.company)}</strong></td>
-        <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.account_number)||'—'}</td>
-        <td>${svcBadges(c)}</td>
-        <td>${(c.sites||[]).length}</td>
-        <td>${(c.jobs||[]).length}</td>
-      </tr>`).join('') || `<tr><td colspan="5"><div class="empty"><i class="ti ti-users"></i><p>No clients yet.</p></div></td></tr>`;
 
     setSyncStatus('ok');
   } catch(e){ setSyncStatus('error'); toast('Dashboard load error: '+e.message,'error'); }
