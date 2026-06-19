@@ -675,9 +675,9 @@ function statusBadge(s){
 }
 function svcLabel(c){
   const svcs = [];
-  if(c?.svc_internet) svcs.push('Internet');
   if(c?.svc_webex)    svcs.push('Webex');
   if(c?.svc_nec)      svcs.push('NEC');
+  if(c?.svc_internet) svcs.push('Internet');
   if(!svcs.length) return '—';
   if(svcs.length === 1) return svcs[0];
   return svcs.slice(0,-1).join(', ') + ' and ' + svcs[svcs.length-1];
