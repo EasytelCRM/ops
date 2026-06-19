@@ -525,13 +525,13 @@ select.fi { cursor: pointer; }
             <h3 id="jobs-installs-count">New Installs</h3>
             <button class="btn btn-primary btn-sm" id="btn-add-job-list" onclick="openJobModal(null)" style="display:none"><i class="ti ti-plus"></i> Log job</button>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-installs-tbody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Account #</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-installs-tbody"></tbody></table></div>
         </div>
         <div class="card" style="margin-top:16px">
           <div class="card-head">
             <h3 id="jobs-service-count">Service Tickets</h3>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-service-tbody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Account #</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-service-tbody"></tbody></table></div>
         </div>
       </div>
 
@@ -550,7 +550,7 @@ select.fi { cursor: pointer; }
             <h3 id="porting-count">Porting tickets</h3>
             <button class="btn btn-primary btn-sm" id="btn-add-porting" onclick="openPortingModal(null)" style="display:none"><i class="ti ti-plus"></i> Log port</button>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Client</th><th>Ticket number</th><th>Losing carrier</th><th>Port date</th><th>Status</th><th></th></tr></thead><tbody id="porting-tbody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Ticket number</th><th>Client</th><th>Account #</th><th>Losing carrier</th><th>Port date</th><th>Status</th><th></th></tr></thead><tbody id="porting-tbody"></tbody></table></div>
         </div>
       </div>
 
@@ -911,7 +911,7 @@ async function loadDashboard(){
   try {
     const [{ data: clients }, { data: jobs }] = await Promise.all([
       sb.from('clients').select('*,sites(id),jobs(id,type,status)'),
-      sb.from('jobs').select('*,clients(company),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('due_date',{ascending:true,nullsFirst:false}).limit(6)
+      sb.from('jobs').select('*,clients(company,account_number),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('due_date',{ascending:true,nullsFirst:false}).limit(6)
     ]);
     allClients = clients || [];
     allJobs    = jobs    || [];
@@ -1138,7 +1138,7 @@ async function saveCreds(){
 async function loadJobs(){
   setSyncStatus('syncing');
   try {
-    const { data } = await sb.from('jobs').select('*,clients(company),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('due_date',{ascending:true,nullsFirst:false});
+    const { data } = await sb.from('jobs').select('*,clients(company,account_number),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('due_date',{ascending:true,nullsFirst:false});
     allJobs = data || [];
     renderJobsList();
     setSyncStatus('ok');
@@ -1151,6 +1151,7 @@ function renderJobsList(){
     <tr class="job-row">
       <td>${isAdminOrOps()||j.assigned_to===currentUser?.id?`<span class="job-link" onclick="openJobModal('${j.id}')">${esc(j.title)}</span>`:`<span style="font-weight:500">${esc(j.title)}</span>`}</td>
       <td><span style="color:var(--accent);cursor:pointer" onclick="openClientProfile('${j.client_id}')">${esc(j.clients?.company||'Unknown')}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${esc(j.clients?.account_number||'—')}</td>
       <td style="color:var(--text2);font-size:12px">${esc(j.sites?.name||'—')}</td>
       <td>${statusBadge(j.status)}</td>
       <td style="font-size:12px;color:var(--text2)">${esc(j.profiles?.full_name||'—')}</td>
@@ -1170,8 +1171,8 @@ function renderJobsList(){
   if(!tbI||!tbS) return;
   document.getElementById('jobs-installs-count').textContent = `New Installs (${installs.length})`;
   document.getElementById('jobs-service-count').textContent  = `Service Tickets (${service.length})`;
-  tbI.innerHTML = installs.length ? installs.map(jobRow).join('') : `<tr><td colspan="8"><div class="empty"><i class="ti ti-tool"></i><p>No new installs found.</p></div></td></tr>`;
-  tbS.innerHTML = service.length  ? service.map(jobRow).join('')  : `<tr><td colspan="8"><div class="empty"><i class="ti ti-tool"></i><p>No service tickets found.</p></div></td></tr>`;
+  tbI.innerHTML = installs.length ? installs.map(jobRow).join('') : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No new installs found.</p></div></td></tr>`;
+  tbS.innerHTML = service.length  ? service.map(jobRow).join('')  : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No service tickets found.</p></div></td></tr>`;
 }
 
 // ============================================================
@@ -1188,7 +1189,7 @@ async function loadPorting(){
   setSyncStatus('syncing');
   try {
     const [{ data: ports }, { data: clients }] = await Promise.all([
-      sb.from('porting').select('*,clients(company)').order('port_date',{ascending:true,nullsFirst:false}),
+      sb.from('porting').select('*,clients(company,account_number)').order('port_date',{ascending:true,nullsFirst:false}),
       sb.from('clients').select('id,company').order('company')
     ]);
     allPorting = ports || [];
@@ -1210,14 +1211,15 @@ function renderPortingList(){
   if(!tb) return;
   tb.innerHTML = f.length ? f.map(p=>`
     <tr class="job-row" onclick="openPortingModal('${p.id}')" style="cursor:pointer">
-      <td><span style="color:var(--accent);cursor:pointer" onclick="event.stopPropagation();openClientProfile('${p.client_id}')">${esc(p.clients?.company||'Unknown')}</span></td>
       <td style="font-weight:500">${esc(p.phone_numbers)}</td>
+      <td><span style="color:var(--accent);cursor:pointer" onclick="event.stopPropagation();openClientProfile('${p.client_id}')">${esc(p.clients?.company||'Unknown')}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${esc(p.clients?.account_number||'—')}</td>
       <td style="color:var(--text2);font-size:12px">${esc(p.losing_carrier)}</td>
       <td style="font-size:12px;color:var(--text2)">${fmtDate(p.port_date)}${p.port_time?` <span style="color:var(--text3)">${p.port_time.slice(0,5)}</span>`:''}</td>
       <td>${portingStatusBadge(p.status)}</td>
       <td>${isAdminOrOps()?`<button class="btn btn-sm btn-danger hover-del" onclick="event.stopPropagation();deletePorting('${p.id}')"><i class="ti ti-trash"></i></button>`:''}</td>
     </tr>`).join('')
-    : `<tr><td colspan="6"><div class="empty"><i class="ti ti-phone-outgoing"></i><p>No porting tickets found.</p></div></td></tr>`;
+    : `<tr><td colspan="7"><div class="empty"><i class="ti ti-phone-outgoing"></i><p>No porting tickets found.</p></div></td></tr>`;
 }
 
 function portingStatusBadge(s){
