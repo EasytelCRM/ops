@@ -52,7 +52,10 @@ body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); col
 .app { display: flex; height: 100vh; overflow: hidden; }
 
 /* ── Sidebar ── */
-.sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; transition: transform 0.25s ease; }
+.sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; transition: transform 0.25s ease, width 0.2s ease, min-width 0.2s ease, border 0.2s ease; }
+.app.nav-collapsed .sidebar { width: 0; min-width: 0; border-right: none; }
+.nav-toggle { background: none; border: none; cursor: pointer; color: var(--text2); font-size: 18px; padding: 4px; display: flex; align-items: center; flex-shrink: 0; }
+.nav-toggle:hover { color: var(--text); }
 .logo { padding: 1.25rem 1rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
 .logo-icon { width: 30px; height: 30px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; flex-shrink: 0; }
 .logo h1 { font-size: 14px; font-weight: 600; }
@@ -398,6 +401,7 @@ select.fi { cursor: pointer; }
   <div class="main">
     <div class="topbar">
       <button class="topbar-menu" onclick="openSidebar()"><i class="ti ti-menu-2"></i></button>
+      <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
@@ -799,9 +803,15 @@ async function boot(){
   }
 }
 
+function toggleNav(){
+  const collapsed = document.getElementById('app').classList.toggle('nav-collapsed');
+  localStorage.setItem('navCollapsed', collapsed ? '1' : '');
+}
+
 async function initApp(){
   const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   currentProfile = profile;
+  if(localStorage.getItem('navCollapsed')) document.getElementById('app').classList.add('nav-collapsed');
 
   // Update UI with user info
   document.getElementById('user-name').textContent  = profile?.full_name || currentUser.email;
