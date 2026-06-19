@@ -421,7 +421,7 @@ select.fi { cursor: pointer; }
         </div>
         <div class="card">
           <div class="card-head"><h3 style="color:#c8a03c">Pending Installs</h3><button class="btn btn-sm" onclick="showPage('jobs',document.querySelector('[data-page=jobs]'))">View all</button></div>
-          <div id="dash-installs-pending"><div class="empty"><i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i><p>Loading...</p></div></div>
+          <div id="dash-installs-pending" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="empty" style="grid-column:1/-1"><i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i><p>Loading...</p></div></div>
         </div>
         <div class="card" id="dash-incomplete-card" style="margin-top:16px;display:none">
           <div class="card-head"><h3 style="color:#c47844">Incomplete Installs</h3></div>
@@ -948,7 +948,7 @@ async function loadDashboard(){
         </div>`;
     const pending    = allJobs.filter(j=>j.status==='Pending');
     const incomplete = allJobs.filter(j=>j.status==='Incomplete');
-    document.getElementById('dash-installs-pending').innerHTML   = pending.length   ? pending.map(installCard).join('')   : `<div class="empty"><i class="ti ti-tool"></i><p>No pending installs.</p></div>`;
+    document.getElementById('dash-installs-pending').innerHTML   = pending.length   ? pending.map(installCard).join('')   : `<div class="empty" style="grid-column:1/-1"><i class="ti ti-tool"></i><p>No pending installs.</p></div>`;
     document.getElementById('dash-installs-incomplete').innerHTML = incomplete.length ? incomplete.map(installCard).join('') : '';
     document.getElementById('dash-incomplete-card').style.display = incomplete.length ? '' : 'none';
 
