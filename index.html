@@ -1424,7 +1424,12 @@ function openClientModal(id){
     <div class="modal-hdr"><h3>${isEdit?'Edit client':'New client'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
     <div class="form-group"><label class="lbl">Account number</label><input class="fi" id="f-acct" value="${esc(c.account_number||'')}" placeholder="ACC-10042"></div>
     <div class="form-row">
-      <div class="form-group"><label class="lbl">Company name *</label><input class="fi" id="f-company" value="${esc(c.company||'')}" placeholder="Acme Pty Ltd"></div>
+      <div class="form-group"><label class="lbl">Company name *</label>
+        <div style="position:relative">
+          <input class="fi" id="f-company" value="${esc(c.company||'')}" placeholder="Acme Pty Ltd" autocomplete="off" oninput="searchCompanySuggestions(this.value,'${id||''}')" onblur="setTimeout(()=>{const b=document.getElementById('company-suggestions');if(b)b.style.display='none'},150)">
+          <div id="company-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-top:4px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.2)"></div>
+        </div>
+      </div>
       <div class="form-group"><label class="lbl">Phone</label><input class="fi" id="f-phone" value="${esc(c.phone||'')}" placeholder="02 9000 0000"></div>
     </div>
     <div class="form-group"><label class="lbl">Email</label><input class="fi" id="f-email" value="${esc(c.email||'')}" placeholder="info@company.com.au"></div>
@@ -1452,6 +1457,22 @@ function openClientModal(id){
   </div>`);
 }
 
+function searchCompanySuggestions(q, excludeId=''){
+  const box = document.getElementById('company-suggestions');
+  if(!box) return;
+  if(!q || q.length < 2){ box.style.display='none'; return; }
+  const matches = allClients.filter(c=>c.id!==excludeId && c.company.toLowerCase().includes(q.toLowerCase())).slice(0,6);
+  if(!matches.length){ box.style.display='none'; return; }
+  box.innerHTML = matches.map(c=>`
+    <div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:14px;display:flex;align-items:center;gap:10px"
+         onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''"
+         onmousedown="event.preventDefault();closeModal();openClientProfile('${c.id}')">
+      <span style="font-weight:500;flex:1">${esc(c.company)}</span>
+      ${c.account_number?`<span style="font-size:12px;color:var(--text2)">${esc(c.account_number)}</span>`:''}
+    </div>`).join('');
+  box.style.display='block';
+}
+
 async function submitAddClient(){
   const company = document.getElementById('f-company').value.trim();
   if(!company){ toast('Company name is required','warn'); return; }
@@ -1472,7 +1493,7 @@ async function submitAddClient(){
       if(sErr) throw sErr;
     }
     closeModal(); toast('Client added'); loadClients();
-  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+  } catch(e){ setSyncStatus('error'); toast(e.message?.includes('clients_company_unique')?'A client with that company name already exists':'Save failed: '+e.message,'error'); }
 }
 
 async function submitEditClient(id){
@@ -1484,7 +1505,7 @@ async function submitEditClient(id){
     await logAudit('updated','clients',id,old,payload);
     closeModal(); toast('Client updated');
     if(currentPage==='client-profile') loadClientProfile(id); else loadClients();
-  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+  } catch(e){ setSyncStatus('error'); toast(e.message?.includes('clients_company_unique')?'A client with that company name already exists':'Save failed: '+e.message,'error'); }
 }
 
 async function deleteClient(id){
