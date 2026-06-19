@@ -936,7 +936,7 @@ async function loadDashboard(){
     document.getElementById('stat-service').textContent  = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.type==='Service').length, 0);
 
     // Recent jobs
-    const installCard = j => `<div class="job-card" onclick="openJobModal('${j.id}')" style="cursor:pointer">
+    const installCard = j => `<div class="job-card" onclick="openJobModal('${j.id}')" style="cursor:pointer;border-left:3px solid ${j.status==='Incomplete'?'#f97316':'var(--amber)'}">
           <div class="job-body">
             <div class="job-title">${esc(j.clients?.company||'Unknown')}</div>
             <div class="job-meta">
