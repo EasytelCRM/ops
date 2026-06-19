@@ -421,7 +421,11 @@ select.fi { cursor: pointer; }
         </div>
         <div class="card">
           <div class="card-head"><h3>Pending Installs</h3><button class="btn btn-sm" onclick="showPage('jobs',document.querySelector('[data-page=jobs]'))">View all</button></div>
-          <div id="dash-jobs"><div class="empty"><i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i><p>Loading...</p></div></div>
+          <div id="dash-installs-pending"><div class="empty"><i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i><p>Loading...</p></div></div>
+        </div>
+        <div class="card" id="dash-incomplete-card" style="margin-top:16px;display:none">
+          <div class="card-head"><h3>Incomplete Installs</h3></div>
+          <div id="dash-installs-incomplete"></div>
         </div>
         <div class="card">
           <div class="card-head"><h3>Recent clients</h3><button class="btn btn-sm" onclick="showPage('clients',document.querySelector('[data-page=clients]'))">View all</button></div>
@@ -932,12 +936,11 @@ async function loadDashboard(){
     document.getElementById('stat-service').textContent  = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.type==='Service').length, 0);
 
     // Recent jobs
-    document.getElementById('dash-jobs').innerHTML = allJobs.length
-      ? allJobs.map(j=>`<div class="job-card" onclick="openJobModal('${j.id}')" style="cursor:pointer">
+    const installCard = j => `<div class="job-card" onclick="openJobModal('${j.id}')" style="cursor:pointer">
           <div class="job-body">
-            <div class="job-title">${svcLabel(j.clients)}</div>
+            <div class="job-title">${esc(j.clients?.company||'Unknown')}</div>
             <div class="job-meta">
-              <span>${esc(j.clients?.company||'Unknown')}</span>
+              <span>${svcLabel(j.clients)}</span>
               ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
               ${j.profiles?.full_name?`<span><i class="ti ti-user" style="font-size:11px"></i> ${esc(j.profiles.full_name)}</span>`:''}
             </div>
@@ -946,8 +949,12 @@ async function loadDashboard(){
             ${j.due_date?`<div>Due: ${fmtDate(j.due_date)}</div>`:''}
             ${j.approval_date?`<div style="color:var(--accent)">Approved: ${fmtDate(j.approval_date)}</div>`:''}
           </div>
-        </div>`).join('')
-      : `<div class="empty"><i class="ti ti-tool"></i><p>No pending installs.</p></div>`;
+        </div>`;
+    const pending    = allJobs.filter(j=>j.status==='Pending');
+    const incomplete = allJobs.filter(j=>j.status==='Incomplete');
+    document.getElementById('dash-installs-pending').innerHTML   = pending.length   ? pending.map(installCard).join('')   : `<div class="empty"><i class="ti ti-tool"></i><p>No pending installs.</p></div>`;
+    document.getElementById('dash-installs-incomplete').innerHTML = incomplete.length ? incomplete.map(installCard).join('') : '';
+    document.getElementById('dash-incomplete-card').style.display = incomplete.length ? '' : 'none';
 
     // Recent clients
     document.getElementById('dash-clients').innerHTML = [...allClients].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,5).map(c=>`
