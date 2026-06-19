@@ -415,8 +415,8 @@ select.fi { cursor: pointer; }
       <div class="page active" id="page-dashboard">
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">Clients</div><div class="stat-value" id="stat-clients">—</div><div class="stat-sub">Active accounts</div></div>
-          <div class="stat-card"><div class="stat-label">Open jobs</div><div class="stat-value" id="stat-open">—</div><div class="stat-sub">Pending</div></div>
-          <div class="stat-card"><div class="stat-label">New installs</div><div class="stat-value" id="stat-installs">—</div><div class="stat-sub">All time</div></div>
+          <div class="stat-card"><div class="stat-label">Pending Installs</div><div class="stat-value" id="stat-open">—</div><div class="stat-sub">Awaiting completion</div></div>
+          <div class="stat-card"><div class="stat-label">Incomplete Installs</div><div class="stat-value" id="stat-installs">—</div><div class="stat-sub">Needs attention</div></div>
           <div class="stat-card"><div class="stat-label">Service tickets</div><div class="stat-value" id="stat-service">—</div><div class="stat-sub">All time</div></div>
         </div>
         <div class="card">
@@ -927,8 +927,8 @@ async function loadDashboard(){
     allJobs    = jobs    || [];
 
     document.getElementById('stat-clients').textContent  = allClients.length;
-    document.getElementById('stat-open').textContent     = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.status!=='Complete').length, 0);
-    document.getElementById('stat-installs').textContent = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.type==='New Install').length, 0);
+    document.getElementById('stat-open').textContent     = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.type==='New Install'&&j.status==='Pending').length, 0);
+    document.getElementById('stat-installs').textContent = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.type==='New Install'&&j.status==='Incomplete').length, 0);
     document.getElementById('stat-service').textContent  = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.type==='Service').length, 0);
 
     // Recent jobs
