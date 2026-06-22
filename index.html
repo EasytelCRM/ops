@@ -945,10 +945,6 @@ async function loadDashboard(){
     allClients = clients || [];
     allJobs    = jobs    || [];
 
-    document.getElementById('stat-clients').textContent  = allClients.length;
-    document.getElementById('stat-open').textContent     = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.type==='New Install'&&j.status==='Pending').length, 0);
-    document.getElementById('stat-installs').textContent = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.type==='New Install'&&j.status==='Incomplete').length, 0);
-    document.getElementById('stat-service').textContent  = allClients.reduce((a,c)=>a+(c.jobs||[]).filter(j=>j.type==='Service').length, 0);
 
     // Recent jobs
     const installCard = j => `<div class="job-card" onclick="openJobModal('${j.id}')" style="cursor:pointer;${j.status==='Pending'&&j.approval_date&&(new Date()-new Date(j.approval_date))>604800000&&!j.due_date?'border-left:3px solid var(--red)':''}">
