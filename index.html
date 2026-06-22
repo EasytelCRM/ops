@@ -407,6 +407,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
+        <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">v1.0.0</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -862,9 +863,7 @@ function showPage(name, el, _push=true){
   document.getElementById('topbar-title').textContent = titles[name] || name;
   // Update top CTA
   const cta = document.getElementById('topbar-cta');
-  if(name==='clients' && isAdminOrOps()) cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openClientModal()"><i class="ti ti-plus"></i> Add client</button>`;
-  else if(name==='jobs') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openJobModal(null)"><i class="ti ti-plus"></i> Log job</button>`;
-  else if(name==='porting') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openPortingModal(null)"><i class="ti ti-plus"></i> Log port</button>`;
+  if(name==='porting') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openPortingModal(null)"><i class="ti ti-plus"></i> Log port</button>`;
   else cta.innerHTML = '';
   closeSidebar();
   if(_push) history.pushState({ type: 'page', name }, '');
