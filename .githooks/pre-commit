@@ -1,0 +1,17 @@
+#!/bin/sh
+python3 -c "
+import re, sys
+with open('index.html', 'r', encoding='utf-8') as f:
+    content = f.read()
+m = re.search(r'v(\d+)\.(\d+)\.(\d+)', content)
+if not m:
+    sys.exit(0)
+major, minor, patch = m.groups()
+new_ver = 'v{}.{}.{}'.format(major, minor, int(patch)+1)
+old_ver = m.group(0)
+content = content.replace(old_ver, new_ver, 1)
+with open('index.html', 'w', encoding='utf-8') as f:
+    f.write(content)
+print('Version bumped: {} -> {}'.format(old_ver, new_ver))
+"
+git add index.html
