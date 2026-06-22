@@ -531,8 +531,8 @@ select.fi { cursor: pointer; }
         <div class="card">
           <div style="display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:1rem">
             <div class="tabs" style="border-bottom:none;margin-bottom:0">
-              <div class="tab active" id="job-tab-installs" onclick="switchJobTab('installs')"><i class="ti ti-tool" style="font-size:15px"></i> New Installs <span class="tab-count" id="job-tab-installs-count">0</span></div>
-              <div class="tab" id="job-tab-service" onclick="switchJobTab('service')"><i class="ti ti-headset" style="font-size:15px"></i> Service Tickets <span class="tab-count" id="job-tab-service-count">0</span></div>
+              <div class="tab active" id="job-tab-installs" onclick="switchJobsPageTab('installs')"><i class="ti ti-tool" style="font-size:15px"></i> New Installs <span class="tab-count" id="job-tab-installs-count">0</span></div>
+              <div class="tab" id="job-tab-service" onclick="switchJobsPageTab('service')"><i class="ti ti-headset" style="font-size:15px"></i> Service Tickets <span class="tab-count" id="job-tab-service-count">0</span></div>
             </div>
             <button class="btn btn-primary btn-sm" id="btn-add-job-list" onclick="openJobModal(null)" style="display:none;margin-bottom:8px"><i class="ti ti-plus"></i> Log job</button>
           </div>
@@ -922,8 +922,8 @@ function switchJobTab(tab, el){
   if(notesPanel) notesPanel.style.display = tab==='notes' ? 'flex' : 'none';
 }
 
-// ── Job tabs ──
-function switchJobTab(tab){
+// ── Jobs page tabs ──
+function switchJobsPageTab(tab){
   ['installs','service'].forEach(t=>{
     document.getElementById('job-tab-'+t).classList.toggle('active', t===tab);
     document.getElementById('job-panel-'+t).style.display = t===tab ? '' : 'none';
