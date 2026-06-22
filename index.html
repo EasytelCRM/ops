@@ -528,17 +528,19 @@ select.fi { cursor: pointer; }
           <button class="filter-btn" onclick="setJobFilter('status','all',this)">All statuses</button>
         </div>
         <div class="card">
-          <div class="card-head">
-            <h3 id="jobs-installs-count">New Installs</h3>
-            <button class="btn btn-primary btn-sm" id="btn-add-job-list" onclick="openJobModal(null)" style="display:none"><i class="ti ti-plus"></i> Log job</button>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:1rem">
+            <div class="tabs" style="border-bottom:none;margin-bottom:0">
+              <div class="tab active" id="job-tab-installs" onclick="switchJobTab('installs')"><i class="ti ti-tool" style="font-size:15px"></i> New Installs <span class="tab-count" id="job-tab-installs-count">0</span></div>
+              <div class="tab" id="job-tab-service" onclick="switchJobTab('service')"><i class="ti ti-headset" style="font-size:15px"></i> Service Tickets <span class="tab-count" id="job-tab-service-count">0</span></div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btn-add-job-list" onclick="openJobModal(null)" style="display:none;margin-bottom:8px"><i class="ti ti-plus"></i> Log job</button>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Account #</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Approval Date</th><th></th></tr></thead><tbody id="jobs-installs-tbody"></tbody></table></div>
-        </div>
-        <div class="card" style="margin-top:16px">
-          <div class="card-head">
-            <h3 id="jobs-service-count">Service Tickets</h3>
+          <div id="job-panel-installs">
+            <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Account #</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Approval Date</th><th></th></tr></thead><tbody id="jobs-installs-tbody"></tbody></table></div>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Account #</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-service-tbody"></tbody></table></div>
+          <div id="job-panel-service" style="display:none">
+            <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Account #</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-service-tbody"></tbody></table></div>
+          </div>
         </div>
       </div>
 
@@ -918,6 +920,14 @@ function switchJobTab(tab, el){
   if(notesPanel) notesPanel.style.display = tab==='notes' ? 'flex' : 'none';
 }
 
+// ── Job tabs ──
+function switchJobTab(tab){
+  ['installs','service'].forEach(t=>{
+    document.getElementById('job-tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('job-panel-'+t).style.display = t===tab ? '' : 'none';
+  });
+}
+
 // ── Job filters ──
 function setJobFilter(key, val, el){
   jobFilters[key] = val;
@@ -1187,8 +1197,8 @@ function renderJobsList(){
   const tbI = document.getElementById('jobs-installs-tbody');
   const tbS = document.getElementById('jobs-service-tbody');
   if(!tbI||!tbS) return;
-  document.getElementById('jobs-installs-count').textContent = `New Installs (${installs.length})`;
-  document.getElementById('jobs-service-count').textContent  = `Service Tickets (${service.length})`;
+  document.getElementById('job-tab-installs-count').textContent = installs.length;
+  document.getElementById('job-tab-service-count').textContent  = service.length;
   tbI.innerHTML = installs.length ? installs.map(j=>jobRow(j,true)).join('') : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No new installs found.</p></div></td></tr>`;
   tbS.innerHTML = service.length  ? service.map(j=>jobRow(j,false)).join('')  : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No service tickets found.</p></div></td></tr>`;
 }
