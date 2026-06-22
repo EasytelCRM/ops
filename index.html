@@ -848,6 +848,7 @@ async function initApp(){
 
   showScreen('app');
   await loadDashboard();
+  setInterval(()=>{ if(currentPage==='dashboard') loadDashboard(); }, 60000);
 }
 
 // ============================================================
