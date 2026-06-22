@@ -139,6 +139,7 @@ tr.clickable:hover td { background: var(--bg); }
    BADGES
 ============================================================ */
 .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+.badge-sm { font-size: 10px; padding: 1px 6px; }
 .badge-blue { background: var(--accent-light); color: var(--accent-text); }
 .badge-nec { background: #1a2342; color: #4a8fd4; }
 .badge-green { background: var(--green-light); color: var(--green); }
@@ -693,11 +694,12 @@ function svcLabel(c){
 function typeBadge(t){
   return t==='New Install' ? `<span class="badge badge-blue">New Install</span>` : `<span class="badge badge-gray">Service</span>`;
 }
-function svcBadges(c){
+function svcBadges(c, sm=false){
+  const cls = sm ? 'badge badge-sm' : 'badge';
   let b = '';
-  if(c?.svc_webex)    b += `<span class="badge badge-purple" style="margin-right:3px">Webex</span>`;
-  if(c?.svc_nec)      b += `<span class="badge badge-nec" style="margin-right:3px">NEC</span>`;
-  if(c?.svc_internet) b += `<span class="badge badge-green" style="margin-right:3px">Internet</span>`;
+  if(c?.svc_webex)    b += `<span class="${cls} badge-purple">Webex</span>`;
+  if(c?.svc_nec)      b += `<span class="${cls} badge-nec">NEC</span>`;
+  if(c?.svc_internet) b += `<span class="${cls} badge-green">Internet</span>`;
   return b || '<span style="color:var(--text3);font-size:12px">None</span>';
 }
 
@@ -957,9 +959,8 @@ async function loadDashboard(){
     // Recent jobs
     const installCard = j => `<div class="job-card" onclick="openJobModal('${j.id}')" style="cursor:pointer;${j.status==='Pending'&&j.approval_date&&(new Date()-new Date(j.approval_date))>604800000&&!j.due_date?'border-left:3px solid var(--red)':''}">
           <div class="job-body">
-            <div class="job-title">${esc(j.clients?.company||'Unknown')}</div>
+            <div class="job-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${esc(j.clients?.company||'Unknown')}<span style="display:flex;gap:4px">${svcBadges(j.clients,true)}</span></div>
             <div class="job-meta">
-              ${svcBadges(j.clients)}
               ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
               ${j.profiles?.full_name?`<span><i class="ti ti-user" style="font-size:11px"></i> ${esc(j.profiles.full_name)}</span>`:''}
             </div>
