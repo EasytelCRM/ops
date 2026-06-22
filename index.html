@@ -142,6 +142,7 @@ tr.clickable:hover td { background: var(--bg); }
 .badge-blue { background: var(--accent-light); color: var(--accent-text); }
 .badge-green { background: var(--green-light); color: var(--green); }
 .badge-amber { background: var(--amber-light); color: var(--amber); }
+.badge-purple { background: #ede9fe; color: #7c3aed; }
 .badge-red { background: var(--red-light); color: var(--red); }
 .badge-gray { background: var(--bg); color: var(--text2); border: 1px solid var(--border); }
 
@@ -691,9 +692,9 @@ function typeBadge(t){
 }
 function svcBadges(c){
   let b = '';
-  if(c.svc_internet) b += `<span class="badge badge-blue" style="margin-right:3px">Internet</span>`;
-  if(c.svc_webex)    b += `<span class="badge badge-green" style="margin-right:3px">Webex</span>`;
-  if(c.svc_nec)      b += `<span class="badge badge-amber" style="margin-right:3px">NEC</span>`;
+  if(c?.svc_internet) b += `<span class="badge badge-green" style="margin-right:3px">Internet</span>`;
+  if(c?.svc_webex)    b += `<span class="badge badge-purple" style="margin-right:3px">Webex</span>`;
+  if(c?.svc_nec)      b += `<span class="badge badge-blue" style="margin-right:3px">NEC</span>`;
   return b || '<span style="color:var(--text3);font-size:12px">None</span>';
 }
 
@@ -946,7 +947,7 @@ async function loadDashboard(){
           <div class="job-body">
             <div class="job-title">${esc(j.clients?.company||'Unknown')}</div>
             <div class="job-meta">
-              <span>${svcLabel(j.clients)}</span>
+              ${svcBadges(j.clients)}
               ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
               ${j.profiles?.full_name?`<span><i class="ti ti-user" style="font-size:11px"></i> ${esc(j.profiles.full_name)}</span>`:''}
             </div>
