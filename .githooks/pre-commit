@@ -1,5 +1,10 @@
 #!/bin/sh
-python3 -c "
+PYTHON=$(command -v python3 || command -v python || command -v py)
+if [ -z "$PYTHON" ]; then
+  echo "Warning: Python not found, skipping version bump"
+  exit 0
+fi
+$PYTHON -c "
 import re, sys
 with open('index.html', 'r', encoding='utf-8') as f:
     content = f.read()
