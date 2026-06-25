@@ -408,7 +408,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.3</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.4</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -1205,7 +1205,7 @@ async function loadPorting(){
   setSyncStatus('syncing');
   try {
     const [{ data: ports }, { data: clients }] = await Promise.all([
-      sb.from('porting').select('*,clients(company,account_number)').order('port_date',{ascending:true,nullsFirst:false}),
+      sb.from('porting').select('*,clients(company,account_number)').order('port_date',{ascending:true,nullsFirst:false}).order('port_time',{ascending:true,nullsFirst:false}),
       sb.from('clients').select('id,company').order('company')
     ]);
     allPorting = ports || [];
@@ -1487,7 +1487,9 @@ function searchCompanySuggestions(q, excludeId=''){
 async function submitAddClient(){
   const company = document.getElementById('f-company').value.trim();
   if(!company){ toast('Company name is required','warn'); return; }
-  const payload = { company, account_number: document.getElementById('f-acct').value.trim(), phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), svc_internet: document.getElementById('f-internet').checked, svc_webex: document.getElementById('f-webex').checked, svc_nec: document.getElementById('f-nec').checked, created_by: currentUser.id };
+  const acctNum = document.getElementById('f-acct').value.trim();
+  if(acctNum && allClients.some(c=>c.account_number===acctNum)){ toast('Account number already in use','error'); return; }
+  const payload = { company, account_number: acctNum, phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), svc_internet: document.getElementById('f-internet').checked, svc_webex: document.getElementById('f-webex').checked, svc_nec: document.getElementById('f-nec').checked, created_by: currentUser.id };
   setSyncStatus('syncing');
   try {
     const { data, error } = await sb.from('clients').insert(payload).select().single();
@@ -1508,7 +1510,9 @@ async function submitAddClient(){
 }
 
 async function submitEditClient(id){
-  const payload = { company: document.getElementById('f-company').value.trim(), account_number: document.getElementById('f-acct').value.trim(), phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), svc_internet: document.getElementById('f-internet').checked, svc_webex: document.getElementById('f-webex').checked, svc_nec: document.getElementById('f-nec').checked };
+  const acctNum = document.getElementById('f-acct').value.trim();
+  if(acctNum && allClients.some(c=>c.account_number===acctNum && c.id!==id)){ toast('Account number already in use','error'); return; }
+  const payload = { company: document.getElementById('f-company').value.trim(), account_number: acctNum, phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), svc_internet: document.getElementById('f-internet').checked, svc_webex: document.getElementById('f-webex').checked, svc_nec: document.getElementById('f-nec').checked };
   setSyncStatus('syncing');
   try {
     const old = allClients.find(c=>c.id===id)||{};
