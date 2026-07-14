@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.2">
+<meta name="version" content="v1.0.3">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -1419,15 +1419,25 @@ function fmtAuditVal(key, val){
 }
 
 function auditDiff(a){
-  if(a.action!=='updated') return '';
-  const oldD = a.old_data||{}, newD = a.new_data||{};
   const rows = [];
-  Object.keys(newD).forEach(k=>{
-    if(auditNorm(oldD[k]) === auditNorm(newD[k])) return;
-    const label = esc(AUDIT_LABELS[k] || k);
-    if(AUDIT_SENSITIVE.has(k)){ rows.push(`<div class="audit-change">${label}: <em>changed</em></div>`); return; }
-    rows.push(`<div class="audit-change">${label}: <span class="audit-old">${esc(fmtAuditVal(k,oldD[k]))}</span> → <span class="audit-new">${esc(fmtAuditVal(k,newD[k]))}</span></div>`);
-  });
+  if(a.action==='updated'){
+    const oldD = a.old_data||{}, newD = a.new_data||{};
+    Object.keys(newD).forEach(k=>{
+      if(auditNorm(oldD[k]) === auditNorm(newD[k])) return;
+      const label = esc(AUDIT_LABELS[k] || k);
+      if(AUDIT_SENSITIVE.has(k)){ rows.push(`<div class="audit-change">${label}: <em>changed</em></div>`); return; }
+      rows.push(`<div class="audit-change">${label}: <span class="audit-old">${esc(fmtAuditVal(k,oldD[k]))}</span> → <span class="audit-new">${esc(fmtAuditVal(k,newD[k]))}</span></div>`);
+    });
+  } else if(a.action==='created'){
+    const newD = a.new_data||{};
+    Object.keys(newD).forEach(k=>{
+      const v = newD[k];
+      if(v===null || v===undefined || v==='' || (typeof v==='boolean' && !v) || (Array.isArray(v) && !v.length)) return;
+      const label = esc(AUDIT_LABELS[k] || k);
+      if(AUDIT_SENSITIVE.has(k)){ rows.push(`<div class="audit-change">${label}: <em>set</em></div>`); return; }
+      rows.push(`<div class="audit-change">${label}: <span class="audit-new">${esc(fmtAuditVal(k,v))}</span></div>`);
+    });
+  }
   return rows.length ? `<div class="audit-changes">${rows.join('')}</div>` : '';
 }
 
