@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.1">
+<meta name="version" content="v1.0.2">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -264,6 +264,10 @@ select.fi { cursor: pointer; }
 .audit-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 4px; }
 .audit-text { flex: 1; color: var(--text2); line-height: 1.5; }
 .audit-time { color: var(--text3); white-space: nowrap; }
+.audit-changes { margin-top: 5px; }
+.audit-change { font-size: 11px; color: var(--text3); line-height: 1.6; }
+.audit-old { color: var(--text3); text-decoration: line-through; }
+.audit-new { color: var(--text); }
 
 /* ============================================================
    TOAST
@@ -1384,12 +1388,47 @@ async function loadAuditLog(){
           <strong>${esc(a.user_email||'System')}</strong>
           ${esc(a.action)} a <strong>${esc(a.table_name)}</strong> record
           ${a.new_data?.title||a.new_data?.company||a.new_data?.name ? `(${esc(a.new_data?.title||a.new_data?.company||a.new_data?.name)})` : ''}
+          ${auditDiff(a)}
         </div>
         <div class="audit-time">${fmtDateTime(a.created_at)}</div>
       </div>`).join('')
       : `<div class="empty"><i class="ti ti-history"></i><p>No activity yet.</p></div>`;
     setSyncStatus('ok');
   } catch(e){ setSyncStatus('error'); toast('Error loading audit log: '+e.message,'error'); }
+}
+
+const AUDIT_LABELS = {
+  company:'Company', account_number:'Account number', phone:'Phone', email:'Email',
+  svc_internet:'Internet service', svc_webex:'Webex service', svc_nec:'NEC service',
+  system_credentials:'System credentials',
+  title:'Title', type:'Type', status:'Status', client_id:'Client', site_id:'Site',
+  assigned_to:'Assigned to', due_date:'Scheduled date', cost:'Cost', approval_date:'Approval date',
+  description:'Description', job_notes:'Job notes', text:'Text', role:'Role', notes:'Notes',
+  phone_numbers:'Phone numbers', losing_carrier:'Losing carrier', port_date:'Port date', port_time:'Port time'
+};
+const AUDIT_SENSITIVE = new Set(['system_credentials']);
+const auditNorm = v => (v===null||v===undefined||v==='') ? '' : (typeof v==='boolean' ? v : String(v));
+
+function fmtAuditVal(key, val){
+  if(val===null || val===undefined || val==='') return '(empty)';
+  if(typeof val==='boolean') return val ? 'On' : 'Off';
+  if(key==='client_id') return allClients.find(c=>c.id===val)?.company || val;
+  if(key==='assigned_to') return allProfiles.find(p=>p.id===val)?.full_name || val;
+  if(Array.isArray(val)) return val.join(', ') || '(empty)';
+  return String(val);
+}
+
+function auditDiff(a){
+  if(a.action!=='updated') return '';
+  const oldD = a.old_data||{}, newD = a.new_data||{};
+  const rows = [];
+  Object.keys(newD).forEach(k=>{
+    if(auditNorm(oldD[k]) === auditNorm(newD[k])) return;
+    const label = esc(AUDIT_LABELS[k] || k);
+    if(AUDIT_SENSITIVE.has(k)){ rows.push(`<div class="audit-change">${label}: <em>changed</em></div>`); return; }
+    rows.push(`<div class="audit-change">${label}: <span class="audit-old">${esc(fmtAuditVal(k,oldD[k]))}</span> → <span class="audit-new">${esc(fmtAuditVal(k,newD[k]))}</span></div>`);
+  });
+  return rows.length ? `<div class="audit-changes">${rows.join('')}</div>` : '';
 }
 
 async function logAudit(action, table, recordId, oldData, newData){
