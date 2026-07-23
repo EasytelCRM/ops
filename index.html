@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="version" content="v1.0.4">
+<title>Easytel CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+/* ============================================================
+   VARIABLES & RESET
+============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f4f3ef; --surface: #fff; --surface2: #f9f8f5;
+  --border: #e5e3dc; --border2: #d0cec6;
+  --text: #1a1916; --text2: #6b6960; --text3: #9e9b93;
+  --accent: #1a4f8a; --accent-light: #e8f0fa; --accent-text: #1a4f8a;
+  --green: #2d6a2d; --green-light: #eaf3ea;
+  --amber: #7a4a00; --amber-light: #fef3e2;
+  --red: #8a1a1a; --red-light: #faeaea;
+  --radius: 8px; --radius-lg: 12px;
+  --sidebar-w: 240px;
+}
+html.dark {
+  --bg: #111110; --surface: #1c1c1a; --surface2: #242422;
+  --border: #2e2e2b; --border2: #3a3a36;
+  --text: #e8e6e1; --text2: #9e9b93; --text3: #6b6960;
+  --accent: #4a8fd4; --accent-light: #1a2d42; --accent-text: #7ab3e8;
+  --green: #5a9e5a; --green-light: #1a2e1a;
+  --amber: #c4903a; --amber-light: #2e2010;
+  --red: #c46060; --red-light: #2e1a1a;
+}
+body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; min-height: 100vh; }
+
+/* ============================================================
+   LOADING / AUTH SCREENS
+============================================================ */
+.full-screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 9000; }
+.auth-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; width: 380px; max-width: 95vw; box-shadow: 0 8px 40px rgba(0,0,0,0.15); }
+.auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
+.auth-logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; }
+.auth-logo h1 { font-size: 18px; font-weight: 600; }
+.auth-logo p { font-size: 11px; color: var(--text3); }
+.spinner-wrap { text-align: center; }
+.spinner { width: 32px; height: 32px; border: 3px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   APP LAYOUT
+============================================================ */
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+/* ── Sidebar ── */
+.sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; transition: transform 0.25s ease, width 0.2s ease, min-width 0.2s ease, border 0.2s ease; }
+.app.nav-collapsed .sidebar { width: 0; min-width: 0; border-right: none; }
+.nav-toggle { background: none; border: none; cursor: pointer; color: var(--text2); font-size: 18px; padding: 4px; display: flex; align-items: center; flex-shrink: 0; }
+.nav-toggle:hover { color: var(--text); }
+.logo { padding: 1.25rem 1rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.logo-icon { width: 30px; height: 30px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; flex-shrink: 0; }
+.logo h1 { font-size: 14px; font-weight: 600; }
+.logo p { font-size: 10px; color: var(--text3); }
+nav { padding: 0.75rem 0.5rem; overflow-y: auto; flex: 1; }
+.nav-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); padding: 8px 0.75rem 4px; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 0.75rem; border-radius: var(--radius); font-size: 13px; cursor: pointer; color: var(--text2); transition: all 0.12s; user-select: none; }
+.nav-item i { font-size: 17px; flex-shrink: 0; }
+.nav-item:hover { background: var(--bg); color: var(--text); }
+.nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+.sidebar-footer { border-top: 1px solid var(--border); padding: 0.75rem; }
+.user-chip { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: var(--radius); font-size: 12px; }
+.user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; flex-shrink: 0; }
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-role { font-size: 10px; color: var(--text3); text-transform: capitalize; }
+
+/* ── Main ── */
+.main { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.75rem 1.25rem; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.topbar-menu { display: none; background: none; border: none; cursor: pointer; color: var(--text2); font-size: 20px; padding: 4px; }
+.topbar h2 { font-size: 15px; font-weight: 600; flex: 1; }
+.topbar-actions { display: flex; gap: 6px; align-items: center; }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.sync-dot.syncing { background: var(--amber); animation: pulse 1s infinite; }
+.sync-dot.error { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.content { flex: 1; overflow-y: auto; padding: 1.25rem; }
+
+/* ============================================================
+   BUTTONS
+============================================================ */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius); border: 1px solid var(--border2); background: var(--surface); color: var(--text); font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.12s; font-weight: 400; white-space: nowrap; text-decoration: none; }
+.btn:hover { background: var(--bg); }
+.btn i { font-size: 15px; }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: #163f70; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-danger { color: var(--red); border-color: #f0b8b8; }
+.btn-danger:hover { background: var(--red-light); }
+.btn-icon { padding: 6px; border-radius: var(--radius); }
+.dark-toggle { background: none; border: 1px solid var(--border2); border-radius: var(--radius); padding: 5px 9px; cursor: pointer; color: var(--text2); display: flex; align-items: center; font-size: 12px; font-family: inherit; }
+.dark-toggle:hover { background: var(--bg); }
+
+/* ============================================================
+   PAGES
+============================================================ */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ============================================================
+   STATS GRID
+============================================================ */
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 1.25rem; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem; }
+.stat-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.stat-value { font-size: 26px; font-weight: 300; letter-spacing: -1px; }
+.stat-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* ============================================================
+   CARDS
+============================================================ */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1rem; }
+.card-head { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--border); gap: 8px; }
+.card-head h3 { font-size: 13px; font-weight: 600; }
+.card-body { padding: 1.25rem; }
+.card-head-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+/* ============================================================
+   TABLES
+============================================================ */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 1rem; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface2); }
+td { padding: 10px 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: var(--bg); }
+
+/* ============================================================
+   BADGES
+============================================================ */
+.badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+.badge-sm { font-size: 10px; padding: 1px 6px; }
+.badge-blue { background: var(--accent-light); color: var(--accent-text); }
+.badge-nec { background: #1a2342; color: #4a8fd4; }
+.badge-green { background: var(--green-light); color: var(--green); }
+.badge-amber { background: var(--amber-light); color: var(--amber); }
+.badge-purple { background: #2a1a3e; color: #9b6dcc; }
+.badge-red { background: var(--red-light); color: var(--red); }
+.badge-gray { background: var(--bg); color: var(--text2); border: 1px solid var(--border); }
+
+/* ============================================================
+   FORMS
+============================================================ */
+.form-group { margin-bottom: 14px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+label.lbl { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 5px; }
+input.fi, select.fi, textarea.fi {
+  width: 100%; padding: 8px 11px; border: 1px solid var(--border2); border-radius: var(--radius);
+  font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.12s;
+}
+input.fi:focus, select.fi:focus, textarea.fi:focus { border-color: var(--accent); }
+textarea.fi { resize: vertical; min-height: 80px; line-height: 1.6; }
+input[type=number].fi::-webkit-outer-spin-button, input[type=number].fi::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number].fi { -moz-appearance: textfield; }
+select.fi { cursor: pointer; }
+.form-error { font-size: 12px; color: var(--red); margin-top: 4px; }
+.checkbox-group { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 4px; }
+.checkbox-label { display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+.checkbox-label input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+
+/* ============================================================
+   MODAL
+============================================================ */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; width: 520px; max-width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.25); }
+.modal-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+.modal-hdr h3 { font-size: 16px; font-weight: 600; }
+.modal-x { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 20px; display: flex; padding: 2px; }
+.modal-x:hover { color: var(--text); }
+.modal-ftr { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+
+/* ============================================================
+   PROFILE / DETAIL VIEW
+============================================================ */
+.profile-layout { display: grid; grid-template-columns: 280px 1fr; gap: 1rem; align-items: start; }
+.profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; position: sticky; top: 0; }
+.profile-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600; margin-bottom: 10px; }
+.profile-name { font-size: 16px; font-weight: 600; margin-bottom: 2px; }
+.profile-sub { font-size: 13px; color: var(--text2); margin-bottom: 12px; }
+.pf { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 12px; }
+.pf i { color: var(--text3); font-size: 15px; margin-top: 1px; flex-shrink: 0; }
+.pf-label { color: var(--text3); font-size: 11px; margin-bottom: 1px; }
+.pf-value { color: var(--text); word-break: break-word; }
+.profile-actions { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+
+/* ── Tabs ── */
+.tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1rem; overflow-x: auto; }
+.tab { padding: 9px 14px; font-size: 13px; cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; align-items: center; gap: 6px; transition: all 0.12s; white-space: nowrap; flex-shrink: 0; }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+.tab-count { background: var(--bg); color: var(--text3); font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
+
+/* ── Notes ── */
+.note-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 8px; }
+.note-card.pinned { border-color: var(--accent); background: var(--accent-light); }
+.note-pinned-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+.note-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.note-author { font-size: 12px; font-weight: 500; color: var(--text2); }
+.note-date { font-size: 11px; color: var(--text3); }
+.note-text { font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
+.creds-edit { width: 100%; padding: 8px; border: 1px solid var(--border2); border-radius: var(--radius); font-size: 13px; font-family: 'DM Mono', monospace; background: var(--surface); color: var(--text); resize: vertical; min-height: 80px; outline: none; line-height: 1.6; }
+.creds-edit:focus { border-color: var(--accent); }
+
+/* ── Jobs ── */
+.job-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.875rem 1rem; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; }
+.job-body { flex: 1; min-width: 0; }
+.job-title { font-size: 20px; font-weight: 500; margin-bottom: 0; }
+.job-meta { font-size: 11px; color: var(--text3); display: flex; flex-wrap: wrap; gap: 8px; }
+.job-cost { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; white-space: nowrap; }
+.job-link { cursor: pointer; font-weight: 500; }
+.job-link:hover { color: var(--accent); }
+.job-row .hover-del, .job-card .hover-del { opacity: 0; transition: opacity 0.15s; }
+.job-row:hover .hover-del, .job-card:hover .hover-del { opacity: 1; }
+.modal-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; }
+.modal-tab { padding: 8px 16px; font-size: 13px; font-weight: 500; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s; }
+.modal-tab:hover { color: var(--text2); }
+.modal-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.modal-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.modal-col { display: flex; flex-direction: column; gap: 12px; }
+
+/* ── Sites ── */
+.site-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.875rem 1rem; margin-bottom: 8px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.site-body { flex: 1; min-width: 0; }
+.site-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+.site-detail { font-size: 12px; color: var(--text2); }
+
+/* ============================================================
+   SEARCH BAR
+============================================================ */
+.search-bar { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; margin-bottom: 1rem; }
+.search-bar i { color: var(--text3); font-size: 16px; }
+.search-bar input { background: none; border: none; outline: none; font-size: 13px; color: var(--text); flex: 1; font-family: inherit; }
+
+/* ============================================================
+   EMPTY STATE
+============================================================ */
+.empty { text-align: center; padding: 2.5rem 1rem; color: var(--text3); }
+.empty i { font-size: 36px; display: block; margin-bottom: 8px; }
+.empty p { font-size: 13px; }
+
+/* ============================================================
+   FILTERS
+============================================================ */
+.filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+.filter-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.12s; }
+.filter-btn:hover { background: var(--bg); }
+.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ============================================================
+   AUDIT LOG
+============================================================ */
+.audit-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.audit-item:last-child { border-bottom: none; }
+.audit-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 4px; }
+.audit-text { flex: 1; color: var(--text2); line-height: 1.5; }
+.audit-time { color: var(--text3); white-space: nowrap; }
+.audit-changes { margin-top: 5px; }
+.audit-change { font-size: 11px; color: var(--text3); line-height: 1.6; }
+.audit-old { color: var(--text3); text-decoration: line-through; }
+.audit-new { color: var(--text); }
+
+/* ============================================================
+   TOAST
+============================================================ */
+.toast { position: fixed; bottom: 1.25rem; right: 1.25rem; background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: var(--radius); font-size: 13px; z-index: 9999; display: flex; align-items: center; gap: 8px; animation: slideUp 0.2s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: calc(100vw - 2.5rem); }
+@keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* ============================================================
+   MOBILE
+============================================================ */
+@media (max-width: 768px) {
+  .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 500; transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,0.2); }
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 499; }
+  .sidebar-backdrop.visible { display: block; }
+  .topbar-menu { display: flex; }
+  .stats-grid { grid-template-columns: repeat(2,1fr); }
+  .profile-layout { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .modal-2col { grid-template-columns: 1fr; }
+  .profile-card { position: static; }
+  .content { padding: 1rem; }
+}
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .modal { padding: 1.25rem; }
+}
+
+/* ============================================================
+   SCROLLBAR
+============================================================ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     LOADING SCREEN
+============================================================ -->
+<div class="full-screen" id="screen-loading">
+  <div class="spinner-wrap">
+    <div class="spinner"></div>
+    <div style="font-size:13px;color:var(--text3)">Loading Easytel CRM...</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     LOGIN SCREEN
+============================================================ -->
+<div class="full-screen" id="screen-login" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <img src="logo.png" alt="Easytel" style="height:40px;width:auto">
+      <div>
+        <h1>Easytel CRM</h1>
+        <p>Operations</p>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="lbl">Email</label>
+      <input class="fi" type="email" id="login-email" placeholder="you@company.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="lbl">Password</label>
+      <input class="fi" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div id="login-error" class="form-error" style="margin-bottom:10px;display:none"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="doLogin()" id="login-btn">
+      <i class="ti ti-login"></i> Sign in
+    </button>
+    <p style="font-size:12px;color:var(--text3);margin-top:12px;text-align:center">Contact your admin to create an account.</p>
+  </div>
+</div>
+
+<!-- ============================================================
+     SET PASSWORD SCREEN (for invite links)
+============================================================ -->
+<div class="full-screen" id="screen-set-password" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <img src="logo.png" alt="Easytel" style="height:40px;width:auto;margin-bottom:4px">
+      <div><h1>Easytel CRM</h1><p>Set your password</p></div>
+    </div>
+    <div class="form-group">
+      <label class="lbl">New password</label>
+      <input class="fi" type="password" id="newpw-input" placeholder="Choose a password" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label class="lbl">Confirm password</label>
+      <input class="fi" type="password" id="newpw-confirm" placeholder="Repeat password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSetPassword()">
+    </div>
+    <div id="newpw-error" class="form-error" style="margin-bottom:10px;display:none"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="doSetPassword()">
+      <i class="ti ti-check"></i> Set password & sign in
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     MOBILE SIDEBAR BACKDROP
+============================================================ -->
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+<!-- ============================================================
+     MAIN APP
+============================================================ -->
+<div class="app" id="app" style="display:none">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <img src="logo.png" alt="Easytel" style="height:28px;width:auto">
+      <div><h1>Easytel CRM</h1><p>Operations</p></div>
+    </div>
+    <nav>
+      <div class="nav-label">Main</div>
+      <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
+      <div class="nav-item" data-page="clients" onclick="showPage('clients',this)"><i class="ti ti-users"></i> Clients</div>
+      <div class="nav-item" data-page="jobs" onclick="showPage('jobs',this)"><i class="ti ti-tool"></i> Jobs & Tickets</div>
+      <div class="nav-item" data-page="porting" onclick="showPage('porting',this)"><i class="ti ti-phone-outgoing"></i> Porting</div>
+      <div class="nav-label" id="nav-admin-label" style="display:none">Admin</div>
+      <div class="nav-item" data-page="users" id="nav-users" onclick="showPage('users',this)" style="display:none"><i class="ti ti-shield-lock"></i> Users</div>
+      <div class="nav-item" data-page="audit" id="nav-audit" onclick="showPage('audit',this)" style="display:none"><i class="ti ti-history"></i> Audit Log</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-info">
+          <div class="user-name" id="user-name">Loading...</div>
+          <div class="user-role" id="user-role"></div>
+        </div>
+        <button class="btn-icon btn" onclick="doLogout()" title="Sign out" style="border:none;background:none;color:var(--text3)"><i class="ti ti-logout" style="font-size:16px"></i></button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <div class="topbar">
+      <button class="topbar-menu" onclick="openSidebar()"><i class="ti ti-menu-2"></i></button>
+      <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
+      <h2 id="topbar-title">Dashboard</h2>
+      <div class="topbar-actions">
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.4</span>
+        <div class="sync-dot" id="sync-dot" title="Synced"></div>
+        <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
+        <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
+        <div id="topbar-cta"></div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ══════════════════════════════════════════
+           DASHBOARD
+      ══════════════════════════════════════════ -->
+      <div class="page active" id="page-dashboard">
+        <div class="card">
+          <div class="card-head"><h3 style="color:#c8a03c">Pending Installs</h3><button class="btn btn-sm" onclick="showPage('jobs',document.querySelector('[data-page=jobs]'))">View all</button></div>
+          <div id="dash-installs-pending" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="empty" style="grid-column:1/-1"><i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i><p>Loading...</p></div></div>
+        </div>
+        <div class="card" id="dash-incomplete-card" style="margin-top:16px;display:none">
+          <div class="card-head"><h3 style="color:#c47844">Incomplete Installs</h3></div>
+          <div id="dash-installs-incomplete"></div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           CLIENTS LIST
+      ══════════════════════════════════════════ -->
+      <div class="page" id="page-clients">
+        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="client-search" placeholder="Search company, account #, phone..." oninput="renderClientsList()"></div>
+        <div class="card">
+          <div class="card-head">
+            <h3 id="clients-count">All clients</h3>
+            <div class="card-head-actions">
+              <button class="btn btn-primary btn-sm" id="btn-add-client" onclick="openClientModal()" style="display:none"><i class="ti ti-plus"></i> Add client</button>
+            </div>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Company</th><th>Account #</th><th>Phone</th><th>Services</th><th>Sites</th><th>Jobs</th><th></th></tr></thead><tbody id="clients-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           CLIENT PROFILE
+      ══════════════════════════════════════════ -->
+      <div class="page" id="page-client-profile">
+        <div class="profile-layout">
+          <!-- Left: client card -->
+          <div>
+            <div class="profile-card" id="client-profile-card"></div>
+          </div>
+          <!-- Right: tabs -->
+          <div>
+            <div class="tabs">
+              <div class="tab active" id="client-tab-btn-jobs" onclick="switchClientTab('jobs')"><i class="ti ti-tool" style="font-size:15px"></i> Jobs <span class="tab-count" id="tab-jobs-count">0</span></div>
+              <div class="tab" id="client-tab-btn-notes" onclick="switchClientTab('notes')"><i class="ti ti-notes" style="font-size:15px"></i> Notes <span class="tab-count" id="tab-notes-count">0</span></div>
+              <div class="tab" id="client-tab-btn-porting" onclick="switchClientTab('porting')"><i class="ti ti-phone-outgoing" style="font-size:15px"></i> Porting <span class="tab-count" id="tab-porting-count">0</span></div>
+              <div class="tab" id="client-tab-btn-sites" onclick="switchClientTab('sites')"><i class="ti ti-map-pin" style="font-size:15px"></i> Sites <span class="tab-count" id="tab-sites-count">0</span></div>
+            </div>
+
+            <!-- Notes tab -->
+            <div id="client-tab-notes" style="display:none">
+              <!-- System Credentials (pinned) -->
+              <div class="note-card pinned" id="creds-card">
+                <div class="note-pinned-label"><i class="ti ti-lock" style="font-size:13px"></i> System Credentials</div>
+                <div id="creds-display" class="note-text" style="min-height:40px;color:var(--text2);font-family:'DM Mono',monospace;font-size:12px"></div>
+                <textarea class="creds-edit" id="creds-edit" placeholder="Enter credentials, IPs, passwords, router logins..." style="display:none"></textarea>
+                <div style="display:flex;gap:6px;margin-top:8px" id="creds-actions">
+                  <button class="btn btn-sm" id="creds-edit-btn" onclick="editCreds()"><i class="ti ti-edit"></i> Edit</button>
+                  <button class="btn btn-sm btn-primary" id="creds-save-btn" onclick="saveCreds()" style="display:none"><i class="ti ti-check"></i> Save</button>
+                  <button class="btn btn-sm" id="creds-cancel-btn" onclick="cancelCreds()" style="display:none">Cancel</button>
+                </div>
+              </div>
+              <!-- Regular notes -->
+              <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+                <button class="btn btn-primary btn-sm" onclick="openNoteModal()"><i class="ti ti-plus"></i> Add note</button>
+              </div>
+              <div id="notes-list"></div>
+            </div>
+
+            <!-- Jobs tab -->
+            <div id="client-tab-jobs">
+              <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+                <button class="btn btn-primary btn-sm" id="btn-add-job-profile" onclick="openJobModal()"><i class="ti ti-plus"></i> Log job</button>
+              </div>
+              <div id="client-jobs-list"></div>
+            </div>
+
+            <!-- Porting tab -->
+            <div id="client-tab-porting" style="display:none">
+              <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+                <button class="btn btn-primary btn-sm" onclick="openPortingModal(null,activeClientId)"><i class="ti ti-plus"></i> Log port</button>
+              </div>
+              <div id="client-porting-list"></div>
+            </div>
+
+            <!-- Sites tab -->
+            <div id="client-tab-sites" style="display:none">
+              <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+                <button class="btn btn-primary btn-sm" id="btn-add-site" onclick="openSiteModal()" style="display:none"><i class="ti ti-plus"></i> Add site</button>
+              </div>
+              <div id="sites-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           JOBS LIST
+      ══════════════════════════════════════════ -->
+      <div class="page" id="page-jobs">
+        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search" placeholder="Search job title or client..." oninput="renderJobsList()"></div>
+        <div class="filter-bar" id="job-status-filters">
+          <button class="filter-btn active" onclick="setJobFilter('status','Pending',this)">Pending</button>
+          <button class="filter-btn" onclick="setJobFilter('status','Incomplete',this)">Incomplete</button>
+          <button class="filter-btn" onclick="setJobFilter('status','Complete',this)">Complete</button>
+          <button class="filter-btn" onclick="setJobFilter('status','all',this)">All statuses</button>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:1rem">
+            <div class="tabs" style="border-bottom:none;margin-bottom:0">
+              <div class="tab active" id="job-tab-installs" onclick="switchJobsPageTab('installs')"><i class="ti ti-tool" style="font-size:15px"></i> New Installs <span class="tab-count" id="job-tab-installs-count">0</span></div>
+              <div class="tab" id="job-tab-service" onclick="switchJobsPageTab('service')"><i class="ti ti-headset" style="font-size:15px"></i> Service Tickets <span class="tab-count" id="job-tab-service-count">0</span></div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btn-add-job-list" onclick="openJobModal(null)" style="display:none;margin-bottom:8px"><i class="ti ti-plus"></i> Log job</button>
+          </div>
+          <div id="job-panel-installs">
+            <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Account #</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Approval Date</th><th></th></tr></thead><tbody id="jobs-installs-tbody"></tbody></table></div>
+          </div>
+          <div id="job-panel-service" style="display:none">
+            <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Account #</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-service-tbody"></tbody></table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           PORTING
+      ══════════════════════════════════════════ -->
+      <div class="page" id="page-porting">
+        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="porting-search" placeholder="Search client or ticket number..." oninput="renderPortingList()"></div>
+        <div class="filter-bar" id="porting-status-filters">
+          <button class="filter-btn" onclick="setPortingFilter('Pending',this)">Pending</button>
+          <button class="filter-btn" onclick="setPortingFilter('Complete',this)">Complete</button>
+          <button class="filter-btn active" onclick="setPortingFilter('all',this)">All</button>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3 id="porting-count">Porting tickets</h3>
+            <button class="btn btn-primary btn-sm" id="btn-add-porting" onclick="openPortingModal(null)" style="display:none"><i class="ti ti-plus"></i> Log port</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Ticket number</th><th>Client</th><th>Account #</th><th>Losing carrier</th><th>Port date</th><th>Status</th><th></th></tr></thead><tbody id="porting-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           USERS (admin only)
+      ══════════════════════════════════════════ -->
+      <div class="page" id="page-users">
+        <div class="card">
+          <div class="card-head">
+            <h3>Team members</h3>
+            <button class="btn btn-primary btn-sm" onclick="openInviteModal()"><i class="ti ti-user-plus"></i> Invite user</button>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th></th></tr></thead><tbody id="users-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           AUDIT LOG (admin only)
+      ══════════════════════════════════════════ -->
+      <div class="page" id="page-audit">
+        <div class="card">
+          <div class="card-head"><h3>Audit log</h3><button class="btn btn-sm" onclick="loadAuditLog()"><i class="ti ti-refresh"></i> Refresh</button></div>
+          <div class="card-body" id="audit-list"><div class="empty"><i class="ti ti-history"></i><p>Loading...</p></div></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- Modal container -->
+<div id="modal-root"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ============================================================
+//  SUPABASE INIT
+//  Credentials injected by GitHub Actions — do not hardcode
+// ============================================================
+const SUPABASE_URL  = 'https://leppwkkzuscdobqehhts.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlcHB3a2t6dXNjZG9icWVoaHRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NDc3ODcsImV4cCI6MjA5NTAyMzc4N30.gDIjSvOiuzMv6WqsDm3FZ9LCsDS5ixIeh9fG5Hd2-c8';
+// Capture hash BEFORE createClient — the SDK clears it during initialisation
+const initialHash = window.location.hash;
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ============================================================
+//  STATE
+// ============================================================
+let currentUser    = null;   // auth user
+let currentProfile = null;   // profiles row
+let currentPage    = 'dashboard';
+let activeClientId = null;
+let activeClientData = null;
+let jobFilters     = { status: 'Pending' };
+let allClients     = [];
+let allJobs        = [];
+let allPorting     = [];
+let portingFilter  = 'all';
+let allProfiles    = [];
+let _ignoreNextPop = false;  // prevents popstate loop when closeModal calls history.back()
+
+// ============================================================
+//  DARK MODE (runs before anything renders)
+// ============================================================
+(function(){
+  const s = localStorage.getItem('tcrm_dark');
+  if (s === null || s === '1') document.documentElement.classList.add('dark');
+})();
+function syncDarkIcon(){ const i=document.getElementById('dark-icon'); if(i) i.className=document.documentElement.classList.contains('dark')?'ti ti-sun':'ti ti-moon'; }
+function toggleDark(){ const d=document.documentElement.classList.toggle('dark'); localStorage.setItem('tcrm_dark',d?'1':'0'); syncDarkIcon(); }
+
+// ============================================================
+//  HELPERS
+// ============================================================
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function initials(s){ return String(s||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(d){ return d ? new Date(d).toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'}) : '—'; }
+function fmtDateTime(d){ return d ? new Date(d).toLocaleString('en-AU',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'; }
+// Fetch ALL rows for a query, paging past PostgREST's 1000-row cap.
+// Pass a factory that returns a FRESH query builder each call (so .range() can be reapplied).
+async function fetchAll(makeQuery){
+  const pageSize = 1000;
+  let from = 0, all = [];
+  while(true){
+    const { data, error } = await makeQuery().range(from, from + pageSize - 1);
+    if(error) throw error;
+    if(!data || !data.length) break;
+    all = all.concat(data);
+    if(data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+function isAdmin(){ return currentProfile?.role === 'admin'; }
+function isOps(){ return currentProfile?.role === 'ops'; }
+function isAdminOrOps(){ return isAdmin() || isOps(); }
+
+let _syncWatchdog = null;
+function setSyncStatus(s){
+  clearTimeout(_syncWatchdog);
+  const dot = document.getElementById('sync-dot');
+  if(!dot) return;
+  dot.className = 'sync-dot' + (s==='syncing'?' syncing':s==='error'?' error':'');
+  dot.title = s==='syncing'?'Syncing…':s==='error'?'Connection lost — click to retry':'Synced';
+  dot.style.cursor = s==='error'?'pointer':'default';
+  dot.onclick = s==='error' ? ()=>refreshCurrentPage() : null;
+  if(s==='syncing'){
+    _syncWatchdog = setTimeout(()=>{
+      setSyncStatus('error');
+      toast('Connection lost — click the sync dot to retry','error');
+    }, 10000);
+  }
+}
+
+function toast(msg, type='ok'){
+  const t = document.createElement('div'); t.className = 'toast';
+  const icon = type==='error'?'ti-alert-circle':type==='warn'?'ti-alert-triangle':'ti-check';
+  t.innerHTML = `<i class="ti ${icon}"></i> ${esc(msg)}`;
+  document.body.appendChild(t); setTimeout(()=>t.remove(), 3000);
+}
+
+function showScreen(name){
+  ['loading','login','set-password'].forEach(s=>{
+    document.getElementById('screen-'+s).style.display = s===name?'flex':'none';
+  });
+  document.getElementById('app').style.display = name==='app'?'flex':'none';
+  if(name==='app') syncDarkIcon();
+}
+
+// ============================================================
+//  STATUS BADGES
+// ============================================================
+function statusBadge(s){
+  const map = { 'Pending':'badge-amber', 'Incomplete':'badge-red', 'Complete':'badge-green' };
+  return `<span class="badge ${map[s]||'badge-gray'}">${esc(s)}</span>`;
+}
+function svcLabel(c){
+  const svcs = [];
+  if(c?.svc_webex)    svcs.push('Webex');
+  if(c?.svc_nec)      svcs.push('NEC');
+  if(c?.svc_internet) svcs.push('Internet');
+  if(!svcs.length) return '—';
+  if(svcs.length === 1) return svcs[0];
+  return svcs.slice(0,-1).join(', ') + ' and ' + svcs[svcs.length-1];
+}
+function typeBadge(t){
+  return t==='New Install' ? `<span class="badge badge-blue">New Install</span>` : `<span class="badge badge-gray">Service</span>`;
+}
+function svcBadges(c, sm=false){
+  const cls = sm ? 'badge badge-sm' : 'badge';
+  let b = '';
+  if(c?.svc_webex)    b += `<span class="${cls} badge-purple">Webex</span>`;
+  if(c?.svc_nec)      b += `<span class="${cls} badge-nec">NEC</span>`;
+  if(c?.svc_internet) b += `<span class="${cls} badge-green">Internet</span>`;
+  return b || '<span style="color:var(--text3);font-size:12px">None</span>';
+}
+
+// ============================================================
+//  AUTH
+// ============================================================
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pw    = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn   = document.getElementById('login-btn');
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 0.7s linear infinite"></i> Signing in...';
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  btn.disabled = false; btn.innerHTML = '<i class="ti ti-login"></i> Sign in';
+  if(error){ errEl.textContent = error.message; errEl.style.display = 'block'; }
+}
+
+async function doSetPassword(){
+  const pw  = document.getElementById('newpw-input').value;
+  const pw2 = document.getElementById('newpw-confirm').value;
+  const err = document.getElementById('newpw-error');
+  err.style.display = 'none';
+  if(!pw || pw.length < 6){ err.textContent='Password must be at least 6 characters.'; err.style.display='block'; return; }
+  if(pw !== pw2){ err.textContent='Passwords do not match.'; err.style.display='block'; return; }
+  const { error } = await sb.auth.updateUser({ password: pw });
+  if(error){ err.textContent=error.message; err.style.display='block'; return; }
+  toast('Password set! Welcome to Easytel CRM.');
+  await initApp();
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  currentUser = null; currentProfile = null;
+  showScreen('login');
+}
+
+// ============================================================
+//  BOOT
+// ============================================================
+async function boot(){
+  showScreen('loading');
+  let recoveryFlow = false;
+
+  // Shared timeout helper — prevents any auth call hanging forever
+  const withTimeout = (p, ms) => Promise.race([
+    p,
+    new Promise(resolve => setTimeout(() => resolve({ data: { session: null }, error: new Error('timeout') }), ms))
+  ]);
+
+  // PKCE flow: newer Supabase sends ?code=xxx&type=recovery in query params
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const urlType = params.get('type');
+  if(code){
+    recoveryFlow = (urlType === 'recovery' || urlType === 'invite');
+    const { data, error } = await withTimeout(sb.auth.exchangeCodeForSession(code), 8000);
+    if(!error && recoveryFlow){ currentUser = data?.session?.user ?? null; showScreen('set-password'); return; }
+    else if(!error && data?.session){ currentUser = data.session.user; try{ await initApp(); }catch(e){ showScreen('login'); } return; }
+    else { showScreen('login'); return; }
+  }
+
+  // Legacy implicit flow: SDK clears the hash before boot() runs, so use
+  // initialHash (captured before createClient). Don't call getSessionFromUrl()
+  // here — the hash is already gone. Setting recoveryFlow=true is enough:
+  // the SIGNED_IN event the SDK queued will fire once onAuthStateChange is
+  // registered below, and that handler will show the set-password screen.
+  if(!code && (initialHash.includes('type=invite') || initialHash.includes('type=recovery'))){
+    recoveryFlow = true;
+  }
+
+  // Register ongoing session listener — handles fresh sign-ins, token refresh, sign-out
+  // Does NOT handle session restore on load (that's done below via getSession)
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if(event === 'TOKEN_REFRESHED' && session){
+      currentUser = session.user;
+    } else if(event === 'PASSWORD_RECOVERY'){
+      recoveryFlow = true;
+      currentUser = session?.user ?? null;
+      showScreen('set-password');
+    } else if(event === 'SIGNED_IN' && session){
+      currentUser = session.user;
+      if(recoveryFlow){
+        showScreen('set-password');
+      } else if(document.getElementById('screen-login').style.display !== 'none'){
+        // Only act on fresh sign-ins from the login screen
+        try{ await initApp(); }catch(e){ showScreen('login'); }
+      }
+    } else if(event === 'SIGNED_OUT'){
+      recoveryFlow = false;
+      currentUser = null;
+      showScreen('login');
+    }
+  });
+
+  // Normal load — read cached session from localStorage (fast, no network call).
+  // Never call refreshSession() manually — Supabase refreshes silently in the
+  // background and signals TOKEN_REFRESHED; calling it here causes a race condition
+  // when the refresh token is already being consumed.
+  const { data } = await withTimeout(sb.auth.getSession(), 5000);
+  if(data?.session){
+    currentUser = data.session.user;
+    if(recoveryFlow){ showScreen('set-password'); return; }
+    try{ await initApp(); }catch(e){ showScreen('login'); }
+  } else {
+    showScreen('login');
+  }
+}
+
+function toggleNav(){
+  const collapsed = document.getElementById('app').classList.toggle('nav-collapsed');
+  localStorage.setItem('navCollapsed', collapsed ? '1' : '');
+}
+
+async function initApp(){
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentProfile = profile;
+  if(localStorage.getItem('navCollapsed')) document.getElementById('app').classList.add('nav-collapsed');
+
+  // Update UI with user info
+  document.getElementById('user-name').textContent  = profile?.full_name || currentUser.email;
+  document.getElementById('user-role').textContent  = {admin:'Admin',ops:'Ops',technician:'Tech'}[profile?.role] || 'Tech';
+  document.getElementById('user-avatar').textContent = initials(profile?.full_name || currentUser.email);
+
+  // Show admin nav items
+  if(isAdmin()){
+    document.getElementById('nav-admin-label').style.display = '';
+    document.getElementById('nav-users').style.display = '';
+    document.getElementById('nav-audit').style.display = '';
+  }
+  if(isAdminOrOps()) document.getElementById('btn-add-client').style.display = '';
+  document.getElementById('btn-add-job-list').style.display = '';
+  document.getElementById('btn-add-porting').style.display = '';
+
+  // Seed history so the dashboard is the base state
+  history.replaceState({ type: 'page', name: 'dashboard' }, '');
+
+  // Back button: close modal if open, otherwise restore previous page
+  window.addEventListener('popstate', e => {
+    if(_ignoreNextPop){ _ignoreNextPop = false; return; }
+    const root = document.getElementById('modal-root');
+    if(root.innerHTML !== ''){ root.innerHTML = ''; return; }
+    if(e.state?.type === 'page'){
+      const navEl = document.querySelector(`[onclick*="showPage('${e.state.name}'"]`);
+      showPage(e.state.name, navEl, false);
+    } else if(e.state?.type === 'client'){
+      openClientProfile(e.state.id, false);
+    }
+  });
+
+  showScreen('app');
+  await loadDashboard();
+  setInterval(()=>{ if(currentPage==='dashboard') loadDashboard(); }, 60000);
+}
+
+// ============================================================
+//  NAVIGATION
+// ============================================================
+function showPage(name, el, _push=true){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+  currentPage = name;
+  const titles = { dashboard:'Dashboard', clients:'Clients', jobs:'Jobs & Tickets', porting:'Porting', users:'Team members', audit:'Audit log', 'client-profile':'Client profile' };
+  document.getElementById('topbar-title').textContent = titles[name] || name;
+  // Update top CTA
+  const cta = document.getElementById('topbar-cta');
+  if(name==='porting') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openPortingModal(null)"><i class="ti ti-plus"></i> Log port</button>`;
+  else cta.innerHTML = '';
+  closeSidebar();
+  if(_push) history.pushState({ type: 'page', name }, '');
+  refreshCurrentPage();
+}
+
+function refreshCurrentPage(){
+  if(currentPage==='dashboard') loadDashboard();
+  else if(currentPage==='clients') loadClients();
+  else if(currentPage==='client-profile' && activeClientId) loadClientProfile(activeClientId);
+  else if(currentPage==='jobs') loadJobs();
+  else if(currentPage==='porting') loadPorting();
+  else if(currentPage==='users') loadUsers();
+  else if(currentPage==='audit') loadAuditLog();
+}
+
+function openClientProfile(id, _push=true){
+  activeClientId = id;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-client-profile').classList.add('active');
+  document.getElementById('topbar-title').textContent = 'Client profile';
+  document.getElementById('topbar-cta').innerHTML = '';
+  currentPage = 'client-profile';
+  closeSidebar();
+  if(_push) history.pushState({ type: 'client', id }, '');
+  loadClientProfile(id);
+}
+
+// ── Mobile sidebar ──
+function openSidebar(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-backdrop').classList.add('visible'); }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-backdrop').classList.remove('visible'); }
+
+// ── Client profile tabs ──
+function switchClientTab(tab){
+  ['notes','jobs','porting','sites'].forEach(t=>{
+    const btn = document.getElementById('client-tab-btn-'+t);
+    if(btn) btn.classList.toggle('active', t===tab);
+    const panel = document.getElementById('client-tab-'+t);
+    if(panel) panel.style.display = t===tab?'block':'none';
+  });
+}
+function switchJobTab(tab, el){
+  document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const descPanel  = document.getElementById('job-tab-desc');
+  const notesPanel = document.getElementById('job-tab-notes');
+  if(descPanel)  descPanel.style.display  = tab==='desc'  ? 'flex' : 'none';
+  if(notesPanel) notesPanel.style.display = tab==='notes' ? 'flex' : 'none';
+}
+
+// ── Jobs page tabs ──
+function switchJobsPageTab(tab){
+  ['installs','service'].forEach(t=>{
+    document.getElementById('job-tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('job-panel-'+t).style.display = t===tab ? '' : 'none';
+  });
+}
+
+// ── Job filters ──
+function setJobFilter(key, val, el){
+  jobFilters[key] = val;
+  document.querySelectorAll(`#job-status-filters .filter-btn`).forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderJobsList();
+}
+
+// ============================================================
+//  DASHBOARD
+// ============================================================
+async function loadDashboard(){
+  setSyncStatus('syncing');
+  try {
+    const [clients, jobs] = await Promise.all([
+      fetchAll(()=>sb.from('clients').select('*,sites(id),jobs(id,type,status)').order('company')),
+      fetchAll(()=>sb.from('jobs').select('*,clients(company,account_number,svc_internet,svc_webex,svc_nec),sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('type','New Install').in('status',['Pending','Incomplete']).order('approval_date',{ascending:true,nullsFirst:false}))
+    ]);
+    allClients = clients || [];
+    allJobs    = jobs    || [];
+
+
+    // Recent jobs
+    const installCard = j => `<div class="job-card" onclick="openJobModal('${j.id}')" style="cursor:pointer;${j.status==='Pending'&&j.approval_date&&(new Date()-new Date(j.approval_date))>604800000&&!j.due_date?'border-left:3px solid var(--red)':''}">
+          <div class="job-body">
+            <div class="job-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${esc(j.clients?.company||'Unknown')}<span style="display:flex;gap:4px">${svcBadges(j.clients,true)}</span></div>
+            <div class="job-meta"></div>
+          </div>
+          <div style="text-align:right;font-size:12px;color:var(--text2);flex-shrink:0">
+            ${j.due_date?`<div style="color:var(--accent)">Due: ${fmtDate(j.due_date)}</div>`:''}
+            ${j.approval_date?`<div>Approved: ${fmtDate(j.approval_date)}</div>`:''}
+          </div>
+        </div>`;
+    const pending    = allJobs.filter(j=>j.status==='Pending');
+    const incomplete = allJobs.filter(j=>j.status==='Incomplete');
+    document.getElementById('dash-installs-pending').innerHTML   = pending.length   ? pending.map(installCard).join('')   : `<div class="empty" style="grid-column:1/-1"><i class="ti ti-tool"></i><p>No pending installs.</p></div>`;
+    document.getElementById('dash-installs-incomplete').innerHTML = incomplete.length ? incomplete.map(installCard).join('') : '';
+    document.getElementById('dash-incomplete-card').style.display = incomplete.length ? '' : 'none';
+
+
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Dashboard load error: '+e.message,'error'); }
+}
+
+// ============================================================
+//  CLIENTS LIST
+// ============================================================
+async function loadClients(){
+  setSyncStatus('syncing');
+  try {
+    const data = await fetchAll(()=>sb.from('clients').select('*,sites(id),jobs(id)').order('company'));
+    allClients = data || [];
+    renderClientsList();
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading clients: '+e.message,'error'); }
+}
+
+function renderClientsList(){
+  const q = (document.getElementById('client-search')||{}).value?.toLowerCase()||'';
+  const f = allClients.filter(c=>!q || c.company.toLowerCase().includes(q) || (c.account_number||'').toLowerCase().includes(q) || (c.phone||'').includes(q));
+  document.getElementById('clients-count').textContent = `All clients (${f.length})`;
+  const tb = document.getElementById('clients-tbody');
+  if(!tb) return;
+  tb.innerHTML = f.length ? f.map(c=>`
+    <tr class="clickable" onclick="openClientProfile('${c.id}')">
+      <td><strong style="font-weight:500">${esc(c.company)}</strong></td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.account_number)||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.phone)||'—'}</td>
+      <td>${svcBadges(c)}</td>
+      <td>${(c.sites||[]).length}</td>
+      <td>${(c.jobs||[]).length}</td>
+      <td><div style="display:flex;gap:4px">
+        ${isAdminOrOps()?`<button class="btn btn-sm" onclick="event.stopPropagation();openClientModal('${c.id}')"><i class="ti ti-edit"></i></button>`:''}
+        ${isAdmin()?`<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteClient('${c.id}')"><i class="ti ti-trash"></i></button>`:''}
+      </div></td>
+    </tr>`).join('')
+    : `<tr><td colspan="7"><div class="empty"><i class="ti ti-search"></i><p>No clients found.</p></div></td></tr>`;
+}
+
+// ============================================================
+//  CLIENT PROFILE
+// ============================================================
+async function loadClientProfile(id){
+  setSyncStatus('syncing');
+  try {
+    const [{ data: client }, { data: sites }, { data: jobs }, { data: notes }, { data: ports }] = await Promise.all([
+      sb.from('clients').select('*').eq('id',id).single(),
+      sb.from('sites').select('*').eq('client_id',id).order('created_at',{ascending:true}),
+      sb.from('jobs').select('*,sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('client_id',id).order('due_date',{ascending:true,nullsFirst:false}),
+      sb.from('notes').select('*,profiles(full_name)').eq('client_id',id).order('created_at',{ascending:false}),
+      sb.from('porting').select('*').eq('client_id',id).order('port_date',{ascending:true,nullsFirst:false})
+    ]);
+    activeClientData = client;
+
+    // ── Profile card ──
+    function pf(icon,label,val){ return val?`<div class="pf"><i class="ti ${icon}"></i><div><div class="pf-label">${label}</div><div class="pf-value">${esc(val)}</div></div></div>`:''; }
+    const mainSite = (sites||[])[0];
+    document.getElementById('client-profile-card').innerHTML = `
+      <div class="profile-avatar">${initials(client.company)}</div>
+      <div class="profile-name">${esc(client.company)}</div>
+      <div class="profile-sub">Business client</div>
+      ${pf('ti-hash','Account number',client.account_number)}
+      ${pf('ti-phone','Phone',client.phone)}
+      ${pf('ti-mail','Email',client.email)}
+      ${mainSite?.address?pf('ti-map-pin','Main site',mainSite.address):''}
+      ${pf('ti-calendar','Client since',fmtDate(client.created_at))}
+      <div class="pf"><i class="ti ti-apps"></i><div><div class="pf-label">Services</div><div style="margin-top:4px">${svcBadges(client)}</div></div></div>
+      <div class="profile-actions">
+        ${isAdminOrOps()?`<button class="btn btn-sm" onclick="openClientModal('${client.id}')"><i class="ti ti-edit"></i> Edit</button>`:''}
+        ${isAdmin()?`<button class="btn btn-sm btn-danger" onclick="deleteClient('${client.id}')"><i class="ti ti-trash"></i> Delete</button>`:''}
+      </div>`;
+
+    // ── Tab counts ──
+    document.getElementById('tab-notes-count').textContent   = (notes||[]).length;
+    document.getElementById('tab-jobs-count').textContent    = (jobs||[]).length;
+    document.getElementById('tab-porting-count').textContent = (ports||[]).length;
+    document.getElementById('tab-sites-count').textContent   = (sites||[]).length;
+    switchClientTab('jobs');
+
+    // ── Porting ──
+    document.getElementById('client-porting-list').innerHTML = (ports||[]).length
+      ? (ports||[]).map(p=>`<div class="job-card" onclick="openPortingModal('${p.id}')" style="cursor:pointer">
+          ${portingStatusBadge(p.status)}
+          <div class="job-body">
+            <div class="job-title job-link">${esc(p.phone_numbers)}</div>
+            <div class="job-meta">
+              <span><i class="ti ti-building" style="font-size:11px"></i> ${esc(p.losing_carrier)}</span>
+              ${p.port_date?`<span><i class="ti ti-calendar" style="font-size:11px"></i> ${fmtDate(p.port_date)}${p.port_time?' '+p.port_time.slice(0,5):''}</span>`:''}
+            </div>
+          </div>
+          ${isAdminOrOps()?`<button class="btn btn-sm btn-danger hover-del" onclick="event.stopPropagation();deletePorting('${p.id}')"><i class="ti ti-trash"></i></button>`:''}
+        </div>`).join('')
+      : `<div class="empty"><i class="ti ti-phone-outgoing"></i><p>No porting tickets yet.</p></div>`;
+
+    // ── System credentials ──
+    const credsDisplay = document.getElementById('creds-display');
+    const credsEdit    = document.getElementById('creds-edit');
+    credsDisplay.textContent = client.system_credentials || 'No credentials stored yet.';
+    credsEdit.value = client.system_credentials || '';
+    // Show edit button only to admins and assigned technicians
+    document.getElementById('creds-edit-btn').style.display = (isAdminOrOps() || jobs?.some(j=>j.assigned_to===currentUser?.id)) ? '' : 'none';
+
+    // ── Notes ──
+    document.getElementById('notes-list').innerHTML = (notes||[]).length
+      ? (notes||[]).map(n=>`<div class="note-card">
+          <div class="note-meta">
+            <span class="note-author"><i class="ti ti-user" style="font-size:12px"></i> ${esc(n.profiles?.full_name||'Unknown')}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="note-date">${fmtDate(n.created_at)}</span>
+              ${isAdmin()||n.created_by===currentUser?.id?`<button class="btn btn-sm btn-danger" onclick="deleteNote('${n.id}')"><i class="ti ti-trash"></i></button>`:''}
+            </div>
+          </div>
+          <div class="note-text">${esc(n.text)}</div>
+        </div>`).join('')
+      : `<div class="empty"><i class="ti ti-notes"></i><p>No notes yet.</p></div>`;
+
+    // ── Jobs ──
+    document.getElementById('btn-add-job-profile').style.display = '';
+    document.getElementById('client-jobs-list').innerHTML = (jobs||[]).length
+      ? (jobs||[]).map(j=>`<div class="job-card">
+          ${typeBadge(j.type)}
+          <div class="job-body">
+            <div class="job-title${isAdminOrOps()||j.assigned_to===currentUser?.id?' job-link':''}" ${isAdminOrOps()||j.assigned_to===currentUser?.id?`onclick="openJobModal('${j.id}')"`:''} >${j.type==='New Install'?svcLabel(client):esc(j.title)}</div>
+            <div class="job-meta">
+              ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
+              ${statusBadge(j.status)}
+              ${j.profiles?.full_name?`<span><i class="ti ti-user" style="font-size:11px"></i> ${esc(j.profiles.full_name)}</span>`:''}
+              ${j.due_date?`<span><i class="ti ti-calendar" style="font-size:11px"></i> ${fmtDate(j.due_date)}</span>`:''}
+            </div>
+          </div>
+          ${j.type==='New Install'?(j.approval_date?`<div class="job-cost">${fmtDate(j.approval_date)}</div>`:''):(j.cost?`<div class="job-cost">$${Number(j.cost).toFixed(2)}</div>`:'')}
+          ${isAdmin()?`<button class="btn btn-sm btn-danger hover-del" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button>`:''}
+        </div>`).join('')
+      : `<div class="empty"><i class="ti ti-tool"></i><p>No jobs yet.</p></div>`;
+
+    // ── Sites ──
+    document.getElementById('btn-add-site').style.display = isAdminOrOps() ? '' : 'none';
+    document.getElementById('sites-list').innerHTML = (sites||[]).length
+      ? (sites||[]).map(s=>`<div class="site-card">
+          <div class="site-body">
+            <div class="site-name">${esc(s.name)}</div>
+            ${s.address?`<div class="site-detail"><i class="ti ti-map-pin" style="font-size:12px"></i> ${esc(s.address)}</div>`:''}
+            ${s.contact_name?`<div class="site-detail"><i class="ti ti-user" style="font-size:12px"></i> ${esc(s.contact_name)}${s.contact_phone?' · '+esc(s.contact_phone):''}</div>`:''}
+            ${s.contact_email?`<div class="site-detail"><i class="ti ti-mail" style="font-size:12px"></i> ${esc(s.contact_email)}</div>`:''}
+          </div>
+          ${isAdminOrOps()?`<div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="btn btn-sm" onclick="openSiteModal('${s.id}')"><i class="ti ti-edit"></i></button>
+            ${isAdmin()?`<button class="btn btn-sm btn-danger" onclick="deleteSite('${s.id}')"><i class="ti ti-trash"></i></button>`:''}
+          </div>`:''}
+        </div>`).join('')
+      : `<div class="empty"><i class="ti ti-map-pin"></i><p>No sites yet.</p></div>`;
+
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading profile: '+e.message,'error'); }
+}
+
+// ── System Credentials ──
+function editCreds(){
+  document.getElementById('creds-display').style.display = 'none';
+  document.getElementById('creds-edit').style.display    = '';
+  document.getElementById('creds-edit-btn').style.display   = 'none';
+  document.getElementById('creds-save-btn').style.display   = '';
+  document.getElementById('creds-cancel-btn').style.display = '';
+}
+function cancelCreds(){
+  document.getElementById('creds-display').style.display = '';
+  document.getElementById('creds-edit').style.display    = 'none';
+  document.getElementById('creds-edit-btn').style.display   = '';
+  document.getElementById('creds-save-btn').style.display   = 'none';
+  document.getElementById('creds-cancel-btn').style.display = 'none';
+}
+async function saveCreds(){
+  const val = document.getElementById('creds-edit').value;
+  setSyncStatus('syncing');
+  try {
+    await sb.from('clients').update({ system_credentials: val }).eq('id', activeClientId);
+    await logAudit('updated','clients',activeClientId,{ system_credentials: activeClientData?.system_credentials },{ system_credentials: val });
+    activeClientData.system_credentials = val;
+    document.getElementById('creds-display').textContent = val || 'No credentials stored yet.';
+    cancelCreds();
+    setSyncStatus('ok'); toast('Credentials saved');
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+// ============================================================
+//  JOBS LIST
+// ============================================================
+async function loadJobs(){
+  setSyncStatus('syncing');
+  try {
+    const data = await fetchAll(()=>sb.from('jobs').select('*,clients(company,account_number,svc_internet,svc_webex,svc_nec),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('due_date',{ascending:true,nullsFirst:false}));
+    allJobs = data || [];
+    renderJobsList();
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading jobs: '+e.message,'error'); }
+}
+
+function renderJobsList(){
+  const q = (document.getElementById('job-search')||{}).value?.toLowerCase()||'';
+  const jobRow = (j, isInstall=false) => `
+    <tr class="job-row">
+      <td>${isAdminOrOps()||j.assigned_to===currentUser?.id?`<span class="job-link" onclick="openJobModal('${j.id}')">${isInstall?svcLabel(j.clients):esc(j.title)}</span>`:`<span style="font-weight:500">${isInstall?svcLabel(j.clients):esc(j.title)}</span>`}</td>
+      <td><span style="color:var(--accent);cursor:pointer" onclick="openClientProfile('${j.client_id}')">${esc(j.clients?.company||'Unknown')}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${esc(j.clients?.account_number||'—')}</td>
+      <td style="color:var(--text2);font-size:12px">${esc(j.sites?.name||'—')}</td>
+      <td>${statusBadge(j.status)}</td>
+      <td style="font-size:12px;color:var(--text2)">${esc(j.profiles?.full_name||'—')}</td>
+      <td style="font-size:12px;color:var(--text2)">${fmtDate(j.due_date)}</td>
+      <td style="font-size:12px;color:var(--text2)">${isInstall?(j.approval_date?fmtDate(j.approval_date):'—'):(j.cost?'$'+Number(j.cost).toFixed(2):'—')}</td>
+      <td>${isAdmin()?`<button class="btn btn-sm btn-danger hover-del" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button>`:''}</td>
+    </tr>`;
+  const match = j => {
+    const matchQ = !q || (j.title||'').toLowerCase().includes(q) || (j.clients?.company||'').toLowerCase().includes(q) || svcLabel(j.clients).toLowerCase().includes(q);
+    const matchStatus = jobFilters.status==='all' || j.status===jobFilters.status;
+    return matchQ && matchStatus;
+  };
+  const installs = allJobs.filter(j=>j.type==='New Install' && match(j));
+  const service  = allJobs.filter(j=>j.type!=='New Install' && match(j));
+  const tbI = document.getElementById('jobs-installs-tbody');
+  const tbS = document.getElementById('jobs-service-tbody');
+  if(!tbI||!tbS) return;
+  document.getElementById('job-tab-installs-count').textContent = installs.length;
+  document.getElementById('job-tab-service-count').textContent  = service.length;
+  tbI.innerHTML = installs.length ? installs.map(j=>jobRow(j,true)).join('') : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No new installs found.</p></div></td></tr>`;
+  tbS.innerHTML = service.length  ? service.map(j=>jobRow(j,false)).join('')  : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No service tickets found.</p></div></td></tr>`;
+}
+
+// ============================================================
+//  PORTING LIST
+// ============================================================
+function setPortingFilter(val, el){
+  portingFilter = val;
+  document.querySelectorAll('#porting-status-filters .filter-btn').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderPortingList();
+}
+
+async function loadPorting(){
+  setSyncStatus('syncing');
+  try {
+    const [ports, clients] = await Promise.all([
+      fetchAll(()=>sb.from('porting').select('*,clients(company,account_number)').order('port_date',{ascending:true,nullsFirst:false}).order('port_time',{ascending:true,nullsFirst:false})),
+      fetchAll(()=>sb.from('clients').select('id,company').order('company'))
+    ]);
+    allPorting = ports || [];
+    if(clients) allClients = clients;
+    renderPortingList();
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading porting tickets: '+e.message,'error'); }
+}
+
+function renderPortingList(){
+  const q = (document.getElementById('porting-search')||{}).value?.toLowerCase()||'';
+  const f = allPorting.filter(p=>{
+    const matchQ = !q || (p.clients?.company||'').toLowerCase().includes(q) || p.phone_numbers.toLowerCase().includes(q);
+    const matchStatus = portingFilter==='all' || p.status===portingFilter;
+    return matchQ && matchStatus;
+  });
+  document.getElementById('porting-count').textContent = `Porting tickets (${f.length})`;
+  const tb = document.getElementById('porting-tbody');
+  if(!tb) return;
+  tb.innerHTML = f.length ? f.map(p=>`
+    <tr class="job-row" onclick="openPortingModal('${p.id}')" style="cursor:pointer">
+      <td style="font-weight:500">${esc(p.phone_numbers)}</td>
+      <td><span style="color:var(--accent);cursor:pointer" onclick="event.stopPropagation();openClientProfile('${p.client_id}')">${esc(p.clients?.company||'Unknown')}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${esc(p.clients?.account_number||'—')}</td>
+      <td style="color:var(--text2);font-size:12px">${esc(p.losing_carrier)}</td>
+      <td style="font-size:12px;color:var(--text2)">${fmtDate(p.port_date)}${p.port_time?` <span style="color:var(--text3)">${p.port_time.slice(0,5)}</span>`:''}</td>
+      <td>${portingStatusBadge(p.status)}</td>
+      <td>${isAdminOrOps()?`<button class="btn btn-sm btn-danger hover-del" onclick="event.stopPropagation();deletePorting('${p.id}')"><i class="ti ti-trash"></i></button>`:''}</td>
+    </tr>`).join('')
+    : `<tr><td colspan="7"><div class="empty"><i class="ti ti-phone-outgoing"></i><p>No porting tickets found.</p></div></td></tr>`;
+}
+
+function portingStatusBadge(s){
+  const map = { 'Pending':'badge-amber', 'In Progress':'badge-blue', 'Complete':'badge-green', 'Cancelled':'badge-gray' };
+  return `<span class="badge ${map[s]||'badge-gray'}">${esc(s)}</span>`;
+}
+
+async function openPortingModal(id, prefillClientId){
+  const isEdit = !!id;
+  let rec = null;
+  if(isEdit){
+    const { data } = await sb.from('porting').select('*,clients(company)').eq('id',id).single();
+    rec = data;
+  }
+  // Ensure allClients is populated (user may navigate directly to Porting)
+  if(!allClients.length){
+    const clients = await fetchAll(()=>sb.from('clients').select('id,company').order('company'));
+    if(clients) allClients = clients;
+  }
+  const lockClient = isEdit || !!prefillClientId;
+  const effectiveClientId = rec?.client_id || prefillClientId || '';
+  const clientOptions = allClients.map(c=>`<option value="${c.id}" ${effectiveClientId===c.id?'selected':''}>${esc(c.company)}</option>`).join('');
+  openModal(`<div class="modal" style="width:860px">
+    <div class="modal-hdr"><h3>${isEdit?'Edit porting ticket':'Log porting ticket'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+    <div class="modal-2col">
+      <div class="modal-col">
+        <div class="form-group"><label class="lbl">Client *</label>
+          <select class="fi" id="f-port-client" ${lockClient?'disabled':''}>
+            <option value="">— select client —</option>${clientOptions}
+          </select>
+        </div>
+        <div class="form-group"><label class="lbl">Ticket number *</label><input class="fi" id="f-port-numbers" value="${esc(rec?.phone_numbers||'')}" placeholder="e.g. TKT-12345"></div>
+        <div class="form-group"><label class="lbl">Losing carrier *</label><input class="fi" id="f-port-carrier" value="${esc(rec?.losing_carrier||'')}" placeholder="e.g. Telstra"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="lbl">Port date</label><input class="fi" type="date" id="f-port-date" value="${rec?.port_date||''}"></div>
+          <div class="form-group"><label class="lbl">Port time</label><input class="fi" type="time" id="f-port-time" value="${rec?.port_time||''}"></div>
+        </div>
+        <div class="form-group"><label class="lbl">Status</label>
+          <select class="fi" id="f-port-status">
+            ${['Pending','Complete','Cancelled'].map(s=>`<option value="${s}" ${(rec?.status||'Pending')===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div id="port-error" class="form-error" style="display:none"></div>
+      </div>
+      <div class="modal-col" style="display:flex;flex-direction:column">
+        <label class="lbl">Notes</label>
+        <textarea class="fi" id="f-port-notes" placeholder="Any notes about this port..." style="flex:1;min-height:280px;resize:vertical">${esc(rec?.notes||'')}</textarea>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPorting('${id||''}')"><i class="ti ti-check"></i> ${isEdit?'Save changes':'Log port'}</button>
+    </div>
+  </div>`);
+}
+
+async function submitPorting(id){
+  const clientId = document.getElementById('f-port-client').value;
+  const numbers  = document.getElementById('f-port-numbers').value.trim();
+  const carrier  = document.getElementById('f-port-carrier').value.trim();
+  const portDate = document.getElementById('f-port-date').value || null;
+  const portTime = document.getElementById('f-port-time').value || null;
+  const status   = document.getElementById('f-port-status').value;
+  const notes    = document.getElementById('f-port-notes').value.trim() || null;
+  const err      = document.getElementById('port-error');
+  err.style.display = 'none';
+  // Disabled selects don't submit — fall back to the selected option's value
+  const resolvedClientId = clientId || document.getElementById('f-port-client').options[document.getElementById('f-port-client').selectedIndex]?.value || '';
+  if(!id && !resolvedClientId){ err.textContent='Please select a client.'; err.style.display='block'; return; }
+  if(!numbers){ err.textContent='Phone number(s) are required.'; err.style.display='block'; return; }
+  if(!carrier){  err.textContent='Losing carrier is required.';  err.style.display='block'; return; }
+  setSyncStatus('syncing');
+  try {
+    if(id){
+      await sb.from('porting').update({ phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, port_time:portTime, status, notes }).eq('id',id);
+      await logAudit('updated','porting',id,{},{phone_numbers:numbers,losing_carrier:carrier,port_date:portDate,port_time:portTime,status,notes});
+      toast('Porting ticket updated');
+    } else {
+      const { data } = await sb.from('porting').insert({ client_id:resolvedClientId, phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, port_time:portTime, status, notes, created_by:currentUser?.id }).select().single();
+      await logAudit('created','porting',data.id,{},{client_id:resolvedClientId,phone_numbers:numbers,losing_carrier:carrier,status});
+      toast('Porting ticket created');
+    }
+    closeModal();
+    if(currentPage==='client-profile') loadClientProfile(activeClientId); else loadPorting();
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function deletePorting(id){
+  if(!confirm('Delete this porting ticket?')) return;
+  try {
+    await sb.from('porting').delete().eq('id',id);
+    await logAudit('deleted','porting',id,{},{});
+    toast('Porting ticket deleted');
+    if(currentPage==='client-profile') loadClientProfile(activeClientId); else loadPorting();
+  } catch(e){ toast('Delete failed: '+e.message,'error'); }
+}
+
+// ============================================================
+//  USERS
+// ============================================================
+async function loadUsers(){
+  setSyncStatus('syncing');
+  try {
+    const { data } = await sb.from('profiles').select('*').order('full_name');
+    allProfiles = data || [];
+    const tb = document.getElementById('users-tbody');
+    tb.innerHTML = allProfiles.map(p=>`
+      <tr>
+        <td><div style="display:flex;align-items:center;gap:8px"><div class="user-avatar" style="width:28px;height:28px;font-size:10px">${initials(p.full_name)}</div>${esc(p.full_name)}</div></td>
+        <td style="color:var(--text2)">${esc(p.email)}</td>
+        <td><span class="badge ${p.role==='admin'?'badge-blue':p.role==='ops'?'badge-amber':'badge-gray'}">${p.role==='admin'?'Admin':p.role==='ops'?'Ops':'Tech'}</span></td>
+        <td style="font-size:12px;color:var(--text2)">${fmtDate(p.created_at)}</td>
+        <td>
+          ${p.id !== currentUser?.id ? `
+            <select class="fi" style="width:120px;padding:4px 8px;font-size:12px" onchange="updateUserRole('${p.id}',this.value)">
+              <option value="technician" ${p.role==='technician'?'selected':''}>Tech</option>
+              <option value="ops" ${p.role==='ops'?'selected':''}>Ops</option>
+              <option value="admin" ${p.role==='admin'?'selected':''}>Admin</option>
+            </select>` : '<span style="font-size:12px;color:var(--text3)">You</span>'}
+        </td>
+      </tr>`).join('');
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading users: '+e.message,'error'); }
+}
+
+async function updateUserRole(id, role){
+  try {
+    await sb.from('profiles').update({ role }).eq('id', id);
+    await logAudit('updated','profiles',id,{},{role});
+    toast('Role updated');
+  } catch(e){ toast('Failed: '+e.message,'error'); }
+}
+
+// ============================================================
+//  AUDIT LOG
+// ============================================================
+async function loadAuditLog(){
+  setSyncStatus('syncing');
+  try {
+    const { data } = await sb.from('audit_log').select('*').order('created_at',{ascending:false}).limit(100);
+    const el = document.getElementById('audit-list');
+    el.innerHTML = (data||[]).length ? (data||[]).map(a=>`
+      <div class="audit-item">
+        <div class="audit-dot"></div>
+        <div class="audit-text">
+          <strong>${esc(a.user_email||'System')}</strong>
+          ${esc(a.action)} a <strong>${esc(a.table_name)}</strong> record
+          ${a.new_data?.title||a.new_data?.company||a.new_data?.name ? `(${esc(a.new_data?.title||a.new_data?.company||a.new_data?.name)})` : ''}
+          ${auditDiff(a)}
+        </div>
+        <div class="audit-time">${fmtDateTime(a.created_at)}</div>
+      </div>`).join('')
+      : `<div class="empty"><i class="ti ti-history"></i><p>No activity yet.</p></div>`;
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading audit log: '+e.message,'error'); }
+}
+
+const AUDIT_LABELS = {
+  company:'Company', account_number:'Account number', phone:'Phone', email:'Email',
+  svc_internet:'Internet service', svc_webex:'Webex service', svc_nec:'NEC service',
+  system_credentials:'System credentials',
+  title:'Title', type:'Type', status:'Status', client_id:'Client', site_id:'Site',
+  assigned_to:'Assigned to', due_date:'Scheduled date', cost:'Cost', approval_date:'Approval date',
+  description:'Description', job_notes:'Job notes', text:'Text', role:'Role', notes:'Notes',
+  phone_numbers:'Phone numbers', losing_carrier:'Losing carrier', port_date:'Port date', port_time:'Port time'
+};
+const AUDIT_SENSITIVE = new Set(['system_credentials']);
+const auditNorm = v => (v===null||v===undefined||v==='') ? '' : (typeof v==='boolean' ? v : String(v));
+
+function fmtAuditVal(key, val){
+  if(val===null || val===undefined || val==='') return '(empty)';
+  if(typeof val==='boolean') return val ? 'On' : 'Off';
+  if(key==='client_id') return allClients.find(c=>c.id===val)?.company || val;
+  if(key==='assigned_to') return allProfiles.find(p=>p.id===val)?.full_name || val;
+  if(Array.isArray(val)) return val.join(', ') || '(empty)';
+  return String(val);
+}
+
+function auditDiff(a){
+  const rows = [];
+  if(a.action==='updated'){
+    const oldD = a.old_data||{}, newD = a.new_data||{};
+    Object.keys(newD).forEach(k=>{
+      if(auditNorm(oldD[k]) === auditNorm(newD[k])) return;
+      const label = esc(AUDIT_LABELS[k] || k);
+      if(AUDIT_SENSITIVE.has(k)){ rows.push(`<div class="audit-change">${label}: <em>changed</em></div>`); return; }
+      rows.push(`<div class="audit-change">${label}: <span class="audit-old">${esc(fmtAuditVal(k,oldD[k]))}</span> → <span class="audit-new">${esc(fmtAuditVal(k,newD[k]))}</span></div>`);
+    });
+  } else if(a.action==='created'){
+    const newD = a.new_data||{};
+    Object.keys(newD).forEach(k=>{
+      const v = newD[k];
+      if(v===null || v===undefined || v==='' || (typeof v==='boolean' && !v) || (Array.isArray(v) && !v.length)) return;
+      const label = esc(AUDIT_LABELS[k] || k);
+      if(AUDIT_SENSITIVE.has(k)){ rows.push(`<div class="audit-change">${label}: <em>set</em></div>`); return; }
+      rows.push(`<div class="audit-change">${label}: <span class="audit-new">${esc(fmtAuditVal(k,v))}</span></div>`);
+    });
+  }
+  return rows.length ? `<div class="audit-changes">${rows.join('')}</div>` : '';
+}
+
+async function logAudit(action, table, recordId, oldData, newData){
+  try {
+    await sb.from('audit_log').insert({
+      user_id: currentUser?.id, user_email: currentProfile?.email || currentUser?.email,
+      action, table_name: table, record_id: recordId,
+      old_data: oldData, new_data: newData
+    });
+  } catch(e){ console.warn('Audit log failed:', e); }
+}
+
+// ============================================================
+//  MODAL HELPERS
+// ============================================================
+function openModal(html){
+  document.getElementById('modal-root').innerHTML = `<div class="modal-overlay">${html}</div>`;
+  history.pushState({ type: 'modal' }, '');
+}
+function closeModal(){
+  document.getElementById('modal-root').innerHTML = '';
+  _ignoreNextPop = true;
+  history.back();
+}
+
+// ============================================================
+//  CLIENT MODAL
+// ============================================================
+function addAddressRow(){
+  const container = document.getElementById('site-rows');
+  if(!container) return;
+  const row = document.createElement('div');
+  row.className = 'site-row';
+  row.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;align-items:center';
+  row.innerHTML = `<input class="fi site-name-input" placeholder="Site name" style="flex:1"><input class="fi site-addr-input" placeholder="123 Main St, Sydney NSW 2000" style="flex:2"><button type="button" class="btn btn-sm" onclick="this.closest('.site-row').remove()" style="flex-shrink:0;padding:7px 9px"><i class="ti ti-x"></i></button>`;
+  container.appendChild(row);
+}
+
+function openClientModal(id){
+  const c = id ? allClients.find(x=>x.id===id)||{} : {};
+  const isEdit = !!id;
+  openModal(`<div class="modal">
+    <div class="modal-hdr"><h3>${isEdit?'Edit client':'New client'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+    <div class="form-group"><label class="lbl">Account number</label><input class="fi" id="f-acct" value="${esc(c.account_number||'')}" placeholder="ACC-10042"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="lbl">Company name *</label>
+        <div style="position:relative">
+          <input class="fi" id="f-company" value="${esc(c.company||'')}" placeholder="Acme Pty Ltd" autocomplete="off" oninput="searchCompanySuggestions(this.value,'${id||''}')" onblur="setTimeout(()=>{const b=document.getElementById('company-suggestions');if(b)b.style.display='none'},150)">
+          <div id="company-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:4px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.2)"></div>
+        </div>
+      </div>
+      <div class="form-group"><label class="lbl">Phone</label><input class="fi" id="f-phone" value="${esc(c.phone||'')}" placeholder="02 9000 0000"></div>
+    </div>
+    <div class="form-group"><label class="lbl">Email</label><input class="fi" id="f-email" value="${esc(c.email||'')}" placeholder="info@company.com.au"></div>
+    <div class="form-group"><label class="lbl">Services</label>
+      <div class="checkbox-group">
+        <label class="checkbox-label"><input type="checkbox" id="f-internet" ${c.svc_internet?'checked':''}> Internet</label>
+        <label class="checkbox-label"><input type="checkbox" id="f-webex"    ${c.svc_webex?'checked':''}> Webex</label>
+        <label class="checkbox-label"><input type="checkbox" id="f-nec"      ${c.svc_nec?'checked':''}> NEC</label>
+      </div>
+    </div>
+    ${!isEdit?`<div class="form-group">
+      <label class="lbl">Addresses</label>
+      <div id="site-rows">
+        <div class="site-row" style="display:flex;gap:8px;margin-bottom:6px">
+          <input class="fi site-name-input" placeholder="Site name (e.g. Head Office)" value="Main Site" style="flex:1">
+          <input class="fi site-addr-input" placeholder="123 Main St, Sydney NSW 2000" style="flex:2">
+        </div>
+      </div>
+      <button type="button" class="btn btn-sm" onclick="addAddressRow()" style="margin-top:4px"><i class="ti ti-plus"></i> Add another address</button>
+    </div>`:''}
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="${isEdit?`submitEditClient('${id}')`:'submitAddClient()'}">${isEdit?'Save changes':'Add client'}</button>
+    </div>
+  </div>`);
+}
+
+function searchCompanySuggestions(q, excludeId=''){
+  const box = document.getElementById('company-suggestions');
+  if(!box) return;
+  if(!q || q.length < 2){ box.style.display='none'; return; }
+  const matches = allClients.filter(c=>c.id!==excludeId && c.company.toLowerCase().includes(q.toLowerCase())).slice(0,6);
+  if(!matches.length){ box.style.display='none'; return; }
+  box.innerHTML = matches.map(c=>`
+    <div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:14px;display:flex;align-items:center;gap:10px"
+         onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''"
+         onmousedown="event.preventDefault();closeModal();openClientProfile('${c.id}')">
+      <span style="font-weight:500;flex:1">${esc(c.company)}</span>
+      ${c.account_number?`<span style="font-size:12px;color:var(--text2)">${esc(c.account_number)}</span>`:''}
+    </div>`).join('');
+  box.style.display='block';
+}
+
+async function submitAddClient(){
+  const company = document.getElementById('f-company').value.trim();
+  if(!company){ toast('Company name is required','warn'); return; }
+  const acctNum = document.getElementById('f-acct').value.trim();
+  if(acctNum && allClients.some(c=>c.account_number===acctNum)){ toast('Account number already in use','error'); return; }
+  const payload = { company, account_number: acctNum, phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), svc_internet: document.getElementById('f-internet').checked, svc_webex: document.getElementById('f-webex').checked, svc_nec: document.getElementById('f-nec').checked, created_by: currentUser.id };
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await sb.from('clients').insert(payload).select().single();
+    if(error) throw error;
+    await logAudit('created','clients',data.id,{},payload);
+    const siteRows = [...document.querySelectorAll('#site-rows .site-row')];
+    const sites = siteRows.map((row,i)=>({
+      client_id: data.id,
+      name: row.querySelector('.site-name-input').value.trim() || `Site ${i+1}`,
+      address: row.querySelector('.site-addr-input').value.trim()
+    })).filter(s=>s.address);
+    if(sites.length){
+      const { error: sErr } = await sb.from('sites').insert(sites);
+      if(sErr) throw sErr;
+    }
+    closeModal(); toast('Client added'); loadClients();
+  } catch(e){ setSyncStatus('error'); toast(clientSaveError(e),'error'); }
+}
+
+async function submitEditClient(id){
+  const acctNum = document.getElementById('f-acct').value.trim();
+  if(acctNum && allClients.some(c=>c.account_number===acctNum && c.id!==id)){ toast('Account number already in use','error'); return; }
+  const payload = { company: document.getElementById('f-company').value.trim(), account_number: acctNum, phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), svc_internet: document.getElementById('f-internet').checked, svc_webex: document.getElementById('f-webex').checked, svc_nec: document.getElementById('f-nec').checked };
+  setSyncStatus('syncing');
+  try {
+    const old = allClients.find(c=>c.id===id)||{};
+    const { error } = await sb.from('clients').update(payload).eq('id',id);
+    if(error) throw error;
+    await logAudit('updated','clients',id,old,payload);
+    closeModal(); toast('Client updated');
+    if(currentPage==='client-profile') loadClientProfile(id); else loadClients();
+  } catch(e){ setSyncStatus('error'); toast(clientSaveError(e),'error'); }
+}
+
+// Friendly message for client save failures, incl. DB unique-constraint violations.
+function clientSaveError(e){
+  const m = e?.message || '';
+  if(m.includes('clients_company_unique')) return 'A client with that company name already exists';
+  if(m.includes('clients_account_number_unique')) return 'That account number is already in use by another client';
+  return 'Save failed: '+m;
+}
+
+async function deleteClient(id){
+  if(!confirm('Delete this client and all their data?')) return;
+  setSyncStatus('syncing');
+  try {
+    await sb.from('clients').delete().eq('id',id);
+    await logAudit('deleted','clients',id,{},{});
+    toast('Client deleted'); closeModal();
+    showPage('clients', document.querySelector('[data-page=clients]'));
+  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
+}
+
+// ============================================================
+//  SITE MODAL
+// ============================================================
+function openSiteModal(id){
+  // Load sites for current client
+  sb.from('sites').select('*').eq('client_id', activeClientId).then(({data})=>{
+    const s = id ? (data||[]).find(x=>x.id===id)||{} : {};
+    const isEdit = !!id;
+    openModal(`<div class="modal">
+      <div class="modal-hdr"><h3>${isEdit?'Edit site':'New site'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+      <div class="form-group"><label class="lbl">Site name *</label><input class="fi" id="f-site-name" value="${esc(s.name||'')}" placeholder="e.g. Head Office, Warehouse"></div>
+      <div class="form-group"><label class="lbl">Address</label><input class="fi" id="f-site-addr" value="${esc(s.address||'')}" placeholder="123 Main St, Sydney NSW 2000"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="lbl">Contact name</label><input class="fi" id="f-site-cname" value="${esc(s.contact_name||'')}" placeholder="Jane Smith"></div>
+        <div class="form-group"><label class="lbl">Contact phone</label><input class="fi" id="f-site-cphone" value="${esc(s.contact_phone||'')}" placeholder="02 9000 0000"></div>
+      </div>
+      <div class="form-group"><label class="lbl">Contact email</label><input class="fi" id="f-site-cemail" value="${esc(s.contact_email||'')}" placeholder="site@company.com.au"></div>
+      <div class="modal-ftr">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="${isEdit?`submitEditSite('${id}')`:'submitAddSite()'}">${isEdit?'Save changes':'Add site'}</button>
+      </div>
+    </div>`);
+  });
+}
+
+async function submitAddSite(){
+  const name = document.getElementById('f-site-name').value.trim();
+  if(!name){ toast('Site name is required','warn'); return; }
+  const payload = { client_id: activeClientId, name, address: document.getElementById('f-site-addr').value.trim(), contact_name: document.getElementById('f-site-cname').value.trim(), contact_phone: document.getElementById('f-site-cphone').value.trim(), contact_email: document.getElementById('f-site-cemail').value.trim() };
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await sb.from('sites').insert(payload).select().single();
+    if(error) throw error;
+    await logAudit('created','sites',data.id,{},payload);
+    closeModal(); toast('Site added'); loadClientProfile(activeClientId);
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function submitEditSite(id){
+  const payload = { name: document.getElementById('f-site-name').value.trim(), address: document.getElementById('f-site-addr').value.trim(), contact_name: document.getElementById('f-site-cname').value.trim(), contact_phone: document.getElementById('f-site-cphone').value.trim(), contact_email: document.getElementById('f-site-cemail').value.trim() };
+  setSyncStatus('syncing');
+  try {
+    await sb.from('sites').update(payload).eq('id',id);
+    await logAudit('updated','sites',id,{},payload);
+    closeModal(); toast('Site updated'); loadClientProfile(activeClientId);
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function deleteSite(id){
+  if(!confirm('Delete this site?')) return;
+  setSyncStatus('syncing');
+  try {
+    await sb.from('sites').delete().eq('id',id);
+    await logAudit('deleted','sites',id,{},{});
+    toast('Site deleted'); loadClientProfile(activeClientId);
+  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
+}
+
+// ============================================================
+//  JOB MODAL
+// ============================================================
+async function openJobModal(id){
+  // Load needed data
+  const [clients, { data: profiles }] = await Promise.all([
+    fetchAll(()=>sb.from('clients').select('id,company').order('company')),
+    sb.from('profiles').select('id,full_name').order('full_name')
+  ]);
+  allProfiles = profiles || [];
+
+  let j = {};
+  let sites = [];
+  if(id){
+    const { data } = await sb.from('jobs').select('*').eq('id',id).single();
+    j = data || {};
+    if(j.client_id){
+      const { data: s } = await sb.from('sites').select('id,name').eq('client_id',j.client_id);
+      sites = s || [];
+    }
+  } else if(activeClientId) {
+    const { data: s } = await sb.from('sites').select('id,name').eq('client_id',activeClientId);
+    sites = s || [];
+  }
+
+  const clientOpts = (clients||[]).map(c=>`<option value="${c.id}"${(j.client_id||activeClientId)===c.id?' selected':''}>${esc(c.company)}</option>`).join('');
+  const clientName = (clients||[]).find(c=>c.id===(j.client_id||activeClientId))?.company || '';
+  const defaultSiteId = j.site_id || (!id && sites.length ? sites[0].id : '');
+  const siteOpts   = sites.map(s=>`<option value="${s.id}"${defaultSiteId===s.id?' selected':''}>${esc(s.name)}</option>`).join('');
+  const autoAssign = !id && !isAdminOrOps(); // tech creating a new job
+  const staffOpts  = `<option value="">— Unassigned —</option>` + (profiles||[]).map(p=>`<option value="${p.id}"${(j.assigned_to||( autoAssign?currentUser?.id:''))===p.id?' selected':''}>${esc(p.full_name)}</option>`).join('');
+  const isEdit     = !!id;
+
+  openModal(`<div class="modal" style="width:860px">
+    ${isEdit
+      ? `<div class="modal-hdr" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:center;border-bottom:1px solid var(--border);padding-bottom:0;margin-bottom:1.25rem">
+           <h3 style="font-size:24px">${esc(clientName)}</h3>
+           <div style="display:flex">
+             <div class="modal-tab active" onclick="switchJobTab('desc',this)">Description</div>
+             <div class="modal-tab" onclick="switchJobTab('notes',this)">Job Notes</div>
+           </div>
+         </div>
+         <input type="hidden" id="f-job-client" value="${j.client_id}">`
+      : `<div class="modal-hdr"><h3>New job</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>`
+    }
+    <div class="modal-2col">
+      <div class="modal-col" style="${isEdit?'justify-content:center':''}">
+        ${!isEdit
+          ? `<div class="form-group"><label class="lbl">Client *</label>
+               <select class="fi" id="f-job-client" onchange="loadSitesForJob(this.value)">${clientOpts}</select>
+             </div>`
+          : ''
+        }
+        <div class="form-row">
+          <div class="form-group"><label class="lbl">Type *</label>
+            <select class="fi" id="f-job-type" onchange="toggleJobCostApproval(this.value)">
+              <option ${j.type==='New Install'?'selected':''}>New Install</option>
+              <option ${j.type==='Service'||!j.type?'selected':''}>Service</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="lbl">Status *</label>
+            <select class="fi" id="f-job-status">
+              <option ${j.status==='Pending'||!j.status?'selected':''}>Pending</option>
+              <option ${j.status==='Incomplete'?'selected':''}>Incomplete</option>
+              <option ${j.status==='Complete'?'selected':''}>Complete</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" id="f-title-wrap" style="${j.type==='New Install'?'display:none':''}"><label class="lbl">Title *</label><input class="fi" id="f-job-title" value="${esc(j.title||'')}" placeholder="e.g. NBN line installation"></div>
+        <div class="form-group"><label class="lbl">Site</label>
+          <select class="fi" id="f-job-site">${siteOpts}</select>
+        </div>
+        <div class="form-group"><label class="lbl">Assigned to</label>
+          <select class="fi" id="f-job-assigned">${staffOpts}</select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="lbl">Due date</label><input class="fi" type="date" id="f-job-sched" value="${j.due_date||''}"></div>
+          <div class="form-group" id="f-cost-wrap" style="${j.type==='New Install'?'display:none':''}"><label class="lbl">Cost ($)</label><input class="fi" type="number" id="f-job-cost" step="1" min="0" value="${j.cost||''}" placeholder="0"></div>
+          <div class="form-group" id="f-approval-wrap" style="${j.type!=='New Install'?'display:none':''}"><label class="lbl">Approval date *</label><input class="fi" type="date" id="f-job-approval" value="${j.approval_date||''}" required></div>
+        </div>
+      </div>
+      <div class="modal-col" style="display:flex;flex-direction:column">
+        ${!isEdit ? `<div class="modal-tabs" style="margin-bottom:8px">
+          <div class="modal-tab active" onclick="switchJobTab('desc',this)">Description</div>
+          <div class="modal-tab" onclick="switchJobTab('notes',this)">Job Notes</div>
+        </div>` : ''}
+        <div id="job-tab-desc" style="display:flex;flex-direction:column;flex:1">
+          <textarea class="fi" id="f-job-desc" placeholder="Job details..." style="flex:1;min-height:${isEdit?'420':'280'}px;resize:vertical">${esc(j.description||'')}</textarea>
+        </div>
+        <div id="job-tab-notes" style="display:none;flex-direction:column;flex:1">
+          <textarea class="fi" id="f-job-notes" placeholder="Internal notes, progress updates, follow-ups..." style="flex:1;min-height:${isEdit?'420':'280'}px;resize:vertical">${esc(j.job_notes||'')}</textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr" style="${isEdit?'justify-content:space-between;align-items:center':''}">
+      ${isEdit?`<span style="font-size:13px;font-weight:600;color:var(--text3)">Edit job</span>`:''}
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="${isEdit?`submitEditJob('${id}')`:'submitAddJob()'}">${isEdit?'Save changes':'Log job'}</button>
+      </div>
+    </div>
+  </div>`);
+}
+
+async function loadSitesForJob(clientId){
+  const { data: sites } = await sb.from('sites').select('id,name').eq('client_id',clientId);
+  const el = document.getElementById('f-job-site');
+  if(!el) return;
+  el.innerHTML = (sites||[]).map((s,i)=>`<option value="${s.id}"${i===0?' selected':''}>${esc(s.name)}</option>`).join('');
+}
+
+function toggleJobCostApproval(type){
+  const isInstall = type === 'New Install';
+  const costWrap     = document.getElementById('f-cost-wrap');
+  const approvalWrap = document.getElementById('f-approval-wrap');
+  const titleWrap    = document.getElementById('f-title-wrap');
+  if(costWrap)     costWrap.style.display     = isInstall ? 'none' : '';
+  if(approvalWrap) approvalWrap.style.display = isInstall ? '' : 'none';
+  if(titleWrap)    titleWrap.style.display    = isInstall ? 'none' : '';
+}
+
+async function submitAddJob(){
+  const jobTypeVal = document.getElementById('f-job-type').value;
+  const title = document.getElementById('f-job-title').value.trim();
+  if(!title && jobTypeVal !== 'New Install'){ toast('Job title is required','warn'); return; }
+  if(jobTypeVal==='New Install' && !document.getElementById('f-job-approval').value){ toast('Approval date is required for New Installs','warn'); return; }
+  const clientId = document.getElementById('f-job-client').value;
+  if(!clientId){ toast('Please select a client','warn'); return; }
+  const siteVal     = document.getElementById('f-job-site').value;
+  const assignedVal = isAdminOrOps()
+    ? document.getElementById('f-job-assigned').value
+    : currentUser.id; // techs are always auto-assigned to jobs they create
+  const payload = {
+    title: title||null, type: jobTypeVal,
+    status: document.getElementById('f-job-status').value,
+    client_id: clientId, site_id: siteVal||null,
+    assigned_to: assignedVal||null,
+    due_date: document.getElementById('f-job-sched').value||null,
+    cost: jobTypeVal==='New Install' ? null : (document.getElementById('f-job-cost').value||null),
+    approval_date: jobTypeVal==='New Install' ? (document.getElementById('f-job-approval').value||null) : null,
+    description: document.getElementById('f-job-desc').value.trim(),
+    job_notes: document.getElementById('f-job-notes').value.trim(),
+    created_by: currentUser.id
+  };
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await sb.from('jobs').insert(payload).select().single();
+    if(error) throw error;
+    await logAudit('created','jobs',data.id,{},payload);
+    // Send email notification if assigned
+    if(assignedVal) await sendAssignmentEmail(data, assignedVal);
+    closeModal(); toast('Job logged');
+    if(currentPage==='client-profile') loadClientProfile(activeClientId); else loadJobs();
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function submitEditJob(id){
+  const editType = document.getElementById('f-job-type').value;
+  if(editType==='New Install' && !document.getElementById('f-job-approval').value){ toast('Approval date is required for New Installs','warn'); return; }
+  if(editType==='Service' && !document.getElementById('f-job-title').value.trim()){ toast('Job title is required','warn'); return; }
+  const siteVal     = document.getElementById('f-job-site').value;
+  const assignedVal = document.getElementById('f-job-assigned').value;
+  const jobType = document.getElementById('f-job-type').value;
+  const payload = {
+    title: document.getElementById('f-job-title').value.trim(),
+    type: jobType,
+    status: document.getElementById('f-job-status').value,
+    client_id: document.getElementById('f-job-client').value,
+    site_id: siteVal||null, assigned_to: assignedVal||null,
+    due_date: document.getElementById('f-job-sched').value||null,
+    cost: jobType==='New Install' ? null : (document.getElementById('f-job-cost').value||null),
+    approval_date: jobType==='New Install' ? (document.getElementById('f-job-approval').value||null) : null,
+    description: document.getElementById('f-job-desc').value.trim(),
+    job_notes: document.getElementById('f-job-notes').value.trim()
+  };
+  setSyncStatus('syncing');
+  try {
+    const old = allJobs.find(j=>j.id===id)||{};
+    await sb.from('jobs').update(payload).eq('id',id);
+    await logAudit('updated','jobs',id,old,payload);
+    // Notify if assignee changed
+    if(assignedVal && assignedVal !== old.assigned_to) await sendAssignmentEmail({id,...payload}, assignedVal);
+    closeModal(); toast('Job updated');
+    if(currentPage==='client-profile') loadClientProfile(activeClientId); else loadJobs();
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function deleteJob(id){
+  if(!confirm('Delete this job?')) return;
+  setSyncStatus('syncing');
+  try {
+    await sb.from('jobs').delete().eq('id',id);
+    await logAudit('deleted','jobs',id,{},{});
+    toast('Job deleted');
+    if(currentPage==='client-profile') loadClientProfile(activeClientId); else loadJobs();
+  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
+}
+
+// ============================================================
+//  NOTE MODAL
+// ============================================================
+function openNoteModal(){
+  openModal(`<div class="modal">
+    <div class="modal-hdr"><h3>Add note</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+    <div class="form-group"><label class="lbl">Note *</label><textarea class="fi" id="f-note" placeholder="Enter details about this interaction..."></textarea></div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAddNote()">Save note</button>
+    </div>
+  </div>`);
+}
+
+async function submitAddNote(){
+  const text = document.getElementById('f-note').value.trim();
+  if(!text){ toast('Note cannot be empty','warn'); return; }
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await sb.from('notes').insert({ client_id: activeClientId, text, created_by: currentUser.id }).select().single();
+    if(error) throw error;
+    await logAudit('created','notes',data.id,{},{text});
+    closeModal(); toast('Note saved'); loadClientProfile(activeClientId);
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function deleteNote(id){
+  if(!confirm('Delete this note?')) return;
+  setSyncStatus('syncing');
+  try {
+    await sb.from('notes').delete().eq('id',id);
+    await logAudit('deleted','notes',id,{},{});
+    toast('Note deleted'); loadClientProfile(activeClientId);
+  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
+}
+
+// ============================================================
+//  INVITE USER MODAL
+// ============================================================
+function openInviteModal(){
+  openModal(`<div class="modal">
+    <div class="modal-hdr"><h3>Invite team member</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+    <div class="form-group"><label class="lbl">Full name *</label><input class="fi" id="f-inv-name" placeholder="Jane Smith"></div>
+    <div class="form-group"><label class="lbl">Email *</label><input class="fi" type="email" id="f-inv-email" placeholder="jane@company.com.au"></div>
+    <div class="form-group"><label class="lbl">Role *</label>
+      <select class="fi" id="f-inv-role"><option value="technician">Tech</option><option value="ops">Ops</option><option value="admin">Admin</option></select>
+    </div>
+    <div id="inv-error" class="form-error" style="display:none"></div>
+    <div class="modal-ftr">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitInvite()"><i class="ti ti-send"></i> Send invite</button>
+    </div>
+  </div>`);
+}
+
+async function submitInvite(){
+  const name  = document.getElementById('f-inv-name').value.trim();
+  const email = document.getElementById('f-inv-email').value.trim();
+  const role  = document.getElementById('f-inv-role').value;
+  const err   = document.getElementById('inv-error');
+  err.style.display = 'none';
+  if(!name||!email){ err.textContent='Name and email are required.'; err.style.display='block'; return; }
+  setSyncStatus('syncing');
+  try {
+    const { error } = await sb.auth.admin.inviteUserByEmail(email, { data: { full_name: name, role } });
+    if(error) throw error;
+    closeModal(); toast(`Invite sent to ${email}`); loadUsers();
+  } catch(e){
+    // admin.inviteUserByEmail requires service role key — use edge function approach
+    err.textContent = 'Invite failed: ' + e.message + '. Ensure the user is invited from the Supabase dashboard.';
+    err.style.display = 'block';
+    setSyncStatus('error');
+  }
+}
+
+// ============================================================
+//  EMAIL NOTIFICATIONS (via Supabase Edge Function)
+//  You'll set up the edge function separately — this just calls it
+// ============================================================
+async function sendAssignmentEmail(job, assignedUserId){
+  try {
+    const assignee = allProfiles.find(p=>p.id===assignedUserId);
+    if(!assignee) return;
+    const client = allClients.find(c=>c.id===job.client_id);
+    await sb.functions.invoke('send-assignment-email', {
+      body: {
+        to: assignee.email,
+        assignee_name: assignee.full_name,
+        job_title: job.title,
+        job_type: job.type,
+        client_name: client?.company || 'Unknown',
+        due_date: job.due_date,
+        assigned_by: currentProfile?.full_name
+      }
+    });
+  } catch(e){ console.warn('Email notification failed:', e); }
+}
+
+// ============================================================
+//  BOOT
+// ============================================================
+boot();
+</script>
+</body>
+</html>
