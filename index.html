@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.4">
+<meta name="version" content="v1.0.5">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -412,7 +412,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.4</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.5</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -617,6 +617,7 @@ let jobFilters     = { status: 'Pending' };
 let allClients     = [];
 let allJobs        = [];
 let allPorting     = [];
+let portingClients = [];  // lightweight {id,company} list for the porting client dropdown — kept separate so it never clobbers the full allClients cache
 let portingFilter  = 'all';
 let allProfiles    = [];
 let _ignoreNextPop = false;  // prevents popstate loop when closeModal calls history.back()
@@ -1228,7 +1229,7 @@ async function loadPorting(){
       fetchAll(()=>sb.from('clients').select('id,company').order('company'))
     ]);
     allPorting = ports || [];
-    if(clients) allClients = clients;
+    if(clients) portingClients = clients;
     renderPortingList();
     setSyncStatus('ok');
   } catch(e){ setSyncStatus('error'); toast('Error loading porting tickets: '+e.message,'error'); }
@@ -1269,14 +1270,14 @@ async function openPortingModal(id, prefillClientId){
     const { data } = await sb.from('porting').select('*,clients(company)').eq('id',id).single();
     rec = data;
   }
-  // Ensure allClients is populated (user may navigate directly to Porting)
-  if(!allClients.length){
+  // Ensure the porting client list is populated (user may navigate directly to Porting)
+  if(!portingClients.length){
     const clients = await fetchAll(()=>sb.from('clients').select('id,company').order('company'));
-    if(clients) allClients = clients;
+    if(clients) portingClients = clients;
   }
   const lockClient = isEdit || !!prefillClientId;
   const effectiveClientId = rec?.client_id || prefillClientId || '';
-  const clientOptions = allClients.map(c=>`<option value="${c.id}" ${effectiveClientId===c.id?'selected':''}>${esc(c.company)}</option>`).join('');
+  const clientOptions = portingClients.map(c=>`<option value="${c.id}" ${effectiveClientId===c.id?'selected':''}>${esc(c.company)}</option>`).join('');
   openModal(`<div class="modal" style="width:860px">
     <div class="modal-hdr"><h3>${isEdit?'Edit porting ticket':'Log porting ticket'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
     <div class="modal-2col">
@@ -1492,8 +1493,15 @@ function addAddressRow(){
   container.appendChild(row);
 }
 
-function openClientModal(id){
-  const c = id ? allClients.find(x=>x.id===id)||{} : {};
+async function openClientModal(id){
+  let c = {};
+  if(id){
+    // Always fetch the full record fresh — allClients may hold only a partial
+    // projection (e.g. after visiting Porting), which would prefill blanks and wipe data on save.
+    const { data, error } = await sb.from('clients').select('*').eq('id',id).single();
+    if(error){ toast('Could not load client: '+error.message,'error'); return; }
+    c = data || {};
+  }
   const isEdit = !!id;
   openModal(`<div class="modal">
     <div class="modal-hdr"><h3>${isEdit?'Edit client':'New client'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
