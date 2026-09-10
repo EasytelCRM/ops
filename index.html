@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.6">
+<meta name="version" content="v1.0.7">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -259,9 +259,12 @@ select.fi { cursor: pointer; }
 /* ============================================================
    PORTING SPLIT VIEW
 ============================================================ */
-.port-split { display: grid; grid-template-columns: 322px minmax(0,1fr); gap: 1rem; align-items: start; }
-.port-col { display: flex; flex-direction: column; min-width: 0; }
-.port-list-card { display: flex; flex-direction: column; min-height: 0; max-height: calc(100vh - 250px); }
+/* Only this page fills its container; every other .page stays display:block */
+#page-porting.active { display: flex; flex-direction: column; height: 100%; }
+.port-split { display: grid; grid-template-columns: 483px minmax(0,1fr); gap: 1rem; flex: 1; min-height: 0; }
+.port-col { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.port-col > .card { height: 100%; min-height: 0; margin-bottom: 0; display: flex; flex-direction: column; }
+.port-list-card { display: flex; flex-direction: column; min-height: 0; }
 .port-list { overflow-y: auto; flex: 1; min-height: 0; }
 .port-row { display: block; width: 100%; text-align: left; border: none; background: none; font-family: inherit; cursor: pointer; padding: 10px 1rem; border-bottom: 1px solid var(--border); border-left: 3px solid transparent; transition: background 0.12s, border-color 0.12s; }
 .port-row:hover { background: var(--surface2); }
@@ -270,10 +273,15 @@ select.fi { cursor: pointer; }
 .port-row-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .port-tid { font-size: 13px; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
 .port-row.sel .port-tid { color: var(--accent-text); }
-.port-co { font-size: 13px; color: var(--text); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.port-co { font-size: 13px; color: var(--text2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .port-when { font-size: 11px; color: var(--text2); margin-top: 3px; font-variant-numeric: tabular-nums; }
 .port-when.due { color: var(--amber); font-weight: 500; }
-.port-det { padding: 1.1rem 1.25rem 1.25rem; }
+#porting-detail { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+.port-det { padding: 1.1rem 1.25rem 1.25rem; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.port-empty { margin: auto; }
+/* Notes absorb whatever height the fixed fields don't use */
+.port-notes-group { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.port-notes-group textarea { flex: 1; min-height: 120px; resize: none; }
 .port-det-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .port-det-tid { font-size: 19px; font-weight: 500; display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
 .port-det-co { margin-top: 5px; font-size: 13px; color: var(--text2); }
@@ -282,9 +290,14 @@ select.fi { cursor: pointer; }
 .port-savebar.dirty { background: var(--amber-light); border-color: var(--amber); }
 .port-savemsg { font-size: 12.5px; color: var(--text3); }
 .port-savebar.dirty .port-savemsg { color: var(--amber); font-weight: 500; }
-@media (max-width: 900px) {
+/* Stacked on narrow screens: full height would be wrong on a phone */
+@media (max-width: 1024px) {
+  #page-porting.active { display: block; height: auto; }
   .port-split { grid-template-columns: 1fr; }
+  .port-col > .card { height: auto; margin-bottom: 1rem; }
   .port-list-card { max-height: 340px; }
+  #porting-detail { display: block; overflow: visible; }
+  .port-notes-group textarea { flex: none; min-height: 150px; resize: vertical; }
 }
 
 /* ============================================================
@@ -443,7 +456,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.6</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.7</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -1350,7 +1363,7 @@ function renderPortingDetail(){
   if(!el) return;
   const rec = portingDraft ? null : allPorting.find(p=>p.id===selectedPortingId);
   if(!rec && !portingDraft){
-    el.innerHTML = `<div class="empty" style="padding:3.5rem 1rem"><i class="ti ti-phone-outgoing"></i><p>Select a ticket to view or edit it.</p></div>`;
+    el.innerHTML = `<div class="empty port-empty" style="padding:3.5rem 1rem"><i class="ti ti-phone-outgoing"></i><p>Select a ticket to view or edit it.</p></div>`;
     return;
   }
   const clientOptions = portingClients.map(c=>`<option value="${c.id}">${esc(c.company)}</option>`).join('');
@@ -1377,8 +1390,8 @@ function renderPortingDetail(){
         </select>
       </div>
     </div>
-    <div class="form-group" style="margin-top:1rem"><label class="lbl">Notes</label>
-      <textarea class="fi" id="f-port-notes" placeholder="Any notes about this port..." style="min-height:150px;resize:vertical">${esc(rec?.notes||'')}</textarea>
+    <div class="form-group port-notes-group" style="margin-top:1rem"><label class="lbl">Notes</label>
+      <textarea class="fi" id="f-port-notes" placeholder="Any notes about this port...">${esc(rec?.notes||'')}</textarea>
     </div>
     <div id="port-error" class="form-error" style="display:none"></div>
     <div class="port-savebar" id="port-savebar">
