@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.5">
+<meta name="version" content="v1.0.6">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -257,6 +257,37 @@ select.fi { cursor: pointer; }
 .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 /* ============================================================
+   PORTING SPLIT VIEW
+============================================================ */
+.port-split { display: grid; grid-template-columns: 322px minmax(0,1fr); gap: 1rem; align-items: start; }
+.port-col { display: flex; flex-direction: column; min-width: 0; }
+.port-list-card { display: flex; flex-direction: column; min-height: 0; max-height: calc(100vh - 250px); }
+.port-list { overflow-y: auto; flex: 1; min-height: 0; }
+.port-row { display: block; width: 100%; text-align: left; border: none; background: none; font-family: inherit; cursor: pointer; padding: 10px 1rem; border-bottom: 1px solid var(--border); border-left: 3px solid transparent; transition: background 0.12s, border-color 0.12s; }
+.port-row:hover { background: var(--surface2); }
+.port-row.sel { background: var(--accent-light); border-left-color: var(--accent); }
+.port-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.port-row-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.port-tid { font-size: 13px; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
+.port-row.sel .port-tid { color: var(--accent-text); }
+.port-co { font-size: 13px; color: var(--text); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.port-when { font-size: 11px; color: var(--text2); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.port-when.due { color: var(--amber); font-weight: 500; }
+.port-det { padding: 1.1rem 1.25rem 1.25rem; }
+.port-det-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.port-det-tid { font-size: 19px; font-weight: 500; display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
+.port-det-co { margin-top: 5px; font-size: 13px; color: var(--text2); }
+.port-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(165px,1fr)); gap: 0.9rem 1.25rem; margin-top: 1.15rem; padding-top: 1.15rem; border-top: 1px solid var(--border); }
+.port-savebar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1.15rem; padding: 0.7rem 0.9rem; border-radius: var(--radius); background: var(--surface2); border: 1px solid var(--border); }
+.port-savebar.dirty { background: var(--amber-light); border-color: var(--amber); }
+.port-savemsg { font-size: 12.5px; color: var(--text3); }
+.port-savebar.dirty .port-savemsg { color: var(--amber); font-weight: 500; }
+@media (max-width: 900px) {
+  .port-split { grid-template-columns: 1fr; }
+  .port-list-card { max-height: 340px; }
+}
+
+/* ============================================================
    AUDIT LOG
 ============================================================ */
 .audit-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
@@ -412,7 +443,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.5</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.6</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -549,18 +580,25 @@ select.fi { cursor: pointer; }
            PORTING
       ══════════════════════════════════════════ -->
       <div class="page" id="page-porting">
-        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="porting-search" placeholder="Search client or ticket number..." oninput="renderPortingList()"></div>
-        <div class="filter-bar" id="porting-status-filters">
-          <button class="filter-btn" onclick="setPortingFilter('Pending',this)">Pending</button>
-          <button class="filter-btn" onclick="setPortingFilter('Complete',this)">Complete</button>
-          <button class="filter-btn active" onclick="setPortingFilter('all',this)">All</button>
-        </div>
-        <div class="card">
-          <div class="card-head">
-            <h3 id="porting-count">Porting tickets</h3>
-            <button class="btn btn-primary btn-sm" id="btn-add-porting" onclick="openPortingModal(null)" style="display:none"><i class="ti ti-plus"></i> Log port</button>
+        <div class="port-split">
+          <div class="port-col">
+            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="porting-search" placeholder="Search client or ticket number..." oninput="renderPortingList()"></div>
+            <div class="filter-bar" id="porting-status-filters">
+              <button class="filter-btn" onclick="setPortingFilter('Pending',this)">Pending</button>
+              <button class="filter-btn" onclick="setPortingFilter('Complete',this)">Complete</button>
+              <button class="filter-btn active" onclick="setPortingFilter('all',this)">All</button>
+            </div>
+            <div class="card port-list-card">
+              <div class="card-head">
+                <h3 id="porting-count">Porting tickets</h3>
+                <button class="btn btn-primary btn-sm" id="btn-add-porting" onclick="newPortingDraft()" style="display:none"><i class="ti ti-plus"></i> Log port</button>
+              </div>
+              <div class="port-list" id="porting-list"></div>
+            </div>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Ticket number</th><th>Client</th><th>Account #</th><th>Losing carrier</th><th>Port date</th><th>Status</th><th></th></tr></thead><tbody id="porting-tbody"></tbody></table></div>
+          <div class="port-col">
+            <div class="card"><div id="porting-detail"></div></div>
+          </div>
         </div>
       </div>
 
@@ -619,6 +657,9 @@ let allJobs        = [];
 let allPorting     = [];
 let portingClients = [];  // lightweight {id,company} list for the porting client dropdown — kept separate so it never clobbers the full allClients cache
 let portingFilter  = 'all';
+let selectedPortingId = null;   // ticket currently shown in the detail pane
+let portingDirty      = false;  // detail pane has edits that aren't saved
+let portingDraft      = false;  // detail pane is an unsaved new ticket
 let allProfiles    = [];
 let _ignoreNextPop = false;  // prevents popstate loop when closeModal calls history.back()
 
@@ -884,7 +925,7 @@ function showPage(name, el, _push=true){
   document.getElementById('topbar-title').textContent = titles[name] || name;
   // Update top CTA
   const cta = document.getElementById('topbar-cta');
-  if(name==='porting') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openPortingModal(null)"><i class="ti ti-plus"></i> Log port</button>`;
+  if(name==='porting') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="newPortingDraft()"><i class="ti ti-plus"></i> Log port</button>`;
   else cta.innerHTML = '';
   closeSidebar();
   if(_push) history.pushState({ type: 'page', name }, '');
@@ -1230,7 +1271,10 @@ async function loadPorting(){
     ]);
     allPorting = ports || [];
     if(clients) portingClients = clients;
+    // Drop a selection that no longer exists (deleted elsewhere, or filtered out of the fetch)
+    if(selectedPortingId && !allPorting.some(p=>p.id===selectedPortingId)) selectedPortingId = null;
     renderPortingList();
+    renderPortingDetail();
     setSyncStatus('ok');
   } catch(e){ setSyncStatus('error'); toast('Error loading porting tickets: '+e.message,'error'); }
 }
@@ -1243,19 +1287,180 @@ function renderPortingList(){
     return matchQ && matchStatus;
   });
   document.getElementById('porting-count').textContent = `Porting tickets (${f.length})`;
-  const tb = document.getElementById('porting-tbody');
-  if(!tb) return;
-  tb.innerHTML = f.length ? f.map(p=>`
-    <tr class="job-row" onclick="openPortingModal('${p.id}')" style="cursor:pointer">
-      <td style="font-weight:500">${esc(p.phone_numbers)}</td>
-      <td><span style="color:var(--accent);cursor:pointer" onclick="event.stopPropagation();openClientProfile('${p.client_id}')">${esc(p.clients?.company||'Unknown')}</span></td>
-      <td style="font-size:12px;color:var(--text2)">${esc(p.clients?.account_number||'—')}</td>
-      <td style="color:var(--text2);font-size:12px">${esc(p.losing_carrier)}</td>
-      <td style="font-size:12px;color:var(--text2)">${fmtDate(p.port_date)}${p.port_time?` <span style="color:var(--text3)">${p.port_time.slice(0,5)}</span>`:''}</td>
-      <td>${portingStatusBadge(p.status)}</td>
-      <td>${isAdminOrOps()?`<button class="btn btn-sm btn-danger hover-del" onclick="event.stopPropagation();deletePorting('${p.id}')"><i class="ti ti-trash"></i></button>`:''}</td>
-    </tr>`).join('')
-    : `<tr><td colspan="7"><div class="empty"><i class="ti ti-phone-outgoing"></i><p>No porting tickets found.</p></div></td></tr>`;
+  const list = document.getElementById('porting-list');
+  if(!list) return;
+  list.innerHTML = f.length ? f.map(p=>portingRowHTML(p)).join('')
+    : `<div class="empty"><i class="ti ti-phone-outgoing"></i><p>No porting tickets found.</p></div>`;
+}
+
+function portingRowHTML(p){
+  const due = p.status==='Pending' && portingDaysOut(p.port_date) <= 1;
+  return `<button class="port-row${p.id===selectedPortingId?' sel':''}" onclick="selectPorting('${p.id}')">
+    <div class="port-row-top"><span class="port-tid">${esc(p.phone_numbers)}</span>${portingStatusBadge(p.status)}</div>
+    <div class="port-co">${esc(p.clients?.company||'Unknown')}</div>
+    <div class="port-when${due?' due':''}">${fmtDate(p.port_date)}${p.port_time?` · ${p.port_time.slice(0,5)}`:''}</div>
+  </button>`;
+}
+
+// Days until a port cuts over; undated tickets sort as "far away" so they never flag as due.
+function portingDaysOut(d){
+  if(!d) return 9999;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((new Date(d+'T00:00:00') - today) / 86400000);
+}
+
+// ── Detail pane ──────────────────────────────────────────────
+function selectPorting(id){
+  if(!confirmDiscardPorting()) return;
+  selectedPortingId = id;
+  portingDraft = false;
+  portingDirty = false;
+  renderPortingList();
+  renderPortingDetail();
+}
+
+async function newPortingDraft(){
+  if(!confirmDiscardPorting()) return;
+  // User may land on Porting directly, before the client list has been fetched
+  if(!portingClients.length){
+    const clients = await fetchAll(()=>sb.from('clients').select('id,company').order('company'));
+    if(clients) portingClients = clients;
+  }
+  selectedPortingId = null;
+  portingDraft = true;
+  portingDirty = false;
+  renderPortingList();
+  renderPortingDetail();
+}
+
+function cancelPortingDraft(){
+  portingDraft = false;
+  portingDirty = false;
+  renderPortingList();
+  renderPortingDetail();
+}
+
+function confirmDiscardPorting(){
+  if(!portingDirty) return true;
+  return confirm('You have unsaved changes to this ticket. Discard them?');
+}
+
+function renderPortingDetail(){
+  const el = document.getElementById('porting-detail');
+  if(!el) return;
+  const rec = portingDraft ? null : allPorting.find(p=>p.id===selectedPortingId);
+  if(!rec && !portingDraft){
+    el.innerHTML = `<div class="empty" style="padding:3.5rem 1rem"><i class="ti ti-phone-outgoing"></i><p>Select a ticket to view or edit it.</p></div>`;
+    return;
+  }
+  const clientOptions = portingClients.map(c=>`<option value="${c.id}">${esc(c.company)}</option>`).join('');
+  el.innerHTML = `<div class="port-det" oninput="markPortingDirty()" onchange="markPortingDirty()">
+    <div class="port-det-head">
+      <div>
+        <div class="port-det-tid">${portingDraft ? 'New porting ticket' : esc(rec.phone_numbers)}${portingDraft ? '' : ' '+portingStatusBadge(rec.status)}</div>
+        <div class="port-det-co">${portingDraft
+          ? 'Pick a client and fill in the ticket, then save.'
+          : `<span style="color:var(--accent);cursor:pointer" onclick="if(confirmDiscardPorting())openClientProfile('${rec.client_id}')">${esc(rec.clients?.company||'Unknown')}</span> · ${esc(rec.clients?.account_number||'—')}`}</div>
+      </div>
+      ${(!portingDraft && isAdminOrOps()) ? `<button class="btn btn-sm btn-danger" onclick="deletePorting('${rec.id}')"><i class="ti ti-trash"></i> Delete</button>` : ''}
+    </div>
+    <div class="port-grid">
+      ${portingDraft ? `<div class="form-group" style="grid-column:1/-1"><label class="lbl">Client *</label>
+        <select class="fi" id="f-port-client"><option value="">— select client —</option>${clientOptions}</select></div>` : ''}
+      <div class="form-group"><label class="lbl">Ticket number *</label><input class="fi" id="f-port-numbers" value="${esc(rec?.phone_numbers||'')}" placeholder="e.g. TKT-12345"></div>
+      <div class="form-group"><label class="lbl">Losing carrier *</label><input class="fi" id="f-port-carrier" value="${esc(rec?.losing_carrier||'')}" placeholder="e.g. Telstra"></div>
+      <div class="form-group"><label class="lbl">Port date</label><input class="fi" type="date" id="f-port-date" value="${rec?.port_date||''}"></div>
+      <div class="form-group"><label class="lbl">Port time</label><input class="fi" type="time" id="f-port-time" value="${rec?.port_time||''}"></div>
+      <div class="form-group"><label class="lbl">Status</label>
+        <select class="fi" id="f-port-status">
+          ${['Pending','Complete','Cancelled'].map(s=>`<option value="${s}" ${(rec?.status||'Pending')===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:1rem"><label class="lbl">Notes</label>
+      <textarea class="fi" id="f-port-notes" placeholder="Any notes about this port..." style="min-height:150px;resize:vertical">${esc(rec?.notes||'')}</textarea>
+    </div>
+    <div id="port-error" class="form-error" style="display:none"></div>
+    <div class="port-savebar" id="port-savebar">
+      <span class="port-savemsg"></span>
+      <div style="display:flex;gap:8px">
+        ${portingDraft ? `<button class="btn btn-sm" onclick="cancelPortingDraft()">Cancel</button>` : ''}
+        <button class="btn btn-primary btn-sm" id="port-save-btn" onclick="savePorting()"><i class="ti ti-check"></i> ${portingDraft?'Log port':'Save changes'}</button>
+      </div>
+    </div>
+  </div>`;
+  updatePortingSaveBar();
+}
+
+// Only ever touches the save bar — re-rendering the pane on each keystroke would drop the caret.
+function markPortingDirty(){
+  if(portingDirty) return;
+  portingDirty = true;
+  updatePortingSaveBar();
+}
+
+function updatePortingSaveBar(){
+  const bar = document.getElementById('port-savebar');
+  if(!bar) return;
+  const canSave = portingDirty || portingDraft;
+  bar.classList.toggle('dirty', portingDirty);
+  bar.querySelector('.port-savemsg').textContent =
+    portingDirty ? 'Unsaved changes' : portingDraft ? 'Not saved yet' : 'All changes saved';
+  const btn = document.getElementById('port-save-btn');
+  btn.disabled = !canSave;
+  btn.style.opacity = canSave ? '1' : '0.5';
+  btn.style.cursor  = canSave ? 'pointer' : 'default';
+}
+
+async function savePorting(){
+  const rec = portingDraft ? null : allPorting.find(p=>p.id===selectedPortingId);
+  if(!rec && !portingDraft) return;
+  const numbers  = document.getElementById('f-port-numbers').value.trim();
+  const carrier  = document.getElementById('f-port-carrier').value.trim();
+  const portDate = document.getElementById('f-port-date').value || null;
+  const portTime = document.getElementById('f-port-time').value || null;
+  const status   = document.getElementById('f-port-status').value;
+  const notes    = document.getElementById('f-port-notes').value.trim() || null;
+  const clientId = portingDraft ? (document.getElementById('f-port-client')?.value || '') : rec.client_id;
+  const err      = document.getElementById('port-error');
+  err.style.display = 'none';
+  if(portingDraft && !clientId){ err.textContent='Please select a client.';        err.style.display='block'; return; }
+  if(!numbers){                  err.textContent='Ticket number is required.';     err.style.display='block'; return; }
+  if(!carrier){                  err.textContent='Losing carrier is required.';    err.style.display='block'; return; }
+  setSyncStatus('syncing');
+  try {
+    const payload = { phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, port_time:portTime, status, notes };
+    if(rec){
+      // Capture the pre-edit values so the audit log can show a real field-level diff
+      const oldData = { phone_numbers:rec.phone_numbers, losing_carrier:rec.losing_carrier,
+                        port_date:rec.port_date, port_time:rec.port_time, status:rec.status, notes:rec.notes };
+      await sb.from('porting').update(payload).eq('id',rec.id);
+      await logAudit('updated','porting',rec.id,oldData,payload);
+      Object.assign(rec, payload);   // patch in place; no refetch, so scroll and selection survive
+      toast('Porting ticket updated');
+    } else {
+      const { data } = await sb.from('porting')
+        .insert({ ...payload, client_id:clientId, created_by:currentUser?.id })
+        .select('*,clients(company,account_number)').single();
+      await logAudit('created','porting',data.id,{},{ ...payload, client_id:clientId });
+      allPorting.push(data);
+      sortPorting();
+      selectedPortingId = data.id;
+      portingDraft = false;
+      toast('Porting ticket created');
+    }
+    portingDirty = false;
+    renderPortingList();
+    renderPortingDetail();
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+// Mirrors the fetch order in loadPorting: port_date then port_time, undated last.
+function sortPorting(){
+  allPorting.sort((a,b)=>
+    (a.port_date||'9999-99-99').localeCompare(b.port_date||'9999-99-99') ||
+    (a.port_time||'99:99').localeCompare(b.port_time||'99:99'));
 }
 
 function portingStatusBadge(s){
@@ -1349,6 +1554,8 @@ async function deletePorting(id){
     await sb.from('porting').delete().eq('id',id);
     await logAudit('deleted','porting',id,{},{});
     toast('Porting ticket deleted');
+    // Don't leave the detail pane pointing at a record that no longer exists
+    if(selectedPortingId===id){ selectedPortingId = null; portingDirty = false; portingDraft = false; }
     if(currentPage==='client-profile') loadClientProfile(activeClientId); else loadPorting();
   } catch(e){ toast('Delete failed: '+e.message,'error'); }
 }
