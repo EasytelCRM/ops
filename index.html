@@ -274,8 +274,11 @@ select.fi { cursor: pointer; }
 .port-tid { font-size: 13px; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
 .port-row.sel .port-tid { color: var(--accent-text); }
 .port-co { font-size: 13px; color: var(--text2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.port-when { font-size: 11px; color: var(--text2); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.port-row-bot { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 3px; }
+.port-when { font-size: 11px; color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .port-when.due { color: var(--amber); font-weight: 500; }
+.port-carrier { font-size: 11px; color: var(--text2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.port-carrier i { font-size: 11px; }
 #porting-detail { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
 .port-det { padding: 1.1rem 1.25rem 1.25rem; display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .port-empty { margin: auto; }
@@ -1311,7 +1314,10 @@ function portingRowHTML(p){
   return `<button class="port-row${p.id===selectedPortingId?' sel':''}" onclick="selectPorting('${p.id}')">
     <div class="port-row-top"><span class="port-tid">${esc(p.phone_numbers)}</span>${portingStatusBadge(p.status)}</div>
     <div class="port-co">${esc(p.clients?.company||'Unknown')}</div>
-    <div class="port-when${due?' due':''}">${fmtDate(p.port_date)}${p.port_time?` · ${p.port_time.slice(0,5)}`:''}</div>
+    <div class="port-row-bot">
+      <span class="port-when${due?' due':''}">${fmtDate(p.port_date)}${p.port_time?` · ${p.port_time.slice(0,5)}`:''}</span>
+      ${p.losing_carrier?`<span class="port-carrier"><i class="ti ti-building"></i> ${esc(p.losing_carrier)}</span>`:''}
+    </div>
   </button>`;
 }
 
