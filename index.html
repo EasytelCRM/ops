@@ -260,7 +260,7 @@ select.fi { cursor: pointer; }
    PORTING SPLIT VIEW
 ============================================================ */
 /* Only this page fills its container; every other .page stays display:block */
-#page-porting.active { display: flex; flex-direction: column; height: 100%; }
+#page-porting.active, #page-installs.active, #page-service.active { display: flex; flex-direction: column; height: 100%; }
 .port-split { display: grid; grid-template-columns: 483px minmax(0,1fr); gap: 1rem; flex: 1; min-height: 0; }
 .port-col { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .port-col > .card { height: 100%; min-height: 0; margin-bottom: 0; display: flex; flex-direction: column; }
@@ -277,9 +277,9 @@ select.fi { cursor: pointer; }
 .port-row-bot { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 3px; }
 .port-when { font-size: 11px; color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .port-when.due { color: var(--amber); font-weight: 500; }
-.port-carrier { font-size: 11px; color: var(--text2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.port-carrier i { font-size: 11px; }
-#porting-detail { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+.port-carrier, .port-who { font-size: 11px; color: var(--text2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.port-carrier i, .port-who i { font-size: 11px; }
+.port-detail { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
 .port-det { padding: 1.1rem 1.25rem 1.25rem; display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .port-empty { margin: auto; }
 /* Notes absorb whatever height the fixed fields don't use */
@@ -289,17 +289,22 @@ select.fi { cursor: pointer; }
 .port-det-tid { font-size: 19px; font-weight: 500; display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
 .port-det-co { margin-top: 5px; font-size: 13px; color: var(--text2); }
 .port-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(165px,1fr)); gap: 0.9rem 1.25rem; margin-top: 1.15rem; padding-top: 1.15rem; border-top: 1px solid var(--border); }
+.jd-notes { min-height: 160px; }
+.jd-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.jd-tab { padding: 6px 14px; font-size: 13px; font-weight: 500; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s; }
+.jd-tab:hover { color: var(--text2); }
+.jd-tab.active { color: var(--text); border-bottom-color: var(--accent); }
 .port-savebar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1.15rem; padding: 0.7rem 0.9rem; border-radius: var(--radius); background: var(--surface2); border: 1px solid var(--border); }
 .port-savebar.dirty { background: var(--amber-light); border-color: var(--amber); }
 .port-savemsg { font-size: 12.5px; color: var(--text3); }
 .port-savebar.dirty .port-savemsg { color: var(--amber); font-weight: 500; }
 /* Stacked on narrow screens: full height would be wrong on a phone */
 @media (max-width: 1024px) {
-  #page-porting.active { display: block; height: auto; }
+  #page-porting.active, #page-installs.active, #page-service.active { display: block; height: auto; }
   .port-split { grid-template-columns: 1fr; }
   .port-col > .card { height: auto; margin-bottom: 1rem; }
   .port-list-card { max-height: 340px; }
-  #porting-detail { display: block; overflow: visible; }
+  .port-detail { display: block; overflow: visible; }
   .port-notes-group textarea { flex: none; min-height: 150px; resize: vertical; }
 }
 
@@ -434,7 +439,8 @@ select.fi { cursor: pointer; }
       <div class="nav-label">Main</div>
       <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
       <div class="nav-item" data-page="clients" onclick="showPage('clients',this)"><i class="ti ti-users"></i> Clients</div>
-      <div class="nav-item" data-page="jobs" onclick="showPage('jobs',this)"><i class="ti ti-tool"></i> Jobs & Tickets</div>
+      <div class="nav-item" data-page="installs" onclick="showPage('installs',this)"><i class="ti ti-tool"></i> New Installs</div>
+      <div class="nav-item" data-page="service" onclick="showPage('service',this)"><i class="ti ti-headset"></i> Service Tickets</div>
       <div class="nav-item" data-page="porting" onclick="showPage('porting',this)"><i class="ti ti-phone-outgoing"></i> Porting</div>
       <div class="nav-label" id="nav-admin-label" style="display:none">Admin</div>
       <div class="nav-item" data-page="users" id="nav-users" onclick="showPage('users',this)" style="display:none"><i class="ti ti-shield-lock"></i> Users</div>
@@ -474,7 +480,7 @@ select.fi { cursor: pointer; }
       ══════════════════════════════════════════ -->
       <div class="page active" id="page-dashboard">
         <div class="card">
-          <div class="card-head"><h3 style="color:#c8a03c">Pending Installs</h3><button class="btn btn-sm" onclick="showPage('jobs',document.querySelector('[data-page=jobs]'))">View all</button></div>
+          <div class="card-head"><h3 style="color:#c8a03c">Pending Installs</h3><button class="btn btn-sm" onclick="showPage('installs',document.querySelector('[data-page=installs]'))">View all</button></div>
           <div id="dash-installs-pending" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="empty" style="grid-column:1/-1"><i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i><p>Loading...</p></div></div>
         </div>
         <div class="card" id="dash-incomplete-card" style="margin-top:16px;display:none">
@@ -565,29 +571,55 @@ select.fi { cursor: pointer; }
       </div>
 
       <!-- ══════════════════════════════════════════
-           JOBS LIST
+           NEW INSTALLS
       ══════════════════════════════════════════ -->
-      <div class="page" id="page-jobs">
-        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search" placeholder="Search job title or client..." oninput="renderJobsList()"></div>
-        <div class="filter-bar" id="job-status-filters">
-          <button class="filter-btn active" onclick="setJobFilter('status','Pending',this)">Pending</button>
-          <button class="filter-btn" onclick="setJobFilter('status','Incomplete',this)">Incomplete</button>
-          <button class="filter-btn" onclick="setJobFilter('status','Complete',this)">Complete</button>
-          <button class="filter-btn" onclick="setJobFilter('status','all',this)">All statuses</button>
-        </div>
-        <div class="card">
-          <div style="display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:1rem">
-            <div class="tabs" style="border-bottom:none;margin-bottom:0">
-              <div class="tab active" id="job-tab-installs" onclick="switchJobsPageTab('installs')"><i class="ti ti-tool" style="font-size:15px"></i> New Installs <span class="tab-count" id="job-tab-installs-count">0</span></div>
-              <div class="tab" id="job-tab-service" onclick="switchJobsPageTab('service')"><i class="ti ti-headset" style="font-size:15px"></i> Service Tickets <span class="tab-count" id="job-tab-service-count">0</span></div>
+      <div class="page" id="page-installs">
+        <div class="port-split">
+          <div class="port-col">
+            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search-installs" placeholder="Search client or service..." oninput="renderJobsList('installs')"></div>
+            <div class="filter-bar" id="job-filters-installs">
+              <button class="filter-btn active" onclick="setJobFilter('installs','Pending',this)">Pending</button>
+              <button class="filter-btn" onclick="setJobFilter('installs','Incomplete',this)">Incomplete</button>
+              <button class="filter-btn" onclick="setJobFilter('installs','Complete',this)">Complete</button>
+              <button class="filter-btn" onclick="setJobFilter('installs','all',this)">All</button>
             </div>
-            <button class="btn btn-primary btn-sm" id="btn-add-job-list" onclick="openJobModal(null)" style="display:none;margin-bottom:8px"><i class="ti ti-plus"></i> Log job</button>
+            <div class="card port-list-card">
+              <div class="card-head">
+                <h3 id="job-count-installs">New installs</h3>
+                <button class="btn btn-primary btn-sm" id="btn-add-job-installs" onclick="newJobDraft('installs')" style="display:none"><i class="ti ti-plus"></i> Log job</button>
+              </div>
+              <div class="port-list" id="job-list-installs"></div>
+            </div>
           </div>
-          <div id="job-panel-installs">
-            <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Account #</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Approval Date</th><th></th></tr></thead><tbody id="jobs-installs-tbody"></tbody></table></div>
+          <div class="port-col">
+            <div class="card"><div class="port-detail" id="job-detail-installs"></div></div>
           </div>
-          <div id="job-panel-service" style="display:none">
-            <div class="table-wrap"><table><thead><tr><th>Job</th><th>Client</th><th>Account #</th><th>Site</th><th>Status</th><th>Assigned</th><th>Due Date</th><th>Cost</th><th></th></tr></thead><tbody id="jobs-service-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           SERVICE TICKETS
+      ══════════════════════════════════════════ -->
+      <div class="page" id="page-service">
+        <div class="port-split">
+          <div class="port-col">
+            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search-service" placeholder="Search client or job title..." oninput="renderJobsList('service')"></div>
+            <div class="filter-bar" id="job-filters-service">
+              <button class="filter-btn active" onclick="setJobFilter('service','Pending',this)">Pending</button>
+              <button class="filter-btn" onclick="setJobFilter('service','Incomplete',this)">Incomplete</button>
+              <button class="filter-btn" onclick="setJobFilter('service','Complete',this)">Complete</button>
+              <button class="filter-btn" onclick="setJobFilter('service','all',this)">All</button>
+            </div>
+            <div class="card port-list-card">
+              <div class="card-head">
+                <h3 id="job-count-service">Service tickets</h3>
+                <button class="btn btn-primary btn-sm" id="btn-add-job-service" onclick="newJobDraft('service')" style="display:none"><i class="ti ti-plus"></i> Log job</button>
+              </div>
+              <div class="port-list" id="job-list-service"></div>
+            </div>
+          </div>
+          <div class="port-col">
+            <div class="card"><div class="port-detail" id="job-detail-service"></div></div>
           </div>
         </div>
       </div>
@@ -613,7 +645,7 @@ select.fi { cursor: pointer; }
             </div>
           </div>
           <div class="port-col">
-            <div class="card"><div id="porting-detail"></div></div>
+            <div class="card"><div class="port-detail" id="porting-detail"></div></div>
           </div>
         </div>
       </div>
@@ -667,7 +699,12 @@ let currentProfile = null;   // profiles row
 let currentPage    = 'dashboard';
 let activeClientId = null;
 let activeClientData = null;
-let jobFilters     = { status: 'Pending' };
+let jobFilters     = { installs: 'Pending', service: 'Pending' };
+let jobSel         = { installs: null, service: null };   // job shown in each page's detail pane
+let jobDraft       = { installs: false, service: false }; // detail pane is an unsaved new job
+let jobDirty       = { installs: false, service: false }; // detail pane has edits that aren't saved
+let jobClients     = [];  // lightweight {id,company} list for the job client dropdown
+let allSites       = [];  // every site, so the detail pane can filter by client without a refetch
 let allClients     = [];
 let allJobs        = [];
 let allPorting     = [];
@@ -904,7 +941,8 @@ async function initApp(){
     document.getElementById('nav-audit').style.display = '';
   }
   if(isAdminOrOps()) document.getElementById('btn-add-client').style.display = '';
-  document.getElementById('btn-add-job-list').style.display = '';
+  document.getElementById('btn-add-job-installs').style.display = '';
+  document.getElementById('btn-add-job-service').style.display = '';
   document.getElementById('btn-add-porting').style.display = '';
 
   // Seed history so the dashboard is the base state
@@ -937,11 +975,12 @@ function showPage(name, el, _push=true){
   document.getElementById('page-'+name).classList.add('active');
   if(el) el.classList.add('active');
   currentPage = name;
-  const titles = { dashboard:'Dashboard', clients:'Clients', jobs:'Jobs & Tickets', porting:'Porting', users:'Team members', audit:'Audit log', 'client-profile':'Client profile' };
+  const titles = { dashboard:'Dashboard', clients:'Clients', installs:'New Installs', service:'Service Tickets', porting:'Porting', users:'Team members', audit:'Audit log', 'client-profile':'Client profile' };
   document.getElementById('topbar-title').textContent = titles[name] || name;
   // Update top CTA
   const cta = document.getElementById('topbar-cta');
   if(name==='porting') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="newPortingDraft()"><i class="ti ti-plus"></i> Log port</button>`;
+  else if(name==='installs' || name==='service') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="newJobDraft('${name}')"><i class="ti ti-plus"></i> Log job</button>`;
   else cta.innerHTML = '';
   closeSidebar();
   if(_push) history.pushState({ type: 'page', name }, '');
@@ -952,7 +991,7 @@ function refreshCurrentPage(){
   if(currentPage==='dashboard') loadDashboard();
   else if(currentPage==='clients') loadClients();
   else if(currentPage==='client-profile' && activeClientId) loadClientProfile(activeClientId);
-  else if(currentPage==='jobs') loadJobs();
+  else if(currentPage==='installs' || currentPage==='service') loadJobs();
   else if(currentPage==='porting') loadPorting();
   else if(currentPage==='users') loadUsers();
   else if(currentPage==='audit') loadAuditLog();
@@ -993,20 +1032,12 @@ function switchJobTab(tab, el){
   if(notesPanel) notesPanel.style.display = tab==='notes' ? 'flex' : 'none';
 }
 
-// ── Jobs page tabs ──
-function switchJobsPageTab(tab){
-  ['installs','service'].forEach(t=>{
-    document.getElementById('job-tab-'+t).classList.toggle('active', t===tab);
-    document.getElementById('job-panel-'+t).style.display = t===tab ? '' : 'none';
-  });
-}
-
 // ── Job filters ──
-function setJobFilter(key, val, el){
-  jobFilters[key] = val;
-  document.querySelectorAll(`#job-status-filters .filter-btn`).forEach(b=>b.classList.remove('active'));
+function setJobFilter(kind, val, el){
+  jobFilters[kind] = val;
+  document.querySelectorAll(`#job-filters-${kind} .filter-btn`).forEach(b=>b.classList.remove('active'));
   if(el) el.classList.add('active');
-  renderJobsList();
+  renderJobsList(kind);
 }
 
 // ============================================================
@@ -1226,46 +1257,323 @@ async function saveCreds(){
 }
 
 // ============================================================
-//  JOBS LIST
+//  NEW INSTALLS / SERVICE TICKETS
 // ============================================================
+const JOB_SELECT = '*,clients(company,account_number,svc_internet,svc_webex,svc_nec),sites(name),profiles!jobs_assigned_to_fkey(full_name)';
+const JOB_KINDS = {
+  installs: { heading:'New installs',    noun:'new install',    draft:'New install',         empty:'No new installs found.',    icon:'ti-tool'    },
+  service:  { heading:'Service tickets', noun:'service ticket', draft:'New service ticket', empty:'No service tickets found.', icon:'ti-headset' }
+};
+// Anything that isn't a New Install is a service ticket, matching the old tab split.
+const jobKindOf   = j => j.type==='New Install' ? 'installs' : 'service';
+// Installs are identified by the client's services; service tickets by their own title.
+const jobSubtitle = j => j.type==='New Install' ? svcLabel(j.clients) : (j.title || '—');
+const canEditJob  = j => isAdminOrOps() || j.assigned_to===currentUser?.id;
+
 async function loadJobs(){
   setSyncStatus('syncing');
   try {
-    const data = await fetchAll(()=>sb.from('jobs').select('*,clients(company,account_number,svc_internet,svc_webex,svc_nec),sites(name),profiles!jobs_assigned_to_fkey(full_name)').order('due_date',{ascending:true,nullsFirst:false}));
-    allJobs = data || [];
-    renderJobsList();
+    const [jobs, clients, sites, profRes] = await Promise.all([
+      fetchAll(()=>sb.from('jobs').select(JOB_SELECT).order('due_date',{ascending:true,nullsFirst:false})),
+      fetchAll(()=>sb.from('clients').select('id,company').order('company')),
+      fetchAll(()=>sb.from('sites').select('id,name,client_id')),
+      sb.from('profiles').select('id,full_name').order('full_name')
+    ]);
+    allJobs = jobs || [];
+    if(clients) jobClients = clients;
+    if(sites)   allSites   = sites;
+    if(profRes?.data) allProfiles = profRes.data;
+    // Drop a selection that no longer exists (deleted elsewhere)
+    for(const k of ['installs','service']) if(jobSel[k] && !allJobs.some(j=>j.id===jobSel[k])) jobSel[k] = null;
+    renderJobsPage('installs');
+    renderJobsPage('service');
     setSyncStatus('ok');
   } catch(e){ setSyncStatus('error'); toast('Error loading jobs: '+e.message,'error'); }
 }
 
-function renderJobsList(){
-  const q = (document.getElementById('job-search')||{}).value?.toLowerCase()||'';
-  const jobRow = (j, isInstall=false) => `
-    <tr class="job-row">
-      <td>${isAdminOrOps()||j.assigned_to===currentUser?.id?`<span class="job-link" onclick="openJobModal('${j.id}')">${isInstall?svcLabel(j.clients):esc(j.title)}</span>`:`<span style="font-weight:500">${isInstall?svcLabel(j.clients):esc(j.title)}</span>`}</td>
-      <td><span style="color:var(--accent);cursor:pointer" onclick="openClientProfile('${j.client_id}')">${esc(j.clients?.company||'Unknown')}</span></td>
-      <td style="font-size:12px;color:var(--text2)">${esc(j.clients?.account_number||'—')}</td>
-      <td style="color:var(--text2);font-size:12px">${esc(j.sites?.name||'—')}</td>
-      <td>${statusBadge(j.status)}</td>
-      <td style="font-size:12px;color:var(--text2)">${esc(j.profiles?.full_name||'—')}</td>
-      <td style="font-size:12px;color:var(--text2)">${fmtDate(j.due_date)}</td>
-      <td style="font-size:12px;color:var(--text2)">${isInstall?(j.approval_date?fmtDate(j.approval_date):'—'):(j.cost?'$'+Number(j.cost).toFixed(2):'—')}</td>
-      <td>${isAdmin()?`<button class="btn btn-sm btn-danger hover-del" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i></button>`:''}</td>
-    </tr>`;
-  const match = j => {
-    const matchQ = !q || (j.title||'').toLowerCase().includes(q) || (j.clients?.company||'').toLowerCase().includes(q) || svcLabel(j.clients).toLowerCase().includes(q);
-    const matchStatus = jobFilters.status==='all' || j.status===jobFilters.status;
-    return matchQ && matchStatus;
+function renderJobsPage(kind){ renderJobsList(kind); renderJobDetail(kind); }
+
+function renderJobsList(kind){
+  const q = (document.getElementById('job-search-'+kind)||{}).value?.toLowerCase()||'';
+  const f = allJobs.filter(j=>{
+    if(jobKindOf(j)!==kind) return false;
+    const matchQ = !q || (j.clients?.company||'').toLowerCase().includes(q) || jobSubtitle(j).toLowerCase().includes(q);
+    return matchQ && (jobFilters[kind]==='all' || j.status===jobFilters[kind]);
+  });
+  const head = document.getElementById('job-count-'+kind);
+  if(head) head.textContent = `${JOB_KINDS[kind].heading} (${f.length})`;
+  const list = document.getElementById('job-list-'+kind);
+  if(!list) return;
+  list.innerHTML = f.length ? f.map(j=>jobRowHTML(j,kind)).join('')
+    : `<div class="empty"><i class="ti ${JOB_KINDS[kind].icon}"></i><p>${JOB_KINDS[kind].empty}</p></div>`;
+}
+
+function jobRowHTML(j, kind){
+  const due = j.status==='Pending' && daysOut(j.due_date) <= 1;
+  return `<button class="port-row${j.id===jobSel[kind]?' sel':''}" onclick="selectJob('${kind}','${j.id}')">
+    <div class="port-row-top"><span class="port-tid">${esc(j.clients?.company||'Unknown')}</span>${statusBadge(j.status)}</div>
+    <div class="port-co">${esc(jobSubtitle(j))}</div>
+    <div class="port-row-bot">
+      <span class="port-when${due?' due':''}">${fmtDate(j.due_date)}</span>
+      <span class="port-who"><i class="ti ti-user"></i> ${esc(j.profiles?.full_name||'Unassigned')}</span>
+    </div>
+  </button>`;
+}
+
+// Mirrors the fetch order in loadJobs: due_date ascending, undated last.
+function sortJobs(){
+  allJobs.sort((a,b)=>{
+    if(!a.due_date && !b.due_date) return 0;
+    if(!a.due_date) return 1;
+    if(!b.due_date) return -1;
+    return a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0;
+  });
+}
+
+// ── Jobs detail pane ─────────────────────────────────────────
+function selectJob(kind, id){
+  if(!confirmDiscardJob(kind)) return;
+  jobSel[kind]   = id;
+  jobDraft[kind] = false;
+  jobDirty[kind] = false;
+  renderJobsPage(kind);
+}
+
+async function newJobDraft(kind){
+  if(!confirmDiscardJob(kind)) return;
+  // User may hit "Log job" before loadJobs has filled the pickers
+  if(!jobClients.length || !allSites.length){
+    const [clients, sites] = await Promise.all([
+      fetchAll(()=>sb.from('clients').select('id,company').order('company')),
+      fetchAll(()=>sb.from('sites').select('id,name,client_id'))
+    ]);
+    if(clients) jobClients = clients;
+    if(sites)   allSites   = sites;
+  }
+  if(!allProfiles.length){
+    const { data } = await sb.from('profiles').select('id,full_name').order('full_name');
+    allProfiles = data || [];
+  }
+  jobSel[kind]   = null;
+  jobDraft[kind] = true;
+  jobDirty[kind] = false;
+  renderJobsPage(kind);
+}
+
+function cancelJobDraft(kind){
+  jobDraft[kind] = false;
+  jobDirty[kind] = false;
+  renderJobsPage(kind);
+}
+
+function confirmDiscardJob(kind){
+  if(!jobDirty[kind]) return true;
+  return confirm('You have unsaved changes to this job. Discard them?');
+}
+
+function renderJobDetail(kind){
+  const el = document.getElementById('job-detail-'+kind);
+  if(!el) return;
+  const draft = jobDraft[kind];
+  const rec   = draft ? null : allJobs.find(j=>j.id===jobSel[kind]);
+  if(!rec && !draft){
+    el.innerHTML = `<div class="empty port-empty" style="padding:3.5rem 1rem"><i class="ti ${JOB_KINDS[kind].icon}"></i><p>Select a ${JOB_KINDS[kind].noun} to view or edit it.</p></div>`;
+    return;
+  }
+  const ro = !draft && !canEditJob(rec);   // techs can only edit jobs assigned to them
+  const d  = ro ? ' disabled' : '';
+  const isInstall = (rec?.type || (kind==='installs' ? 'New Install' : 'Service')) === 'New Install';
+  const clientId  = rec?.client_id || '';
+  const clientOpts = jobClients.map(c=>`<option value="${c.id}">${esc(c.company)}</option>`).join('');
+  const siteOpts   = `<option value="">— none —</option>` + allSites.filter(x=>x.client_id===clientId)
+    .map(x=>`<option value="${x.id}"${rec?.site_id===x.id?' selected':''}>${esc(x.name)}</option>`).join('');
+  const staffOpts  = `<option value="">— Unassigned —</option>` + allProfiles
+    .map(u=>`<option value="${u.id}"${rec?.assigned_to===u.id?' selected':''}>${esc(u.full_name)}</option>`).join('');
+
+  el.innerHTML = `<div class="port-det" oninput="markJobDirty('${kind}')" onchange="markJobDirty('${kind}')">
+    <div class="port-det-head">
+      <div>
+        <div class="port-det-tid">${draft ? JOB_KINDS[kind].draft : esc(rec.clients?.company||'Unknown')}${draft ? '' : ' '+statusBadge(rec.status)}</div>
+        <div class="port-det-co">${draft
+          ? 'Pick a client and fill in the job, then save.'
+          : `${esc(jobSubtitle(rec))} · ${esc(rec.clients?.account_number||'—')} · <span style="color:var(--accent);cursor:pointer" onclick="if(confirmDiscardJob('${kind}'))openClientProfile('${rec.client_id}')">Open client</span>`}</div>
+      </div>
+      ${(!draft && isAdmin()) ? `<button class="btn btn-sm btn-danger" onclick="deleteJobFromPane('${kind}','${rec.id}')"><i class="ti ti-trash"></i> Delete</button>` : ''}
+    </div>
+    <div class="port-grid">
+      ${draft ? `<div class="form-group" style="grid-column:1/-1"><label class="lbl">Client *</label>
+        <select class="fi" id="f-job-client-${kind}" onchange="onJobClientChange('${kind}')"><option value="">— select client —</option>${clientOpts}</select></div>` : ''}
+      <div class="form-group"><label class="lbl">Type *</label>
+        <select class="fi" id="f-job-type-${kind}" onchange="onJobTypeChange('${kind}')"${d}>
+          <option${isInstall?' selected':''}>New Install</option>
+          <option${isInstall?'':' selected'}>Service</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="lbl">Status *</label>
+        <select class="fi" id="f-job-status-${kind}"${d}>
+          ${['Pending','Incomplete','Complete'].map(x=>`<option${(rec?.status||'Pending')===x?' selected':''}>${x}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" id="f-job-title-wrap-${kind}" style="grid-column:1/-1${isInstall?';display:none':''}">
+        <label class="lbl">Title *</label><input class="fi" id="f-job-title-${kind}" value="${esc(rec?.title||'')}" placeholder="e.g. NBN line installation"${d}>
+      </div>
+      <div class="form-group"><label class="lbl">Site</label><select class="fi" id="f-job-site-${kind}"${d}>${siteOpts}</select></div>
+      <div class="form-group"><label class="lbl">Assigned to</label><select class="fi" id="f-job-assigned-${kind}"${d}>${staffOpts}</select></div>
+      <div class="form-group"><label class="lbl">Due date</label><input class="fi" type="date" id="f-job-due-${kind}" value="${rec?.due_date||''}"${d}></div>
+      <div class="form-group" id="f-job-cost-wrap-${kind}" style="${isInstall?'display:none':''}">
+        <label class="lbl">Cost ($)</label><input class="fi" type="number" step="1" min="0" id="f-job-cost-${kind}" value="${rec?.cost||''}" placeholder="0"${d}>
+      </div>
+      <div class="form-group" id="f-job-approval-wrap-${kind}" style="${isInstall?'':'display:none'}">
+        <label class="lbl">Approval date *</label><input class="fi" type="date" id="f-job-approval-${kind}" value="${rec?.approval_date||''}"${d}>
+      </div>
+    </div>
+    <div class="form-group port-notes-group jd-notes" style="margin-top:1rem">
+      <div class="jd-tabs">
+        <div class="jd-tab active" id="jd-tab-desc-${kind}" onclick="switchJobDetailTab('${kind}','desc')">Description</div>
+        <div class="jd-tab" id="jd-tab-notes-${kind}" onclick="switchJobDetailTab('${kind}','notes')">Job notes</div>
+      </div>
+      <textarea class="fi" id="f-job-desc-${kind}" placeholder="Job details..."${d}>${esc(rec?.description||'')}</textarea>
+      <textarea class="fi" id="f-job-notes-${kind}" placeholder="Internal notes, progress updates, follow-ups..." style="display:none"${d}>${esc(rec?.job_notes||'')}</textarea>
+    </div>
+    <div id="job-error-${kind}" class="form-error" style="display:none"></div>
+    ${ro
+      ? `<div class="port-savebar"><span class="port-savemsg">Read only — this job is not assigned to you.</span></div>`
+      : `<div class="port-savebar" id="job-savebar-${kind}">
+      <span class="port-savemsg"></span>
+      <div style="display:flex;gap:8px">
+        ${draft ? `<button class="btn btn-sm" onclick="cancelJobDraft('${kind}')">Cancel</button>` : ''}
+        <button class="btn btn-primary btn-sm" id="job-save-btn-${kind}" onclick="saveJob('${kind}')"><i class="ti ti-check"></i> ${draft?'Log job':'Save changes'}</button>
+      </div>
+    </div>`}
+  </div>`;
+  if(!ro) updateJobSaveBar(kind);
+}
+
+function switchJobDetailTab(kind, tab){
+  ['desc','notes'].forEach(t=>{
+    document.getElementById(`jd-tab-${t}-${kind}`).classList.toggle('active', t===tab);
+    document.getElementById(`f-job-${t}-${kind}`).style.display = t===tab ? '' : 'none';
+  });
+}
+
+// Sites belong to a client, so re-stock the picker whenever the draft's client changes
+function onJobClientChange(kind){
+  const cid = document.getElementById(`f-job-client-${kind}`).value;
+  const sel = document.getElementById(`f-job-site-${kind}`);
+  if(!sel) return;
+  sel.innerHTML = `<option value="">— none —</option>` + allSites.filter(x=>x.client_id===cid)
+    .map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+}
+
+// Installs are tracked by approval date; service tickets carry a title and a cost
+function onJobTypeChange(kind){
+  const isInstall = document.getElementById(`f-job-type-${kind}`).value === 'New Install';
+  document.getElementById(`f-job-title-wrap-${kind}`).style.display    = isInstall ? 'none' : '';
+  document.getElementById(`f-job-cost-wrap-${kind}`).style.display     = isInstall ? 'none' : '';
+  document.getElementById(`f-job-approval-wrap-${kind}`).style.display = isInstall ? '' : 'none';
+}
+
+// Only ever touches the save bar — re-rendering the pane on each keystroke would drop the caret.
+function markJobDirty(kind){
+  if(jobDirty[kind]) return;
+  jobDirty[kind] = true;
+  updateJobSaveBar(kind);
+}
+
+function updateJobSaveBar(kind){
+  const bar = document.getElementById('job-savebar-'+kind);
+  if(!bar) return;
+  const canSave = jobDirty[kind] || jobDraft[kind];
+  bar.classList.toggle('dirty', jobDirty[kind]);
+  bar.querySelector('.port-savemsg').textContent =
+    jobDirty[kind] ? 'Unsaved changes' : jobDraft[kind] ? 'Not saved yet' : 'All changes saved';
+  const btn = document.getElementById('job-save-btn-'+kind);
+  btn.disabled = !canSave;
+  btn.style.opacity = canSave ? '1' : '0.5';
+  btn.style.cursor  = canSave ? 'pointer' : 'default';
+}
+
+async function saveJob(kind){
+  const draft = jobDraft[kind];
+  const rec   = draft ? null : allJobs.find(j=>j.id===jobSel[kind]);
+  if(!rec && !draft) return;
+  const g = f => document.getElementById(`f-job-${f}-${kind}`);
+  const type      = g('type').value;
+  const isInstall = type === 'New Install';
+  const title     = g('title').value.trim();
+  const clientId  = draft ? (g('client')?.value || '') : rec.client_id;
+  const assigned  = g('assigned').value || null;
+  const err  = document.getElementById('job-error-'+kind);
+  err.style.display = 'none';
+  const fail = m => { err.textContent = m; err.style.display = 'block'; };
+  if(draft && !clientId)                return fail('Please select a client.');
+  if(!isInstall && !title)              return fail('Job title is required.');
+  if(isInstall && !g('approval').value) return fail('Approval date is required for new installs.');
+  const payload = {
+    title: title || null, type,
+    status: g('status').value,
+    site_id: g('site').value || null,
+    assigned_to: assigned,
+    due_date: g('due').value || null,
+    cost: isInstall ? null : (g('cost').value || null),
+    approval_date: isInstall ? (g('approval').value || null) : null,
+    description: g('desc').value.trim(),
+    job_notes: g('notes').value.trim()
   };
-  const installs = allJobs.filter(j=>j.type==='New Install' && match(j));
-  const service  = allJobs.filter(j=>j.type!=='New Install' && match(j));
-  const tbI = document.getElementById('jobs-installs-tbody');
-  const tbS = document.getElementById('jobs-service-tbody');
-  if(!tbI||!tbS) return;
-  document.getElementById('job-tab-installs-count').textContent = installs.length;
-  document.getElementById('job-tab-service-count').textContent  = service.length;
-  tbI.innerHTML = installs.length ? installs.map(j=>jobRow(j,true)).join('') : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No new installs found.</p></div></td></tr>`;
-  tbS.innerHTML = service.length  ? service.map(j=>jobRow(j,false)).join('')  : `<tr><td colspan="9"><div class="empty"><i class="ti ti-tool"></i><p>No service tickets found.</p></div></td></tr>`;
+  setSyncStatus('syncing');
+  try {
+    let saved;
+    if(rec){
+      // Capture the pre-edit values so the audit log can show a real field-level diff
+      const oldData = {};
+      Object.keys(payload).forEach(k=>{ oldData[k] = rec[k]; });
+      await sb.from('jobs').update(payload).eq('id',rec.id);
+      await logAudit('updated','jobs',rec.id,oldData,payload);
+      if(assigned && assigned !== oldData.assigned_to) await sendAssignmentEmail({ id:rec.id, ...payload }, assigned);
+      Object.assign(rec, payload);   // patch in place; no refetch, so scroll and selection survive
+      // Re-derive the joined rows the list reads from
+      rec.sites    = allSites.find(x=>x.id===payload.site_id) || null;
+      rec.profiles = allProfiles.find(u=>u.id===payload.assigned_to) || null;
+      saved = rec;
+      toast('Job updated');
+    } else {
+      const { data, error } = await sb.from('jobs')
+        .insert({ ...payload, client_id:clientId, created_by:currentUser?.id })
+        .select(JOB_SELECT).single();
+      if(error) throw error;
+      await logAudit('created','jobs',data.id,{},{ ...payload, client_id:clientId });
+      if(assigned) await sendAssignmentEmail(data, assigned);
+      allJobs.push(data);
+      sortJobs();
+      saved = data;
+      jobDraft[kind] = false;
+      toast('Job logged');
+    }
+    jobDirty[kind] = false;
+    // Flipping Type moves the record onto the other page — follow the selection there
+    const destKind = jobKindOf(saved);
+    jobSel[kind]     = null;
+    jobSel[destKind] = saved.id;
+    if(destKind !== kind) toast(`Moved to ${JOB_KINDS[destKind].heading}`);
+    renderJobsPage('installs');
+    renderJobsPage('service');
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+}
+
+async function deleteJobFromPane(kind, id){
+  if(!confirm('Delete this job?')) return;
+  setSyncStatus('syncing');
+  try {
+    await sb.from('jobs').delete().eq('id',id);
+    await logAudit('deleted','jobs',id,{},{});
+    allJobs = allJobs.filter(j=>j.id!==id);
+    if(jobSel[kind]===id) jobSel[kind] = null;
+    jobDirty[kind] = false;
+    toast('Job deleted');
+    renderJobsPage(kind);
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
 }
 
 // ============================================================
@@ -1310,7 +1618,7 @@ function renderPortingList(){
 }
 
 function portingRowHTML(p){
-  const due = p.status==='Pending' && portingDaysOut(p.port_date) <= 1;
+  const due = p.status==='Pending' && daysOut(p.port_date) <= 1;
   return `<button class="port-row${p.id===selectedPortingId?' sel':''}" onclick="selectPorting('${p.id}')">
     <div class="port-row-top"><span class="port-tid">${esc(p.phone_numbers)}</span>${portingStatusBadge(p.status)}</div>
     <div class="port-co">${esc(p.clients?.company||'Unknown')}</div>
@@ -1321,8 +1629,8 @@ function portingRowHTML(p){
   </button>`;
 }
 
-// Days until a port cuts over; undated tickets sort as "far away" so they never flag as due.
-function portingDaysOut(d){
+// Days until a dated record comes due; undated ones sort as "far away" so they never flag as due.
+function daysOut(d){
   if(!d) return 9999;
   const today = new Date(); today.setHours(0,0,0,0);
   return Math.round((new Date(d+'T00:00:00') - today) / 86400000);
