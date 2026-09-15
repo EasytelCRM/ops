@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.9">
+<meta name="version" content="v1.0.10">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -465,7 +465,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.9</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.10</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -630,7 +630,7 @@ select.fi { cursor: pointer; }
       <div class="page" id="page-porting">
         <div class="port-split">
           <div class="port-col">
-            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="porting-search" placeholder="Search client or ticket number..." oninput="renderPortingList()"></div>
+            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="porting-search" placeholder="Search client, account no. or number..." oninput="renderPortingList()"></div>
             <div class="filter-bar" id="porting-status-filters">
               <button class="filter-btn" onclick="setPortingFilter('Pending',this)">Pending</button>
               <button class="filter-btn" onclick="setPortingFilter('Complete',this)">Complete</button>
@@ -1606,7 +1606,7 @@ async function loadPorting(){
 function renderPortingList(){
   const q = (document.getElementById('porting-search')||{}).value?.toLowerCase()||'';
   const f = allPorting.filter(p=>{
-    const matchQ = !q || (p.clients?.company||'').toLowerCase().includes(q) || p.phone_numbers.toLowerCase().includes(q);
+    const matchQ = !q || (p.clients?.company||'').toLowerCase().includes(q) || (p.clients?.account_number||'').toLowerCase().includes(q) || p.phone_numbers.toLowerCase().includes(q);
     const matchStatus = portingFilter==='all' || p.status===portingFilter;
     return matchQ && matchStatus;
   });
