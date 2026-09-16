@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.10">
+<meta name="version" content="v1.0.11">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -24,6 +24,9 @@
   --sidebar-w: 240px;
 }
 html.dark {
+  /* Tells the browser to paint native controls dark — without it the date/time
+     picker glyphs render dark-on-dark and look like they are missing. */
+  color-scheme: dark;
   --bg: #111110; --surface: #1c1c1a; --surface2: #242422;
   --border: #2e2e2b; --border2: #3a3a36;
   --text: #e8e6e1; --text2: #9e9b93; --text3: #6b6960;
@@ -465,7 +468,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.10</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.11</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
