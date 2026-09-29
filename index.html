@@ -557,7 +557,7 @@ select.fi { cursor: pointer; }
             <!-- Porting tab -->
             <div id="client-tab-porting" style="display:none">
               <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-                <button class="btn btn-primary btn-sm" onclick="openPortingModal(null,activeClientId)"><i class="ti ti-plus"></i> Log port</button>
+                <button class="btn btn-primary btn-sm" onclick="openPortingPage(null,activeClientId)"><i class="ti ti-plus"></i> Log port</button>
               </div>
               <div id="client-porting-list"></div>
             </div>
@@ -716,6 +716,8 @@ let portingFilter  = 'all';
 let selectedPortingId = null;   // ticket currently shown in the detail pane
 let portingDirty      = false;  // detail pane has edits that aren't saved
 let portingDraft      = false;  // detail pane is an unsaved new ticket
+let portingSaving     = false;  // a save is in flight; blocks repeat clicks
+let portingDraftClientId = null; // client to preselect on a draft opened from a client profile
 let allProfiles    = [];
 let _ignoreNextPop = false;  // prevents popstate loop when closeModal calls history.back()
 
@@ -1156,7 +1158,7 @@ async function loadClientProfile(id){
 
     // ── Porting ──
     document.getElementById('client-porting-list').innerHTML = (ports||[]).length
-      ? (ports||[]).map(p=>`<div class="job-card" onclick="openPortingModal('${p.id}')" style="cursor:pointer">
+      ? (ports||[]).map(p=>`<div class="job-card" onclick="openPortingPage('${p.id}')" style="cursor:pointer">
           ${portingStatusBadge(p.status)}
           <div class="job-body">
             <div class="job-title job-link">${esc(p.phone_numbers)}</div>
@@ -1658,6 +1660,7 @@ async function newPortingDraft(){
   }
   selectedPortingId = null;
   portingDraft = true;
+  portingDraftClientId = null;
   portingDirty = false;
   renderPortingList();
   renderPortingDetail();
@@ -1683,7 +1686,7 @@ function renderPortingDetail(){
     el.innerHTML = `<div class="empty port-empty" style="padding:3.5rem 1rem"><i class="ti ti-phone-outgoing"></i><p>Select a ticket to view or edit it.</p></div>`;
     return;
   }
-  const clientOptions = portingClients.map(c=>`<option value="${c.id}">${esc(c.company)}</option>`).join('');
+  const clientOptions = portingClients.map(c=>`<option value="${c.id}" ${c.id===portingDraftClientId?'selected':''}>${esc(c.company)}</option>`).join('');
   el.innerHTML = `<div class="port-det" oninput="markPortingDirty()" onchange="markPortingDirty()">
     <div class="port-det-head">
       <div>
@@ -1697,7 +1700,7 @@ function renderPortingDetail(){
     <div class="port-grid">
       ${portingDraft ? `<div class="form-group" style="grid-column:1/-1"><label class="lbl">Client *</label>
         <select class="fi" id="f-port-client"><option value="">— select client —</option>${clientOptions}</select></div>` : ''}
-      <div class="form-group"><label class="lbl">Ticket number *</label><input class="fi" id="f-port-numbers" value="${esc(rec?.phone_numbers||'')}" placeholder="e.g. TKT-12345"></div>
+      <div class="form-group"><label class="lbl">Ticket number</label><input class="fi" id="f-port-numbers" autocomplete="off" value="${esc(rec?.phone_numbers==='TBC'?'':rec?.phone_numbers||'')}" placeholder="Blank = TBC (Pending only)"></div>
       <div class="form-group"><label class="lbl">Losing carrier *</label><input class="fi" id="f-port-carrier" value="${esc(rec?.losing_carrier||'')}" placeholder="e.g. Telstra"></div>
       <div class="form-group"><label class="lbl">Port date</label><input class="fi" type="date" id="f-port-date" value="${rec?.port_date||''}"></div>
       <div class="form-group"><label class="lbl">Port time</label><input class="fi" type="time" id="f-port-time" value="${rec?.port_time||''}"></div>
@@ -1732,7 +1735,7 @@ function markPortingDirty(){
 function updatePortingSaveBar(){
   const bar = document.getElementById('port-savebar');
   if(!bar) return;
-  const canSave = portingDirty || portingDraft;
+  const canSave = (portingDirty || portingDraft) && !portingSaving;
   bar.classList.toggle('dirty', portingDirty);
   bar.querySelector('.port-savemsg').textContent =
     portingDirty ? 'Unsaved changes' : portingDraft ? 'Not saved yet' : 'All changes saved';
@@ -1743,9 +1746,10 @@ function updatePortingSaveBar(){
 }
 
 async function savePorting(){
+  if(portingSaving) return;
   const rec = portingDraft ? null : allPorting.find(p=>p.id===selectedPortingId);
   if(!rec && !portingDraft) return;
-  const numbers  = document.getElementById('f-port-numbers').value.trim();
+  const rawNo    = document.getElementById('f-port-numbers').value.trim();
   const carrier  = document.getElementById('f-port-carrier').value.trim();
   const portDate = document.getElementById('f-port-date').value || null;
   const portTime = document.getElementById('f-port-time').value || null;
@@ -1754,11 +1758,16 @@ async function savePorting(){
   const clientId = portingDraft ? (document.getElementById('f-port-client')?.value || '') : rec.client_id;
   const err      = document.getElementById('port-error');
   err.style.display = 'none';
+  const numbers  = resolvePortingTicketNo(rawNo, status);
   if(portingDraft && !clientId){ err.textContent='Please select a client.';        err.style.display='block'; return; }
-  if(!numbers){                  err.textContent='Ticket number is required.';     err.style.display='block'; return; }
+  if(!numbers){                  err.textContent='Ticket number is required unless the port is still Pending.'; err.style.display='block'; return; }
   if(!carrier){                  err.textContent='Losing carrier is required.';    err.style.display='block'; return; }
-  setSyncStatus('syncing');
+  portingSaving = true;
+  const btn = document.getElementById('port-save-btn');
+  if(btn){ btn.disabled = true; btn.style.opacity = '0.5'; }
   try {
+    if(numbers!==rec?.phone_numbers && !(await confirmPortingTicketNo(numbers, rec?.id))) return;
+    setSyncStatus('syncing');
     const payload = { phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, port_time:portTime, status, notes };
     if(rec){
       // Capture the pre-edit values so the audit log can show a real field-level diff
@@ -1784,6 +1793,28 @@ async function savePorting(){
     renderPortingDetail();
     setSyncStatus('ok');
   } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+  finally { portingSaving = false; updatePortingSaveBar(); }
+}
+
+// Ticket numbers are typed by hand. A Pending port can be logged before the carrier
+// issues one, so blank is stored as 'TBC' (column is NOT NULL) instead of a made-up number.
+// Returns null when a real number is required.
+function resolvePortingTicketNo(raw, status){
+  if(raw && raw.toUpperCase()!=='TBC') return raw;
+  return status==='Pending' ? 'TBC' : null;
+}
+
+// Warn (not block) when the number is already on another ticket — a number can
+// legitimately move between accounts, but it's usually a mistyped or reused number.
+async function confirmPortingTicketNo(numbers, excludeId){
+  if(['TBC','N/A'].includes(numbers.toUpperCase())) return true;   // placeholders, not real ticket numbers
+  let q = sb.from('porting').select('id,clients(company,account_number)')
+    .ilike('phone_numbers', numbers.replace(/[\\%_]/g,'\\$&'));
+  if(excludeId) q = q.neq('id', excludeId);
+  const { data, error } = await q;
+  if(error || !data?.length) return true;   // don't stop a save because the check failed
+  const list = data.map(p=>`• ${p.clients?.company||'Unknown'} (${p.clients?.account_number||'—'})`).join('\n');
+  return confirm(`Ticket number ${numbers} is already used on:\n${list}\n\nSave anyway?`);
 }
 
 // Mirrors the fetch order in loadPorting: port_date then port_time, undated last.
@@ -1798,84 +1829,15 @@ function portingStatusBadge(s){
   return `<span class="badge ${map[s]||'badge-gray'}">${esc(s)}</span>`;
 }
 
-async function openPortingModal(id, prefillClientId){
-  const isEdit = !!id;
-  let rec = null;
-  if(isEdit){
-    const { data } = await sb.from('porting').select('*,clients(company)').eq('id',id).single();
-    rec = data;
-  }
-  // Ensure the porting client list is populated (user may navigate directly to Porting)
-  if(!portingClients.length){
-    const clients = await fetchAll(()=>sb.from('clients').select('id,company').order('company'));
-    if(clients) portingClients = clients;
-  }
-  const lockClient = isEdit || !!prefillClientId;
-  const effectiveClientId = rec?.client_id || prefillClientId || '';
-  const clientOptions = portingClients.map(c=>`<option value="${c.id}" ${effectiveClientId===c.id?'selected':''}>${esc(c.company)}</option>`).join('');
-  openModal(`<div class="modal" style="width:860px">
-    <div class="modal-hdr"><h3>${isEdit?'Edit porting ticket':'Log porting ticket'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
-    <div class="modal-2col">
-      <div class="modal-col">
-        <div class="form-group"><label class="lbl">Client *</label>
-          <select class="fi" id="f-port-client" ${lockClient?'disabled':''}>
-            <option value="">— select client —</option>${clientOptions}
-          </select>
-        </div>
-        <div class="form-group"><label class="lbl">Ticket number *</label><input class="fi" id="f-port-numbers" value="${esc(rec?.phone_numbers||'')}" placeholder="e.g. TKT-12345"></div>
-        <div class="form-group"><label class="lbl">Losing carrier *</label><input class="fi" id="f-port-carrier" value="${esc(rec?.losing_carrier||'')}" placeholder="e.g. Telstra"></div>
-        <div class="form-row">
-          <div class="form-group"><label class="lbl">Port date</label><input class="fi" type="date" id="f-port-date" value="${rec?.port_date||''}"></div>
-          <div class="form-group"><label class="lbl">Port time</label><input class="fi" type="time" id="f-port-time" value="${rec?.port_time||''}"></div>
-        </div>
-        <div class="form-group"><label class="lbl">Status</label>
-          <select class="fi" id="f-port-status">
-            ${['Pending','Complete','Cancelled'].map(s=>`<option value="${s}" ${(rec?.status||'Pending')===s?'selected':''}>${s}</option>`).join('')}
-          </select>
-        </div>
-        <div id="port-error" class="form-error" style="display:none"></div>
-      </div>
-      <div class="modal-col" style="display:flex;flex-direction:column">
-        <label class="lbl">Notes</label>
-        <textarea class="fi" id="f-port-notes" placeholder="Any notes about this port..." style="flex:1;min-height:280px;resize:vertical">${esc(rec?.notes||'')}</textarea>
-      </div>
-    </div>
-    <div class="modal-ftr">
-      <button class="btn" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="submitPorting('${id||''}')"><i class="ti ti-check"></i> ${isEdit?'Save changes':'Log port'}</button>
-    </div>
-  </div>`);
-}
-
-async function submitPorting(id){
-  const clientId = document.getElementById('f-port-client').value;
-  const numbers  = document.getElementById('f-port-numbers').value.trim();
-  const carrier  = document.getElementById('f-port-carrier').value.trim();
-  const portDate = document.getElementById('f-port-date').value || null;
-  const portTime = document.getElementById('f-port-time').value || null;
-  const status   = document.getElementById('f-port-status').value;
-  const notes    = document.getElementById('f-port-notes').value.trim() || null;
-  const err      = document.getElementById('port-error');
-  err.style.display = 'none';
-  // Disabled selects don't submit — fall back to the selected option's value
-  const resolvedClientId = clientId || document.getElementById('f-port-client').options[document.getElementById('f-port-client').selectedIndex]?.value || '';
-  if(!id && !resolvedClientId){ err.textContent='Please select a client.'; err.style.display='block'; return; }
-  if(!numbers){ err.textContent='Phone number(s) are required.'; err.style.display='block'; return; }
-  if(!carrier){  err.textContent='Losing carrier is required.';  err.style.display='block'; return; }
-  setSyncStatus('syncing');
-  try {
-    if(id){
-      await sb.from('porting').update({ phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, port_time:portTime, status, notes }).eq('id',id);
-      await logAudit('updated','porting',id,{},{phone_numbers:numbers,losing_carrier:carrier,port_date:portDate,port_time:portTime,status,notes});
-      toast('Porting ticket updated');
-    } else {
-      const { data } = await sb.from('porting').insert({ client_id:resolvedClientId, phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, port_time:portTime, status, notes, created_by:currentUser?.id }).select().single();
-      await logAudit('created','porting',data.id,{},{client_id:resolvedClientId,phone_numbers:numbers,losing_carrier:carrier,status});
-      toast('Porting ticket created');
-    }
-    closeModal();
-    if(currentPage==='client-profile') loadClientProfile(activeClientId); else loadPorting();
-  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+// Client profile hands off to the Porting page instead of a modal. The old modal reused the
+// Porting pane's field ids, so with a ticket open there (hidden) it saved that ticket's values.
+function openPortingPage(id, clientId){
+  if(!confirmDiscardPorting()) return;
+  selectedPortingId     = id || null;
+  portingDraft          = !id;
+  portingDraftClientId  = id ? null : (clientId || null);
+  portingDirty          = false;
+  showPage('porting', document.querySelector('.nav-item[data-page="porting"]'));   // loadPorting renders the selection
 }
 
 async function deletePorting(id){
