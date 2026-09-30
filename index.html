@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.13">
+<meta name="version" content="v1.0.14">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -468,7 +468,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.13</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.14</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -707,6 +707,7 @@ let jobFilters     = { installs: 'Pending', service: 'Pending' };
 let jobSel         = { installs: null, service: null };   // job shown in each page's detail pane
 let jobDraft       = { installs: false, service: false }; // detail pane is an unsaved new job
 let jobDirty       = { installs: false, service: false }; // detail pane has edits that aren't saved
+let jobSaving      = false;  // a save is in flight; blocks repeat clicks on either page
 let jobDraftClient = { installs: null,  service: null };  // client to preselect on a draft opened from a client profile
 let jobClients     = [];  // lightweight {id,company} list for the job client dropdown
 let allSites       = [];  // every site, so the detail pane can filter by client without a refetch
@@ -1495,7 +1496,7 @@ function markJobDirty(kind){
 function updateJobSaveBar(kind){
   const bar = document.getElementById('job-savebar-'+kind);
   if(!bar) return;
-  const canSave = jobDirty[kind] || jobDraft[kind];
+  const canSave = (jobDirty[kind] || jobDraft[kind]) && !jobSaving;
   bar.classList.toggle('dirty', jobDirty[kind]);
   bar.querySelector('.port-savemsg').textContent =
     jobDirty[kind] ? 'Unsaved changes' : jobDraft[kind] ? 'Not saved yet' : 'All changes saved';
@@ -1506,6 +1507,7 @@ function updateJobSaveBar(kind){
 }
 
 async function saveJob(kind){
+  if(jobSaving) return;
   const draft = jobDraft[kind];
   const rec   = draft ? null : allJobs.find(j=>j.id===jobSel[kind]);
   if(!rec && !draft) return;
@@ -1532,6 +1534,9 @@ async function saveJob(kind){
     description: g('desc').value.trim(),
     job_notes: g('notes').value.trim()
   };
+  jobSaving = true;
+  const btn = document.getElementById('job-save-btn-'+kind);
+  if(btn){ btn.disabled = true; btn.style.opacity = '0.5'; }
   setSyncStatus('syncing');
   try {
     let saved;
@@ -1539,7 +1544,8 @@ async function saveJob(kind){
       // Capture the pre-edit values so the audit log can show a real field-level diff
       const oldData = {};
       Object.keys(payload).forEach(k=>{ oldData[k] = rec[k]; });
-      await sb.from('jobs').update(payload).eq('id',rec.id);
+      const { error } = await sb.from('jobs').update(payload).eq('id',rec.id);
+      if(error) throw error;
       await logAudit('updated','jobs',rec.id,oldData,payload);
       if(assigned && assigned !== oldData.assigned_to) await sendAssignmentEmail({ id:rec.id, ...payload }, assigned);
       Object.assign(rec, payload);   // patch in place; no refetch, so scroll and selection survive
@@ -1571,6 +1577,7 @@ async function saveJob(kind){
     renderJobsPage('service');
     setSyncStatus('ok');
   } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+  finally { jobSaving = false; updateJobSaveBar('installs'); updateJobSaveBar('service'); }
 }
 
 async function deleteJobFromPane(kind, id){
