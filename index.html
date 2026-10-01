@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.14">
+<meta name="version" content="v1.0.15">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -468,7 +468,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.14</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.15</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -1565,7 +1565,9 @@ async function saveJob(kind){
       sortJobs();
       saved = data;
       jobDraft[kind] = false;
-      toast('Job logged');
+      if(!isInstall) toast('Job logged');
+      else if(await createInstallPorting(clientId)) toast('Job logged · porting ticket created (TBC)');
+      else toast("Job logged, but the porting ticket couldn't be created",'warn');
     }
     jobDirty[kind] = false;
     // Flipping Type moves the record onto the other page — follow the selection there
@@ -1578,6 +1580,25 @@ async function saveJob(kind){
     setSyncStatus('ok');
   } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
   finally { jobSaving = false; updateJobSaveBar('installs'); updateJobSaveBar('service'); }
+}
+
+// A new install always has numbers to port, so its porting ticket is logged up front.
+// Ticket number and carrier aren't known yet: TBC plus a blank carrier, which the
+// Porting pane then insists on at the first save. Never throws — the job is already
+// saved, and a "Save failed" here would invite a retry that duplicates it.
+async function createInstallPorting(clientId){
+  try {
+    const payload = { phone_numbers:'TBC', losing_carrier:'', port_date:null, port_time:null,
+                      status:'Pending', notes:'Auto-created from new install' };
+    const { data, error } = await sb.from('porting')
+      .insert({ ...payload, client_id:clientId, created_by:currentUser?.id })
+      .select('*,clients(company,account_number)').single();
+    if(error) throw error;
+    await logAudit('created','porting',data.id,{},{ ...payload, client_id:clientId });
+    allPorting.push(data);   // Porting page refetches on open; this just keeps the cache honest meanwhile
+    sortPorting();
+    return true;
+  } catch(e){ console.warn('Install porting ticket failed:', e); return false; }
 }
 
 async function deleteJobFromPane(kind, id){
@@ -1613,6 +1634,7 @@ async function loadPorting(){
       fetchAll(()=>sb.from('clients').select('id,company').order('company'))
     ]);
     allPorting = ports || [];
+    sortPorting();   // the fetch orders by date; TBC tickets still need lifting to the top
     if(clients) portingClients = clients;
     // Drop a selection that no longer exists (deleted elsewhere, or filtered out of the fetch)
     if(selectedPortingId && !allPorting.some(p=>p.id===selectedPortingId)) selectedPortingId = null;
@@ -1790,6 +1812,7 @@ async function savePorting(){
       await sb.from('porting').update(payload).eq('id',rec.id);
       await logAudit('updated','porting',rec.id,oldData,payload);
       Object.assign(rec, payload);   // patch in place; no refetch, so scroll and selection survive
+      sortPorting();                 // a TBC ticket that just got its number drops out of the top group
       toast('Porting ticket updated');
     } else {
       const { data } = await sb.from('porting')
@@ -1831,9 +1854,12 @@ async function confirmPortingTicketNo(numbers, excludeId){
   return confirm(`Ticket number ${numbers} is already used on:\n${list}\n\nSave anyway?`);
 }
 
-// Mirrors the fetch order in loadPorting: port_date then port_time, undated last.
+// TBC tickets first (they still need a ticket number chasing), then the fetch order
+// in loadPorting: port_date then port_time, undated last.
 function sortPorting(){
+  const isTbc = p => p.phone_numbers.toUpperCase()==='TBC';
   allPorting.sort((a,b)=>
+    isTbc(b) - isTbc(a) ||
     (a.port_date||'9999-99-99').localeCompare(b.port_date||'9999-99-99') ||
     (a.port_time||'99:99').localeCompare(b.port_time||'99:99'));
 }
