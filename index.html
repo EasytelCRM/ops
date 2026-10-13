@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.18">
+<meta name="version" content="v1.0.19">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -504,7 +504,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.18</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.19</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -1198,7 +1198,7 @@ async function loadClientProfile(id){
       ? (ports||[]).map(p=>`<div class="job-card" onclick="openPortingPage('${p.id}')" style="cursor:pointer">
           ${portingStatusBadge(p.status)}
           <div class="job-body">
-            <div class="job-title job-link">${esc(p.phone_numbers)}</div>
+            <div class="job-title job-link">${esc(p.phone_numbers)}${safeTicketUrl(p.ticket_url)?` <a href="${esc(p.ticket_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open ticket"><i class="ti ti-external-link"></i></a>`:''}</div>
             <div class="job-meta">
               <span><i class="ti ti-building" style="font-size:11px"></i> ${esc(p.losing_carrier)}</span>
               ${p.port_date?`<span><i class="ti ti-calendar" style="font-size:11px"></i> ${fmtDate(p.port_date)}${p.port_time?' '+p.port_time.slice(0,5):''}</span>`:''}
@@ -1992,7 +1992,7 @@ function renderPortingList(){
 function portingRowHTML(p){
   const due = p.status==='Pending' && daysOut(p.port_date) <= 1;
   return `<button class="port-row${p.id===selectedPortingId?' sel':''}" onclick="selectPorting('${p.id}')">
-    <div class="port-row-top"><span class="port-tid">${esc(p.phone_numbers)}</span>${portingStatusBadge(p.status)}</div>
+    <div class="port-row-top"><span class="port-tid">${esc(p.phone_numbers)}${safeTicketUrl(p.ticket_url)?' <i class="ti ti-link" title="Has ticket link"></i>':''}</span>${portingStatusBadge(p.status)}</div>
     <div class="port-co">${esc(p.clients?.company||'Unknown')}</div>
     <div class="port-row-bot">
       <span class="port-when${due?' due':''}">${fmtDate(p.port_date)}${p.port_time?` · ${p.port_time.slice(0,5)}`:''}</span>
@@ -2063,7 +2063,7 @@ function renderPortingDetail(){
   el.innerHTML = `<div class="port-det" oninput="markPortingDirty()" onchange="markPortingDirty()">
     <div class="port-det-head">
       <div>
-        <div class="port-det-tid">${portingDraft ? 'New porting ticket' : esc(rec.phone_numbers)}${portingDraft ? '' : ' '+portingStatusBadge(rec.status)}</div>
+        <div class="port-det-tid">${portingDraft ? 'New porting ticket' : portingTicketLink(rec)}${portingDraft ? '' : ' '+portingStatusBadge(rec.status)}</div>
         <div class="port-det-co">${portingDraft
           ? 'Pick a client and fill in the ticket, then save.'
           : `<span style="color:var(--accent);cursor:pointer" onclick="confirmDiscardPorting().then(ok=>{ if(ok) openClientProfile('${rec.client_id}') })">${esc(rec.clients?.company||'Unknown')}</span> · ${esc(rec.clients?.account_number||'—')}`}</div>
@@ -2073,6 +2073,8 @@ function renderPortingDetail(){
     <div class="port-grid">
       ${portingDraft ? `<div class="form-group" style="grid-column:1/-1"><label class="lbl">Client *</label>
         <select class="fi" id="f-port-client"><option value="">— select client —</option>${clientOptions}</select></div>` : ''}
+      <div class="form-group" style="grid-column:1/-1"><label class="lbl">Ticket link</label><input class="fi" id="f-port-url" autocomplete="off" value="${esc(rec?.ticket_url||'')}" placeholder="Paste the Assist Portal link — the REQ number is filled in for you" oninput="portingUrlChanged(this.value)">
+        <div class="form-error" id="port-url-hint" style="display:none;margin-top:4px"></div></div>
       <div class="form-group"><label class="lbl">Ticket number</label><input class="fi" id="f-port-numbers" autocomplete="off" value="${esc(rec?.phone_numbers==='TBC'?'':rec?.phone_numbers||'')}" placeholder="Blank = TBC (Pending only)"></div>
       <div class="form-group"><label class="lbl">Losing carrier *</label><input class="fi" id="f-port-carrier" value="${esc(rec?.losing_carrier||'')}" placeholder="e.g. Telstra"></div>
       <div class="form-group"><label class="lbl">Port date</label><input class="fi" type="date" id="f-port-date" value="${rec?.port_date||''}"></div>
@@ -2123,6 +2125,7 @@ async function savePorting(){
   const rec = portingDraft ? null : allPorting.find(p=>p.id===selectedPortingId);
   if(!rec && !portingDraft) return;
   const rawNo    = document.getElementById('f-port-numbers').value.trim();
+  const url      = document.getElementById('f-port-url').value.trim() || null;
   const carrier  = document.getElementById('f-port-carrier').value.trim();
   const portDate = document.getElementById('f-port-date').value || null;
   const portTime = document.getElementById('f-port-time').value || null;
@@ -2134,6 +2137,7 @@ async function savePorting(){
   const numbers  = resolvePortingTicketNo(rawNo, status);
   if(portingDraft && !clientId){ err.textContent='Please select a client.';        err.style.display='block'; return; }
   if(!numbers){                  err.textContent='Ticket number is required unless the port is still Pending.'; err.style.display='block'; return; }
+  if(url && !safeTicketUrl(url)){ err.textContent='Ticket link must start with http:// or https://.'; err.style.display='block'; return; }
   if(!carrier){                  err.textContent='Losing carrier is required.';    err.style.display='block'; return; }
   portingSaving = true;
   const btn = document.getElementById('port-save-btn');
@@ -2141,10 +2145,10 @@ async function savePorting(){
   try {
     if(numbers!==rec?.phone_numbers && !(await confirmPortingTicketNo(numbers, rec?.id))) return;
     setSyncStatus('syncing');
-    const payload = { phone_numbers:numbers, losing_carrier:carrier, port_date:portDate, port_time:portTime, status, notes };
+    const payload = { phone_numbers:numbers, ticket_url:url, losing_carrier:carrier, port_date:portDate, port_time:portTime, status, notes };
     if(rec){
       // Capture the pre-edit values so the audit log can show a real field-level diff
-      const oldData = { phone_numbers:rec.phone_numbers, losing_carrier:rec.losing_carrier,
+      const oldData = { phone_numbers:rec.phone_numbers, ticket_url:rec.ticket_url, losing_carrier:rec.losing_carrier,
                         port_date:rec.port_date, port_time:rec.port_time, status:rec.status, notes:rec.notes };
       await sb.from('porting').update(payload).eq('id',rec.id);
       await logAudit('updated','porting',rec.id,oldData,payload);
@@ -2176,6 +2180,34 @@ async function savePorting(){
 function resolvePortingTicketNo(raw, status){
   if(raw && raw.toUpperCase()!=='TBC') return raw;
   return status==='Pending' ? 'TBC' : null;
+}
+
+// Assist Portal links carry the request number in the path, e.g.
+// https://assistportal.io/#/ITSMRequest/REQ0053590/SelfService
+function reqFromTicketUrl(url){
+  const m = /REQ\d+/i.exec(url||'');
+  return m ? m[0].toUpperCase() : null;
+}
+
+// Links are rendered as hrefs, so only http(s) gets through (no javascript: etc.)
+function safeTicketUrl(url){
+  return /^https?:\/\//i.test(url||'') ? url : null;
+}
+
+// Pasting a link fills the ticket number; the number stays editable for links without a REQ
+function portingUrlChanged(url){
+  const req  = reqFromTicketUrl(url);
+  const hint = document.getElementById('port-url-hint');
+  if(req) document.getElementById('f-port-numbers').value = req;
+  hint.textContent   = url.trim() && !req ? 'No REQ number found in this link. Type the ticket number in yourself.' : '';
+  hint.style.display = hint.textContent ? 'block' : 'none';
+}
+
+function portingTicketLink(rec){
+  const url = safeTicketUrl(rec.ticket_url);
+  return url
+    ? `<a href="${esc(url)}" target="_blank" rel="noopener" title="Open ticket" style="color:inherit;text-decoration:none">${esc(rec.phone_numbers)} <i class="ti ti-external-link" style="font-size:15px;color:var(--accent)"></i></a>`
+    : esc(rec.phone_numbers);
 }
 
 // Warn (not block) when the number is already on another ticket — a number can
@@ -2296,7 +2328,7 @@ const AUDIT_LABELS = {
   title:'Title', type:'Type', status:'Status', client_id:'Client', site_id:'Site',
   assigned_to:'Assigned to', due_date:'Scheduled date', cost:'Cost', approval_date:'Approval date',
   description:'Description', job_notes:'Job notes', job_id:'Job', text:'Text', role:'Role', notes:'Notes',
-  phone_numbers:'Phone numbers', losing_carrier:'Losing carrier', port_date:'Port date', port_time:'Port time'
+  phone_numbers:'Phone numbers', ticket_url:'Ticket link', losing_carrier:'Losing carrier', port_date:'Port date', port_time:'Port time'
 };
 const AUDIT_SENSITIVE = new Set(['system_credentials']);
 const auditNorm = v => (v===null||v===undefined||v==='') ? '' : (typeof v==='boolean' ? v : String(v));
