@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.15">
+<meta name="version" content="v1.0.16">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -297,6 +297,32 @@ select.fi { cursor: pointer; }
 .jd-tab { padding: 6px 14px; font-size: 13px; font-weight: 500; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s; }
 .jd-tab:hover { color: var(--text2); }
 .jd-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+/* Job notes log: add box stays put, the entries scroll in the space the old textarea had */
+.jn-wrap { flex: 1; display: flex; flex-direction: column; min-height: 200px; }
+.jn-compose { flex: none; border: 1px solid var(--border2); border-radius: var(--radius); padding: 6px 8px 8px; background: var(--surface); }
+.jn-compose:focus-within { border-color: var(--accent); }
+.port-notes-group .jn-compose textarea { flex: none; width: 100%; min-height: 52px; resize: vertical; border: none; outline: none; background: none; color: var(--text); font-family: inherit; font-size: 13px; line-height: 1.6; padding: 2px; }
+.jn-compose-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.jn-hint { font-size: 11px; color: var(--text3); }
+.jn-list { flex: 1; min-height: 0; overflow-y: auto; margin-top: 4px; }
+.jn-entry { display: flex; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--border); }
+.jn-entry:last-child { border-bottom: none; }
+.jn-av { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; flex-shrink: 0; }
+.jn-body { flex: 1; min-width: 0; }
+.jn-meta { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+.jn-author { font-weight: 500; }
+.jn-when { color: var(--text3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.jn-del { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--text3); font-size: 14px; padding: 0 2px; opacity: 0; transition: opacity 0.15s; }
+.jn-entry:hover .jn-del { opacity: 1; }
+.jn-del:hover { color: var(--red); }
+.jn-text { font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; margin-top: 2px; }
+.jn-text.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.jn-more { background: none; border: none; padding: 0; margin-top: 3px; font-family: inherit; font-size: 12px; color: var(--accent); cursor: pointer; }
+.jn-legacy { background: var(--surface2); border-radius: var(--radius); border-bottom: none; padding: 10px; margin-top: 6px; }
+.jn-legacy .jn-av { background: var(--bg); color: var(--text3); font-size: 14px; }
+.jn-legacy .jn-text { color: var(--text2); }
+.jn-older { text-align: center; padding: 8px 0 2px; }
+.jn-empty { font-size: 13px; color: var(--text3); text-align: center; padding: 1.5rem 0; }
 .port-savebar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1.15rem; padding: 0.7rem 0.9rem; border-radius: var(--radius); background: var(--surface2); border: 1px solid var(--border); }
 .port-savebar.dirty { background: var(--amber-light); border-color: var(--amber); }
 .port-savemsg { font-size: 12.5px; color: var(--text3); }
@@ -309,6 +335,10 @@ select.fi { cursor: pointer; }
   .port-list-card { max-height: 340px; }
   .port-detail { display: block; overflow: visible; }
   .port-notes-group textarea { flex: none; min-height: 150px; resize: vertical; }
+  /* No box-in-a-scrolling-page on touch screens: the log grows and the page scrolls */
+  .jn-wrap { min-height: 0; }
+  .jn-list { overflow: visible; }
+  .jn-del { opacity: 1; }
 }
 
 /* ============================================================
@@ -468,7 +498,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.15</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.16</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -709,6 +739,10 @@ let jobDraft       = { installs: false, service: false }; // detail pane is an u
 let jobDirty       = { installs: false, service: false }; // detail pane has edits that aren't saved
 let jobSaving      = false;  // a save is in flight; blocks repeat clicks on either page
 let jobDraftClient = { installs: null,  service: null };  // client to preselect on a draft opened from a client profile
+let jobTab         = { installs: 'desc', service: 'desc' };  // Description / Job notes tab, kept across re-renders
+let jobNotes       = {};     // job id → its log entries (newest first), fetched when the job is opened
+let jobNotesOlder  = { installs: false, service: false };  // "Show older notes" expanded
+let jobNoteSaving  = false;  // a note insert is in flight; blocks double-submits
 let jobClients     = [];  // lightweight {id,company} list for the job client dropdown
 let allSites       = [];  // every site, so the detail pane can filter by client without a refetch
 let allClients     = [];
@@ -1335,6 +1369,7 @@ function selectJob(kind, id){
   jobSel[kind]   = id;
   jobDraft[kind] = false;
   jobDirty[kind] = false;
+  jobNotesOlder[kind] = false;
   renderJobsPage(kind);
 }
 
@@ -1378,8 +1413,12 @@ function cancelJobDraft(kind){
 }
 
 function confirmDiscardJob(kind){
-  if(!jobDirty[kind]) return true;
-  return confirm('You have unsaved changes to this job. Discard them?');
+  // A typed-but-not-added note isn't part of jobDirty (notes save on their own), so check it separately
+  const unsentNote = (document.getElementById('jn-input-'+kind)?.value||'').trim();
+  if(!jobDirty[kind] && !unsentNote) return true;
+  return confirm(jobDirty[kind]
+    ? 'You have unsaved changes to this job. Discard them?'
+    : "You've typed a note but haven't added it. Discard it?");
 }
 
 function renderJobDetail(kind){
@@ -1388,9 +1427,13 @@ function renderJobDetail(kind){
   const draft = jobDraft[kind];
   const rec   = draft ? null : allJobs.find(j=>j.id===jobSel[kind]);
   if(!rec && !draft){
+    el.dataset.job = '';
     el.innerHTML = `<div class="empty port-empty" style="padding:3.5rem 1rem"><i class="ti ${JOB_KINDS[kind].icon}"></i><p>Select a ${JOB_KINDS[kind].noun} to view or edit it.</p></div>`;
     return;
   }
+  // Saving the job re-renders the pane; carry over a note that's typed but not yet added
+  const keepNote = el.dataset.job===rec?.id ? (document.getElementById('jn-input-'+kind)?.value||'') : '';
+  el.dataset.job = rec?.id || '';
   const ro = !draft && !canEditJob(rec);   // techs can only edit jobs assigned to them
   const d  = ro ? ' disabled' : '';
   const isInstall = (rec?.type || (kind==='installs' ? 'New Install' : 'Service')) === 'New Install';
@@ -1442,11 +1485,22 @@ function renderJobDetail(kind){
     </div>
     <div class="form-group port-notes-group jd-notes" style="margin-top:1rem">
       <div class="jd-tabs">
-        <div class="jd-tab active" id="jd-tab-desc-${kind}" onclick="switchJobDetailTab('${kind}','desc')">Description</div>
-        <div class="jd-tab" id="jd-tab-notes-${kind}" onclick="switchJobDetailTab('${kind}','notes')">Job notes</div>
+        <div class="jd-tab" id="jd-tab-desc-${kind}" onclick="switchJobDetailTab('${kind}','desc')">Description</div>
+        <div class="jd-tab" id="jd-tab-notes-${kind}" onclick="switchJobDetailTab('${kind}','notes')">Job notes <span class="tab-count" id="jn-count-${kind}"${draft?' style="display:none"':''}>…</span></div>
       </div>
       <textarea class="fi" id="f-job-desc-${kind}" placeholder="Job details..."${d}>${esc(rec?.description||'')}</textarea>
-      <textarea class="fi" id="f-job-notes-${kind}" placeholder="Internal notes, progress updates, follow-ups..." style="display:none"${d}>${esc(rec?.job_notes||'')}</textarea>
+      <div class="jn-wrap" id="f-job-notes-${kind}">${draft
+        ? `<div class="jn-empty">Log the job first, then you can add notes to it.</div>`
+        : `<div class="jn-compose" oninput="event.stopPropagation()" onchange="event.stopPropagation()">
+          <textarea id="jn-input-${kind}" rows="2" placeholder="Add a note: progress update, follow-up, call outcome…"
+            onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();addJobNote('${kind}')}"></textarea>
+          <div class="jn-compose-bar">
+            <span class="jn-hint">Ctrl+Enter to add · saves straight away</span>
+            <button class="btn btn-sm" id="jn-add-${kind}" onclick="addJobNote('${kind}')"><i class="ti ti-plus"></i> Add note</button>
+          </div>
+        </div>
+        <div class="jn-list" id="jn-list-${kind}"><div class="jn-empty">Loading notes…</div></div>`}
+      </div>
     </div>
     <div id="job-error-${kind}" class="form-error" style="display:none"></div>
     ${ro
@@ -1460,13 +1514,156 @@ function renderJobDetail(kind){
     </div>`}
   </div>`;
   if(!ro) updateJobSaveBar(kind);
+  switchJobDetailTab(kind, jobTab[kind]);
+  if(!draft){
+    if(keepNote) document.getElementById('jn-input-'+kind).value = keepNote;
+    if(jobNotes[rec.id]) renderJobNotes(kind);
+    loadJobNotes(kind, rec.id);   // always refresh: someone else may have added notes
+  }
 }
 
 function switchJobDetailTab(kind, tab){
+  jobTab[kind] = tab;
   ['desc','notes'].forEach(t=>{
     document.getElementById(`jd-tab-${t}-${kind}`).classList.toggle('active', t===tab);
     document.getElementById(`f-job-${t}-${kind}`).style.display = t===tab ? '' : 'none';
   });
+  if(tab==='notes') fitJobNoteClamps(kind);
+}
+
+// ── Job notes log ────────────────────────────────────────────
+// Append-only entries in job_notes. The old jobs.job_notes text box is shown read-only
+// as the oldest entry so nothing written before the log existed goes missing.
+const JN_VISIBLE = 3;   // newest entries shown before "Show older notes"
+const jobNotesSeq = {};  // job id → latest fetch number, so a slow older fetch can't overwrite a newer one
+
+async function loadJobNotes(kind, jobId){
+  const seq = jobNotesSeq[jobId] = (jobNotesSeq[jobId]||0) + 1;
+  try {
+    const { data, error } = await sb.from('job_notes').select('*,profiles(full_name)')
+      .eq('job_id',jobId).order('created_at',{ascending:false});
+    if(error) throw error;
+    if(seq !== jobNotesSeq[jobId]) return;
+    jobNotes[jobId] = data || [];
+    if(jobSel[kind]===jobId && !jobDraft[kind]) renderJobNotes(kind);   // user may have moved on meanwhile
+  } catch(e){
+    const list = document.getElementById('jn-list-'+kind);
+    if(list && jobSel[kind]===jobId && !jobNotes[jobId]) list.innerHTML = `<div class="jn-empty">Couldn't load notes: ${esc(e.message)}</div>`;
+  }
+}
+
+function fmtNoteWhen(d){
+  const dt   = new Date(d);
+  const abs  = dt.toLocaleString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'});
+  const mins = Math.floor((Date.now()-dt)/60000);
+  const rel  = mins < 1 ? 'just now' : mins < 60 ? `${mins}m ago` : mins < 1440 ? `${Math.floor(mins/60)}h ago`
+             : mins < 10080 ? `${Math.floor(mins/1440)}d ago` : '';
+  return rel ? `${abs} · ${rel}` : abs;
+}
+
+// Only re-renders the list and tab count, so the job form's edits and caret are left alone
+function renderJobNotes(kind){
+  const list = document.getElementById('jn-list-'+kind);
+  const rec  = allJobs.find(j=>j.id===jobSel[kind]);
+  if(!list || !rec) return;
+  const notes  = jobNotes[rec.id] || [];
+  const legacy = (rec.job_notes||'').trim();
+  const entries = notes.map(n=>`<div class="jn-entry">
+      <div class="jn-av">${esc(initials(n.profiles?.full_name))}</div>
+      <div class="jn-body">
+        <div class="jn-meta">
+          <span class="jn-author">${esc(n.profiles?.full_name||'Unknown')}</span>
+          <span class="jn-when">${fmtNoteWhen(n.created_at)}</span>
+          ${isAdmin() ? `<button class="jn-del" title="Delete note" onclick="deleteJobNote('${kind}','${n.id}')"><i class="ti ti-trash"></i></button>` : ''}
+        </div>
+        <div class="jn-text clamp">${esc(n.text)}</div>
+        <button class="jn-more" style="display:none" onclick="toggleJobNoteClamp(this)">Show more</button>
+      </div>
+    </div>`);
+  if(legacy) entries.push(`<div class="jn-entry jn-legacy">
+      <div class="jn-av"><i class="ti ti-history"></i></div>
+      <div class="jn-body">
+        <div class="jn-meta"><span class="jn-author" style="color:var(--text2)">Earlier notes</span><span class="jn-when">from the old notes box</span></div>
+        <div class="jn-text clamp">${esc(legacy)}</div>
+        <button class="jn-more" style="display:none" onclick="toggleJobNoteClamp(this)">Show more</button>
+      </div>
+    </div>`);
+  const older = entries.length - JN_VISIBLE;
+  const showAll = jobNotesOlder[kind] || older <= 0;
+  list.innerHTML = !entries.length
+    ? `<div class="jn-empty">No notes yet. Add the first update above.</div>`
+    : entries.slice(0, showAll ? entries.length : JN_VISIBLE).join('') + (older > 0
+      ? `<div class="jn-older"><button class="btn btn-sm" onclick="jobNotesOlder['${kind}']=!jobNotesOlder['${kind}'];renderJobNotes('${kind}')">
+          <i class="ti ti-chevron-${showAll?'up':'down'}"></i> ${showAll ? 'Hide older notes' : `Show ${older} older note${older===1?'':'s'}`}</button></div>`
+      : '');
+  const count = document.getElementById('jn-count-'+kind);
+  if(count) count.textContent = entries.length;
+  fitJobNoteClamps(kind);
+}
+
+// "Show more" only where the 3-line clamp actually hides text. Needs the list on screen to
+// measure, so it re-runs when the notes tab is opened.
+function fitJobNoteClamps(kind){
+  const list = document.getElementById('jn-list-'+kind);
+  if(!list || !list.offsetParent) return;
+  list.querySelectorAll('.jn-text.clamp').forEach(t=>{
+    t.nextElementSibling.style.display = t.scrollHeight > t.clientHeight + 1 ? '' : 'none';
+  });
+}
+
+function toggleJobNoteClamp(btn){
+  const clamped = btn.previousElementSibling.classList.toggle('clamp');
+  btn.textContent = clamped ? 'Show more' : 'Show less';
+}
+
+async function addJobNote(kind){
+  if(jobNoteSaving) return;
+  const jobId = jobSel[kind];
+  const input = document.getElementById('jn-input-'+kind);
+  if(!jobId || !input) return;
+  const text = input.value.trim();
+  if(!text){ toast('Type a note first','warn'); input.focus(); return; }
+  jobNoteSaving = true;
+  const btn = document.getElementById('jn-add-'+kind);
+  if(btn){ btn.disabled = true; btn.style.opacity = '0.5'; }
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await sb.from('job_notes').insert({ job_id: jobId, text, created_by: currentUser.id })
+      .select('*,profiles(full_name)').single();
+    if(error) throw error;
+    await logAudit('created','job_notes',data.id,{},{ job_id: jobId, text });
+    jobNotes[jobId] = [data, ...(jobNotes[jobId]||[])];
+    if(jobSel[kind]===jobId){
+      input.value = '';
+      renderJobNotes(kind);
+    }
+    loadJobNotes(kind, jobId);   // supersedes any fetch still in flight, which wouldn't include this note
+    toast('Note added');
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Note not saved: '+e.message,'error'); }
+  finally {
+    jobNoteSaving = false;
+    if(btn){ btn.disabled = false; btn.style.opacity = '1'; }
+  }
+}
+
+async function deleteJobNote(kind, id){
+  if(!confirm('Delete this note? This can\'t be undone.')) return;
+  const jobId = jobSel[kind];
+  const note  = (jobNotes[jobId]||[]).find(n=>n.id===id);
+  setSyncStatus('syncing');
+  try {
+    // RLS silently drops a delete it refuses, so ask for the row back to tell the two apart
+    const { data, error } = await sb.from('job_notes').delete().eq('id',id).select('id');
+    if(error) throw error;
+    if(!data?.length) throw new Error('only admins can delete notes');
+    await logAudit('deleted','job_notes',id,{ job_id: jobId, text: note?.text },{});
+    jobNotes[jobId] = (jobNotes[jobId]||[]).filter(n=>n.id!==id);
+    renderJobNotes(kind);
+    loadJobNotes(kind, jobId);
+    toast('Note deleted');
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
 }
 
 // Sites belong to a client, so re-stock the picker whenever the draft's client changes
@@ -1531,8 +1728,8 @@ async function saveJob(kind){
     due_date: g('due').value || null,
     cost: isInstall ? null : (g('cost').value || null),
     approval_date: isInstall ? (g('approval').value || null) : null,
-    description: g('desc').value.trim(),
-    job_notes: g('notes').value.trim()
+    description: g('desc').value.trim()
+    // job_notes is no longer written: the old text box is read-only history under the notes log
   };
   jobSaving = true;
   const btn = document.getElementById('job-save-btn-'+kind);
@@ -1958,7 +2155,7 @@ const AUDIT_LABELS = {
   system_credentials:'System credentials',
   title:'Title', type:'Type', status:'Status', client_id:'Client', site_id:'Site',
   assigned_to:'Assigned to', due_date:'Scheduled date', cost:'Cost', approval_date:'Approval date',
-  description:'Description', job_notes:'Job notes', text:'Text', role:'Role', notes:'Notes',
+  description:'Description', job_notes:'Job notes', job_id:'Job', text:'Text', role:'Role', notes:'Notes',
   phone_numbers:'Phone numbers', losing_carrier:'Losing carrier', port_date:'Port date', port_time:'Port time'
 };
 const AUDIT_SENSITIVE = new Set(['system_credentials']);
@@ -1969,6 +2166,7 @@ function fmtAuditVal(key, val){
   if(typeof val==='boolean') return val ? 'On' : 'Off';
   if(key==='client_id') return allClients.find(c=>c.id===val)?.company || val;
   if(key==='assigned_to') return allProfiles.find(p=>p.id===val)?.full_name || val;
+  if(key==='job_id'){ const j = allJobs.find(x=>x.id===val); return j ? `${j.clients?.company||'Unknown'} · ${jobSubtitle(j)}` : val; }
   if(Array.isArray(val)) return val.join(', ') || '(empty)';
   return String(val);
 }
