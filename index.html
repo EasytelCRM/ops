@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.17">
+<meta name="version" content="v1.0.18">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -504,7 +504,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.17</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.18</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -764,6 +764,7 @@ let portingSaving     = false;  // a save is in flight; blocks repeat clicks
 let portingDraftClientId = null; // client to preselect on a draft opened from a client profile
 let allProfiles    = [];
 let _ignoreNextPop = false;  // prevents popstate loop when closeModal calls history.back()
+let _confirmPending = null;  // open unsaved-changes popup: {resolve, go}
 
 // ============================================================
 //  DARK MODE (runs before anything renders)
@@ -1324,9 +1325,9 @@ async function loadJobs(){
     if(sites)   allSites   = sites;
     if(profRes?.data) allProfiles = profRes.data;
     // Drop a selection that no longer exists (deleted elsewhere)
-    for(const k of ['installs','service']) if(jobSel[k] && !allJobs.some(j=>j.id===jobSel[k])) jobSel[k] = null;
-    renderJobsPage('installs');
-    renderJobsPage('service');
+    for(const k of ['installs','service']) if(jobSel[k] && !allJobs.some(j=>j.id===jobSel[k])){ jobSel[k] = null; jobDirty[k] = false; }
+    // A pane with unsaved edits is left alone: re-rendering it from the saved record would wipe them
+    for(const k of ['installs','service']){ renderJobsList(k); if(!jobDirty[k]) renderJobDetail(k); }
     setSyncStatus('ok');
   } catch(e){ setSyncStatus('error'); toast('Error loading jobs: '+e.message,'error'); }
 }
@@ -1371,8 +1372,8 @@ function sortJobs(){
 }
 
 // ── Jobs detail pane ─────────────────────────────────────────
-function selectJob(kind, id){
-  if(!confirmDiscardJob(kind)) return;
+async function selectJob(kind, id){
+  if(!await confirmDiscardJob(kind)) return;
   jobSel[kind]   = id;
   jobDraft[kind] = false;
   jobDirty[kind] = false;
@@ -1381,7 +1382,7 @@ function selectJob(kind, id){
 }
 
 async function newJobDraft(kind){
-  if(!confirmDiscardJob(kind)) return;
+  if(!await confirmDiscardJob(kind)) return;
   // User may hit "Log job" before loadJobs has filled the pickers
   if(!jobClients.length || !allSites.length){
     const [clients, sites] = await Promise.all([
@@ -1404,8 +1405,8 @@ async function newJobDraft(kind){
 
 // Client profile and dashboard hand off to the Installs/Service page instead of a job modal,
 // so there's one place jobs are created and edited.
-function openJobPage(kind, id, clientId){
-  if(!confirmDiscardJob(kind)) return;
+async function openJobPage(kind, id, clientId){
+  if(!await confirmDiscardJob(kind)) return;
   jobSel[kind]         = id || null;
   jobDraft[kind]       = !id;
   jobDraftClient[kind] = id ? null : (clientId || null);
@@ -1419,7 +1420,7 @@ function cancelJobDraft(kind){
   renderJobsPage(kind);
 }
 
-function confirmDiscardJob(kind){
+async function confirmDiscardJob(kind){
   // Typed-but-not-added notes and open note edits aren't part of jobDirty (notes save on
   // their own), so check them separately
   const unsentNote = (document.getElementById('jn-input-'+kind)?.value||'').trim();
@@ -1427,9 +1428,15 @@ function confirmDiscardJob(kind){
   const ed = jobNoteEdit[kind];
   const unsavedEdit = ed && ed.value.trim() !== ed.orig.trim();
   if(!jobDirty[kind] && !unsentNote && !unsavedEdit) return true;
-  return confirm(jobDirty[kind] ? 'You have unsaved changes to this job. Discard them?'
+  // From another page (dashboard, client profile) the unsaved job isn't on screen, so link to it
+  const rec = jobDraft[kind] ? null : allJobs.find(j=>j.id===jobSel[kind]);
+  const goTo = currentPage===kind ? null : {
+    label: rec ? `${rec.clients?.company||'Unknown'} · ${jobSubtitle(rec)}` : `${JOB_KINDS[kind].draft} (not saved yet)`,
+    go: ()=>showPage(kind, document.querySelector(`.nav-item[data-page="${kind}"]`))
+  };
+  return confirmDiscard(jobDirty[kind] ? 'You have unsaved changes to this job. Discard them?'
     : unsavedEdit ? "You're part way through editing a note. Discard your changes?"
-    : "You've typed a note but haven't added it. Discard it?");
+    : "You've typed a note but haven't added it. Discard it?", goTo);
 }
 
 function renderJobDetail(kind){
@@ -1466,7 +1473,7 @@ function renderJobDetail(kind){
         <div class="port-det-tid">${draft ? JOB_KINDS[kind].draft : esc(rec.clients?.company||'Unknown')}${draft ? '' : ' '+statusBadge(rec.status)}</div>
         <div class="port-det-co">${draft
           ? 'Pick a client and fill in the job, then save.'
-          : `${esc(jobSubtitle(rec))} · ${esc(rec.clients?.account_number||'—')} · <span style="color:var(--accent);cursor:pointer" onclick="if(confirmDiscardJob('${kind}'))openClientProfile('${rec.client_id}')">Open client</span>`}</div>
+          : `${esc(jobSubtitle(rec))} · ${esc(rec.clients?.account_number||'—')} · <span style="color:var(--accent);cursor:pointer" onclick="confirmDiscardJob('${kind}').then(ok=>{ if(ok) openClientProfile('${rec.client_id}') })">Open client</span>`}</div>
       </div>
       ${(!draft && isAdmin()) ? `<button class="btn btn-sm btn-danger" onclick="deleteJobFromPane('${kind}','${rec.id}')"><i class="ti ti-trash"></i> Delete</button>` : ''}
     </div>
@@ -1961,9 +1968,9 @@ async function loadPorting(){
     sortPorting();   // the fetch orders by date; TBC tickets still need lifting to the top
     if(clients) portingClients = clients;
     // Drop a selection that no longer exists (deleted elsewhere, or filtered out of the fetch)
-    if(selectedPortingId && !allPorting.some(p=>p.id===selectedPortingId)) selectedPortingId = null;
+    if(selectedPortingId && !allPorting.some(p=>p.id===selectedPortingId)){ selectedPortingId = null; portingDirty = false; }
     renderPortingList();
-    renderPortingDetail();
+    if(!portingDirty) renderPortingDetail();   // re-rendering from the saved record would wipe unsaved edits
     setSyncStatus('ok');
   } catch(e){ setSyncStatus('error'); toast('Error loading porting tickets: '+e.message,'error'); }
 }
@@ -2002,8 +2009,8 @@ function daysOut(d){
 }
 
 // ── Detail pane ──────────────────────────────────────────────
-function selectPorting(id){
-  if(!confirmDiscardPorting()) return;
+async function selectPorting(id){
+  if(!await confirmDiscardPorting()) return;
   selectedPortingId = id;
   portingDraft = false;
   portingDirty = false;
@@ -2012,7 +2019,7 @@ function selectPorting(id){
 }
 
 async function newPortingDraft(){
-  if(!confirmDiscardPorting()) return;
+  if(!await confirmDiscardPorting()) return;
   // User may land on Porting directly, before the client list has been fetched
   if(!portingClients.length){
     const clients = await fetchAll(()=>sb.from('clients').select('id,company').order('company'));
@@ -2033,9 +2040,15 @@ function cancelPortingDraft(){
   renderPortingDetail();
 }
 
-function confirmDiscardPorting(){
+async function confirmDiscardPorting(){
   if(!portingDirty) return true;
-  return confirm('You have unsaved changes to this ticket. Discard them?');
+  // From another page (dashboard, client profile) the unsaved ticket isn't on screen, so link to it
+  const rec = portingDraft ? null : allPorting.find(p=>p.id===selectedPortingId);
+  const goTo = currentPage==='porting' ? null : {
+    label: rec ? `${rec.phone_numbers} · ${rec.clients?.company||'Unknown'}` : 'New porting ticket (not saved yet)',
+    go: ()=>showPage('porting', document.querySelector('.nav-item[data-page="porting"]'))
+  };
+  return confirmDiscard('You have unsaved changes to this ticket. Discard them?', goTo);
 }
 
 function renderPortingDetail(){
@@ -2053,7 +2066,7 @@ function renderPortingDetail(){
         <div class="port-det-tid">${portingDraft ? 'New porting ticket' : esc(rec.phone_numbers)}${portingDraft ? '' : ' '+portingStatusBadge(rec.status)}</div>
         <div class="port-det-co">${portingDraft
           ? 'Pick a client and fill in the ticket, then save.'
-          : `<span style="color:var(--accent);cursor:pointer" onclick="if(confirmDiscardPorting())openClientProfile('${rec.client_id}')">${esc(rec.clients?.company||'Unknown')}</span> · ${esc(rec.clients?.account_number||'—')}`}</div>
+          : `<span style="color:var(--accent);cursor:pointer" onclick="confirmDiscardPorting().then(ok=>{ if(ok) openClientProfile('${rec.client_id}') })">${esc(rec.clients?.company||'Unknown')}</span> · ${esc(rec.clients?.account_number||'—')}`}</div>
       </div>
       ${(!portingDraft && isAdminOrOps()) ? `<button class="btn btn-sm btn-danger" onclick="deletePorting('${rec.id}')"><i class="ti ti-trash"></i> Delete</button>` : ''}
     </div>
@@ -2195,8 +2208,8 @@ function portingStatusBadge(s){
 
 // Client profile hands off to the Porting page instead of a modal. The old modal reused the
 // Porting pane's field ids, so with a ticket open there (hidden) it saved that ticket's values.
-function openPortingPage(id, clientId){
-  if(!confirmDiscardPorting()) return;
+async function openPortingPage(id, clientId){
+  if(!await confirmDiscardPorting()) return;
   selectedPortingId     = id || null;
   portingDraft          = !id;
   portingDraftClientId  = id ? null : (clientId || null);
@@ -2337,6 +2350,32 @@ async function logAudit(action, table, recordId, oldData, newData){
 function openModal(html){
   document.getElementById('modal-root').innerHTML = `<div class="modal-overlay">${html}</div>`;
   history.pushState({ type: 'modal' }, '');
+}
+// Unsaved-changes prompt. confirm() can't hold a link, so this draws its own popup.
+// Resolves true to discard. goTo {label, go} adds a link that keeps the changes and opens them.
+function confirmDiscard(msg, goTo){
+  return new Promise(resolve=>{
+    _confirmPending = { resolve, go: goTo?.go };
+    openModal(`<div class="modal" style="width:440px">
+      <div class="modal-hdr"><h3>Unsaved changes</h3><button class="modal-x" onclick="closeConfirm(false)"><i class="ti ti-x"></i></button></div>
+      <p style="font-size:14px;color:var(--text2)">${esc(msg)}</p>
+      ${goTo ? `<p style="margin-top:.75rem;font-size:13px"><span style="color:var(--accent);cursor:pointer" onclick="closeConfirm(false,true)"><i class="ti ti-arrow-right"></i> Go to it: ${esc(goTo.label)}</span></p>` : ''}
+      <div class="modal-ftr">
+        <button class="btn" onclick="closeConfirm(false)">Keep editing</button>
+        <button class="btn btn-danger" onclick="closeConfirm(true)">Discard</button>
+      </div>
+    </div>`);
+  });
+}
+// Settles only once the history entry openModal pushed has been popped, so a caller that
+// navigates next (pushState) doesn't race closeModal's history.back()
+function closeConfirm(ok, follow){
+  const p = _confirmPending; _confirmPending = null;
+  if(!p) return;
+  document.getElementById('modal-root').innerHTML = '';
+  _ignoreNextPop = true;
+  window.addEventListener('popstate', ()=>{ p.resolve(ok); if(follow) p.go(); }, { once: true });
+  history.back();
 }
 function closeModal(){
   document.getElementById('modal-root').innerHTML = '';
