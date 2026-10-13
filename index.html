@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.20">
+<meta name="version" content="v1.0.21">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -263,7 +263,7 @@ select.fi { cursor: pointer; }
    PORTING SPLIT VIEW
 ============================================================ */
 /* Only this page fills its container; every other .page stays display:block */
-#page-porting.active, #page-installs.active, #page-service.active { display: flex; flex-direction: column; height: 100%; }
+#page-porting.active, #page-installs.active, #page-service.active, #page-complaints.active { display: flex; flex-direction: column; height: 100%; }
 .port-split { display: grid; grid-template-columns: 483px minmax(0,1fr); gap: 1rem; flex: 1; min-height: 0; }
 .port-col { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .port-col > .card { height: 100%; min-height: 0; margin-bottom: 0; display: flex; flex-direction: column; }
@@ -335,7 +335,7 @@ select.fi { cursor: pointer; }
 .port-savebar.dirty .port-savemsg { color: var(--amber); font-weight: 500; }
 /* Stacked on narrow screens: full height would be wrong on a phone */
 @media (max-width: 1024px) {
-  #page-porting.active, #page-installs.active, #page-service.active { display: block; height: auto; }
+  #page-porting.active, #page-installs.active, #page-service.active, #page-complaints.active { display: block; height: auto; }
   .port-split { grid-template-columns: 1fr; }
   .port-col > .card { height: auto; margin-bottom: 1rem; }
   .port-list-card { max-height: 340px; }
@@ -481,6 +481,7 @@ select.fi { cursor: pointer; }
       <div class="nav-item" data-page="installs" onclick="showPage('installs',this)"><i class="ti ti-tool"></i> New Installs</div>
       <div class="nav-item" data-page="service" onclick="showPage('service',this)"><i class="ti ti-headset"></i> Service Tickets</div>
       <div class="nav-item" data-page="porting" onclick="showPage('porting',this)"><i class="ti ti-phone-outgoing"></i> Porting</div>
+      <div class="nav-item" data-page="complaints" id="nav-complaints" onclick="showPage('complaints',this)" style="display:none"><i class="ti ti-message-report"></i> Complaints</div>
       <div class="nav-label" id="nav-admin-label" style="display:none">Admin</div>
       <div class="nav-item" data-page="users" id="nav-users" onclick="showPage('users',this)" style="display:none"><i class="ti ti-shield-lock"></i> Users</div>
       <div class="nav-item" data-page="audit" id="nav-audit" onclick="showPage('audit',this)" style="display:none"><i class="ti ti-history"></i> Audit Log</div>
@@ -504,7 +505,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.20</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.21</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -559,6 +560,7 @@ select.fi { cursor: pointer; }
               <div class="tab active" id="client-tab-btn-jobs" onclick="switchClientTab('jobs')"><i class="ti ti-tool" style="font-size:15px"></i> Jobs <span class="tab-count" id="tab-jobs-count">0</span></div>
               <div class="tab" id="client-tab-btn-creds" onclick="switchClientTab('creds')"><i class="ti ti-lock" style="font-size:15px"></i> Credentials</div>
               <div class="tab" id="client-tab-btn-porting" onclick="switchClientTab('porting')"><i class="ti ti-phone-outgoing" style="font-size:15px"></i> Porting <span class="tab-count" id="tab-porting-count">0</span></div>
+              <div class="tab" id="client-tab-btn-complaints" onclick="switchClientTab('complaints')" style="display:none"><i class="ti ti-message-report" style="font-size:15px"></i> Complaints <span class="tab-count" id="tab-complaints-count">0</span></div>
               <div class="tab" id="client-tab-btn-sites" onclick="switchClientTab('sites')"><i class="ti ti-map-pin" style="font-size:15px"></i> Sites <span class="tab-count" id="tab-sites-count">0</span></div>
             </div>
 
@@ -597,6 +599,14 @@ select.fi { cursor: pointer; }
                 <button class="btn btn-primary btn-sm" onclick="openPortingPage(null,activeClientId)"><i class="ti ti-plus"></i> Log port</button>
               </div>
               <div id="client-porting-list"></div>
+            </div>
+
+            <!-- Complaints tab (admin + ops) -->
+            <div id="client-tab-complaints" style="display:none">
+              <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+                <button class="btn btn-primary btn-sm" onclick="openComplaintPage(null,activeClientId)"><i class="ti ti-plus"></i> Log complaint</button>
+              </div>
+              <div id="client-complaints-list"></div>
             </div>
 
             <!-- Sites tab -->
@@ -691,6 +701,32 @@ select.fi { cursor: pointer; }
       </div>
 
       <!-- ══════════════════════════════════════════
+           COMPLAINTS (admin + ops)
+      ══════════════════════════════════════════ -->
+      <div class="page" id="page-complaints">
+        <div class="port-split">
+          <div class="port-col">
+            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="complaint-search" placeholder="Search client, account no., complainant or TIO ref..." oninput="renderComplaintsList()"></div>
+            <div class="filter-bar" id="complaint-filters">
+              <button class="filter-btn active" onclick="setComplaintFilter('Pending',this)">Pending</button>
+              <button class="filter-btn" onclick="setComplaintFilter('Closed',this)">Closed</button>
+              <button class="filter-btn" onclick="setComplaintFilter('all',this)">All</button>
+            </div>
+            <div class="card port-list-card">
+              <div class="card-head">
+                <h3 id="complaint-count">Complaints</h3>
+                <button class="btn btn-primary btn-sm" onclick="newComplaintDraft()"><i class="ti ti-plus"></i> Log complaint</button>
+              </div>
+              <div class="port-list" id="complaint-list"></div>
+            </div>
+          </div>
+          <div class="port-col">
+            <div class="card"><div class="port-detail" id="complaint-detail"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
            USERS (admin only)
       ══════════════════════════════════════════ -->
       <div class="page" id="page-users">
@@ -762,6 +798,19 @@ let portingDirty      = false;  // detail pane has edits that aren't saved
 let portingDraft      = false;  // detail pane is an unsaved new ticket
 let portingSaving     = false;  // a save is in flight; blocks repeat clicks
 let portingDraftClientId = null; // client to preselect on a draft opened from a client profile
+let allComplaints      = [];
+let complaintClients   = [];      // lightweight {id,company} list for the complaint client dropdown
+let complaintFilter    = 'Pending';
+let complaintSel       = null;    // complaint shown in the detail pane
+let complaintDraft     = false;   // detail pane is an unsaved new complaint
+let complaintDirty     = false;   // detail pane has edits that aren't saved
+let complaintSaving    = false;   // a save is in flight; blocks repeat clicks
+let complaintDraftClientId = null; // client to preselect on a draft opened from a client profile
+let complaintTab       = 'desc';  // Description / Complaint notes tab, kept across re-renders
+let complaintNotes     = {};      // complaint id → its log entries (newest first)
+let complaintNotesOlder = false;  // "Show older notes" expanded
+let complaintNoteSaving = false;  // a note insert/edit is in flight; blocks double-submits
+let complaintNoteEdit  = null;    // note being edited in place: {id, orig, value}
 let allProfiles    = [];
 let _ignoreNextPop = false;  // prevents popstate loop when closeModal calls history.back()
 let _confirmPending = null;  // open unsaved-changes popup: {resolve, go}
@@ -990,7 +1039,11 @@ async function initApp(){
     document.getElementById('nav-users').style.display = '';
     document.getElementById('nav-audit').style.display = '';
   }
-  if(isAdminOrOps()) document.getElementById('btn-add-client').style.display = '';
+  if(isAdminOrOps()){
+    document.getElementById('btn-add-client').style.display = '';
+    document.getElementById('nav-complaints').style.display = '';
+    document.getElementById('client-tab-btn-complaints').style.display = '';
+  }
   document.getElementById('btn-add-job-installs').style.display = '';
   document.getElementById('btn-add-job-service').style.display = '';
   document.getElementById('btn-add-porting').style.display = '';
@@ -1025,11 +1078,12 @@ function showPage(name, el, _push=true){
   document.getElementById('page-'+name).classList.add('active');
   if(el) el.classList.add('active');
   currentPage = name;
-  const titles = { dashboard:'Dashboard', clients:'Clients', installs:'New Installs', service:'Service Tickets', porting:'Porting', users:'Team members', audit:'Audit log', 'client-profile':'Client profile' };
+  const titles = { dashboard:'Dashboard', clients:'Clients', installs:'New Installs', service:'Service Tickets', porting:'Porting', complaints:'Complaints', users:'Team members', audit:'Audit log', 'client-profile':'Client profile' };
   document.getElementById('topbar-title').textContent = titles[name] || name;
   // Update top CTA
   const cta = document.getElementById('topbar-cta');
   if(name==='porting') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="newPortingDraft()"><i class="ti ti-plus"></i> Log port</button>`;
+  else if(name==='complaints') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="newComplaintDraft()"><i class="ti ti-plus"></i> Log complaint</button>`;
   else if(name==='installs' || name==='service') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="newJobDraft('${name}')"><i class="ti ti-plus"></i> Log job</button>`;
   else cta.innerHTML = '';
   closeSidebar();
@@ -1043,6 +1097,7 @@ function refreshCurrentPage(){
   else if(currentPage==='client-profile' && activeClientId) loadClientProfile(activeClientId);
   else if(currentPage==='installs' || currentPage==='service') loadJobs();
   else if(currentPage==='porting') loadPorting();
+  else if(currentPage==='complaints') loadComplaints();
   else if(currentPage==='users') loadUsers();
   else if(currentPage==='audit') loadAuditLog();
 }
@@ -1066,7 +1121,7 @@ function closeSidebar(){ document.getElementById('sidebar').classList.remove('op
 
 // ── Client profile tabs ──
 function switchClientTab(tab){
-  ['creds','jobs','porting','sites'].forEach(t=>{
+  ['creds','jobs','porting','complaints','sites'].forEach(t=>{
     const btn = document.getElementById('client-tab-btn-'+t);
     if(btn) btn.classList.toggle('active', t===tab);
     const panel = document.getElementById('client-tab-'+t);
@@ -1159,11 +1214,15 @@ function renderClientsList(){
 async function loadClientProfile(id){
   setSyncStatus('syncing');
   try {
-    const [{ data: client }, { data: sites }, { data: jobs }, { data: ports }] = await Promise.all([
+    const [{ data: client }, { data: sites }, { data: jobs }, { data: ports }, { data: complaints }] = await Promise.all([
       sb.from('clients').select('*').eq('id',id).single(),
       sb.from('sites').select('*').eq('client_id',id).order('created_at',{ascending:true}),
       sb.from('jobs').select('*,sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('client_id',id).order('due_date',{ascending:true,nullsFirst:false}),
-      sb.from('porting').select('*').eq('client_id',id).order('port_date',{ascending:true,nullsFirst:false})
+      sb.from('porting').select('*').eq('client_id',id).order('port_date',{ascending:true,nullsFirst:false}),
+      // Complaints are admin + ops only (RLS returns nothing to techs anyway), so don't ask
+      isAdminOrOps()
+        ? sb.from('complaints').select('*,profiles!complaints_assigned_to_fkey(full_name)').eq('client_id',id).order('open_date',{ascending:false})
+        : Promise.resolve({ data: [] })
     ]);
     activeClientData = client;
 
@@ -1205,6 +1264,24 @@ async function loadClientProfile(id){
           ${isAdminOrOps()?`<button class="btn btn-sm btn-danger hover-del" onclick="event.stopPropagation();deletePorting('${p.id}')"><i class="ti ti-trash"></i></button>`:''}
         </div>`).join('')
       : `<div class="empty"><i class="ti ti-phone-outgoing"></i><p>No porting tickets yet.</p></div>`;
+
+    // ── Complaints ──
+    document.getElementById('tab-complaints-count').textContent = (complaints||[]).length;
+    document.getElementById('client-complaints-list').innerHTML = (complaints||[]).length
+      ? (complaints||[]).map(c=>`<div class="job-card" onclick="openComplaintPage('${c.id}')" style="cursor:pointer">
+          ${complaintStatusBadge(c.status)}
+          <div class="job-body">
+            <div class="job-title job-link">${esc(c.complainant||'No complainant')}</div>
+            <div class="job-meta">
+              <span><i class="ti ti-file-text" style="font-size:11px"></i> ${c.tio_ref?esc(c.tio_ref):'No TIO ref'}</span>
+              <span><i class="ti ti-calendar" style="font-size:11px"></i> Opened ${fmtDate(c.open_date)}</span>
+              ${c.closed_date?`<span>Closed ${fmtDate(c.closed_date)}</span>`:''}
+              ${c.profiles?.full_name?`<span><i class="ti ti-user" style="font-size:11px"></i> ${esc(c.profiles.full_name)}</span>`:''}
+            </div>
+          </div>
+          ${isAdmin()?`<button class="btn btn-sm btn-danger hover-del" onclick="event.stopPropagation();deleteComplaint('${c.id}')"><i class="ti ti-trash"></i></button>`:''}
+        </div>`).join('')
+      : `<div class="empty"><i class="ti ti-message-report"></i><p>No complaints logged.</p></div>`;
 
     // ── Credentials ──
     cancelCreds();
@@ -2260,6 +2337,542 @@ async function deletePorting(id){
 }
 
 // ============================================================
+//  COMPLAINTS (admin + ops; RLS enforces it too)
+// ============================================================
+const COMPLAINT_SELECT = '*,clients(company,account_number),profiles!complaints_assigned_to_fkey(full_name)';
+
+function complaintStatusBadge(s){
+  const map = { 'Pending':'badge-amber', 'Closed':'badge-green' };
+  return `<span class="badge ${map[s]||'badge-gray'}">${esc(s)}</span>`;
+}
+
+function setComplaintFilter(val, el){
+  complaintFilter = val;
+  document.querySelectorAll('#complaint-filters .filter-btn').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderComplaintsList();
+}
+
+async function loadComplaints(){
+  setSyncStatus('syncing');
+  try {
+    const [complaints, clients, profRes] = await Promise.all([
+      fetchAll(()=>sb.from('complaints').select(COMPLAINT_SELECT).order('open_date',{ascending:false}).order('created_at',{ascending:false})),
+      fetchAll(()=>sb.from('clients').select('id,company').order('company')),
+      sb.from('profiles').select('id,full_name').order('full_name')
+    ]);
+    allComplaints = complaints || [];
+    if(clients) complaintClients = clients;
+    if(profRes?.data) allProfiles = profRes.data;
+    // Drop a selection that no longer exists (deleted elsewhere)
+    if(complaintSel && !allComplaints.some(c=>c.id===complaintSel)){ complaintSel = null; complaintDirty = false; }
+    renderComplaintsList();
+    if(!complaintDirty) renderComplaintDetail();   // re-rendering from the saved record would wipe unsaved edits
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading complaints: '+e.message,'error'); }
+}
+
+// Mirrors the fetch order in loadComplaints: newest open date first
+function sortComplaints(){
+  allComplaints.sort((a,b)=>
+    (b.open_date||'').localeCompare(a.open_date||'') ||
+    (b.created_at||'').localeCompare(a.created_at||''));
+}
+
+function renderComplaintsList(){
+  const q = (document.getElementById('complaint-search')||{}).value?.toLowerCase()||'';
+  const f = allComplaints.filter(c=>{
+    const matchQ = !q || [c.clients?.company, c.clients?.account_number, c.complainant, c.tio_ref].some(v=>(v||'').toLowerCase().includes(q));
+    return matchQ && (complaintFilter==='all' || c.status===complaintFilter);
+  });
+  document.getElementById('complaint-count').textContent = `Complaints (${f.length})`;
+  const list = document.getElementById('complaint-list');
+  if(!list) return;
+  list.innerHTML = f.length ? f.map(complaintRowHTML).join('')
+    : `<div class="empty"><i class="ti ti-message-report"></i><p>No complaints found.</p></div>`;
+}
+
+function complaintRowHTML(c){
+  return `<button class="port-row${c.id===complaintSel?' sel':''}" onclick="selectComplaint('${c.id}')">
+    <div class="port-row-top"><span class="port-tid">${esc(c.clients?.company||'Unknown')}</span>${complaintStatusBadge(c.status)}</div>
+    <div class="port-co">${esc(c.complainant||'No complainant')}</div>
+    <div class="port-row-bot">
+      <span class="port-when">Opened ${fmtDate(c.open_date)}</span>
+      <span class="port-carrier"><i class="ti ti-file-text"></i> ${c.tio_ref?esc(c.tio_ref):'No TIO ref'}</span>
+    </div>
+  </button>`;
+}
+
+// ── Complaint detail pane ────────────────────────────────────
+async function selectComplaint(id){
+  if(!await confirmDiscardComplaint()) return;
+  complaintSel   = id;
+  complaintDraft = false;
+  complaintDirty = false;
+  complaintNotesOlder = false;
+  renderComplaintsList();
+  renderComplaintDetail();
+}
+
+async function newComplaintDraft(){
+  if(!await confirmDiscardComplaint()) return;
+  // User may hit "Log complaint" before loadComplaints has filled the pickers
+  if(!complaintClients.length){
+    const clients = await fetchAll(()=>sb.from('clients').select('id,company').order('company'));
+    if(clients) complaintClients = clients;
+  }
+  if(!allProfiles.length){
+    const { data } = await sb.from('profiles').select('id,full_name').order('full_name');
+    allProfiles = data || [];
+  }
+  complaintSel   = null;
+  complaintDraft = true;
+  complaintDraftClientId = null;
+  complaintDirty = false;
+  renderComplaintsList();
+  renderComplaintDetail();
+}
+
+// Client profile hands off to the Complaints page, so there's one place complaints are edited
+async function openComplaintPage(id, clientId){
+  if(!await confirmDiscardComplaint()) return;
+  complaintSel           = id || null;
+  complaintDraft         = !id;
+  complaintDraftClientId = id ? null : (clientId || null);
+  complaintDirty         = false;
+  complaintNotesOlder    = false;
+  showPage('complaints', document.querySelector('.nav-item[data-page="complaints"]'));   // loadComplaints renders the selection
+}
+
+function cancelComplaintDraft(){
+  complaintDraft = false;
+  complaintDirty = false;
+  renderComplaintsList();
+  renderComplaintDetail();
+}
+
+async function confirmDiscardComplaint(){
+  // Typed-but-not-added notes and open note edits aren't part of complaintDirty (notes save
+  // on their own), so check them separately
+  const unsentNote = (document.getElementById('cn-input')?.value||'').trim();
+  captureComplaintNoteEdit();
+  const ed = complaintNoteEdit;
+  const unsavedEdit = ed && ed.value.trim() !== ed.orig.trim();
+  if(!complaintDirty && !unsentNote && !unsavedEdit) return true;
+  // From another page (dashboard, client profile) the unsaved complaint isn't on screen, so link to it
+  const rec = complaintDraft ? null : allComplaints.find(c=>c.id===complaintSel);
+  const goTo = currentPage==='complaints' ? null : {
+    label: rec ? `${rec.clients?.company||'Unknown'} · ${rec.complainant||rec.tio_ref||'Complaint'}` : 'New complaint (not saved yet)',
+    go: ()=>showPage('complaints', document.querySelector('.nav-item[data-page="complaints"]'))
+  };
+  return confirmDiscard(complaintDirty ? 'You have unsaved changes to this complaint. Discard them?'
+    : unsavedEdit ? "You're part way through editing a note. Discard your changes?"
+    : "You've typed a note but haven't added it. Discard it?", goTo);
+}
+
+function renderComplaintDetail(){
+  const el = document.getElementById('complaint-detail');
+  if(!el) return;
+  const draft = complaintDraft;
+  const rec   = draft ? null : allComplaints.find(c=>c.id===complaintSel);
+  if(!rec && !draft){
+    el.dataset.complaint = '';
+    el.innerHTML = `<div class="empty port-empty" style="padding:3.5rem 1rem"><i class="ti ti-message-report"></i><p>Select a complaint to view or edit it.</p></div>`;
+    return;
+  }
+  // Saving re-renders the pane; carry over a note that's typed but not yet added, and any
+  // note edit that's open. A different complaint (or a fresh draft) starts clean.
+  const samePane = el.dataset.complaint===(rec?.id||'');
+  const keepNote = samePane ? (document.getElementById('cn-input')?.value||'') : '';
+  if(samePane) captureComplaintNoteEdit(); else complaintNoteEdit = null;
+  el.dataset.complaint = rec?.id || '';
+  const clientOpts = complaintClients.map(c=>`<option value="${c.id}"${c.id===complaintDraftClientId?' selected':''}>${esc(c.company)}</option>`).join('');
+  const staffOpts  = `<option value="">— Unassigned —</option>` + allProfiles
+    .map(u=>`<option value="${u.id}"${rec?.assigned_to===u.id?' selected':''}>${esc(u.full_name)}</option>`).join('');
+  const sub = rec ? [rec.tio_ref ? `TIO ${esc(rec.tio_ref)}` : 'No TIO ref', rec.complainant ? esc(rec.complainant) : null].filter(Boolean).join(' · ') : '';
+
+  el.innerHTML = `<div class="port-det" oninput="markComplaintDirty()" onchange="markComplaintDirty()">
+    <div class="port-det-head">
+      <div>
+        <div class="port-det-tid">${draft ? 'New complaint' : esc(rec.clients?.company||'Unknown')}${draft ? '' : ' '+complaintStatusBadge(rec.status)}</div>
+        <div class="port-det-co">${draft
+          ? 'Pick a client and fill in the complaint, then save.'
+          : `${sub} · ${esc(rec.clients?.account_number||'—')} · <span style="color:var(--accent);cursor:pointer" onclick="confirmDiscardComplaint().then(ok=>{ if(ok) openClientProfile('${rec.client_id}') })">Open client</span>`}</div>
+      </div>
+      ${(!draft && isAdmin()) ? `<button class="btn btn-sm btn-danger" onclick="deleteComplaint('${rec.id}')"><i class="ti ti-trash"></i> Delete</button>` : ''}
+    </div>
+    <div class="port-grid">
+      ${draft ? `<div class="form-group" style="grid-column:1/-1"><label class="lbl">Client *</label>
+        <select class="fi" id="f-cmp-client"><option value="">— select client —</option>${clientOpts}</select></div>` : ''}
+      <div class="form-group"><label class="lbl">TIO reference</label><input class="fi" id="f-cmp-tio" autocomplete="off" value="${esc(rec?.tio_ref||'')}" placeholder="e.g. CRM:2026/10/04412"></div>
+      <div class="form-group"><label class="lbl">Complainant</label><input class="fi" id="f-cmp-complainant" autocomplete="off" value="${esc(rec?.complainant||'')}" placeholder="Customer name"></div>
+      <div class="form-group"><label class="lbl">Open date *</label><input class="fi" type="date" id="f-cmp-open" value="${rec ? (rec.open_date||'') : today()}"></div>
+      <div class="form-group"><label class="lbl">Closed date</label><input class="fi" type="date" id="f-cmp-closed" value="${rec?.closed_date||''}"></div>
+      <div class="form-group"><label class="lbl">Status *</label>
+        <select class="fi" id="f-cmp-status" onchange="onComplaintStatusChange()">
+          ${['Pending','Closed'].map(s=>`<option${(rec?.status||'Pending')===s?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label class="lbl">Assigned to</label><select class="fi" id="f-cmp-assigned">${staffOpts}</select></div>
+    </div>
+    <div class="form-group port-notes-group jd-notes" style="margin-top:1rem">
+      <div class="jd-tabs">
+        <div class="jd-tab" id="cd-tab-desc" onclick="switchComplaintTab('desc')">Description</div>
+        <div class="jd-tab" id="cd-tab-notes" onclick="switchComplaintTab('notes')">Complaint notes <span class="tab-count" id="cn-count"${draft?' style="display:none"':''}>…</span></div>
+      </div>
+      <textarea class="fi" id="f-cmp-desc" placeholder="What's the complaint about?">${esc(rec?.description||'')}</textarea>
+      <div class="jn-wrap" id="f-cmp-notes" oninput="event.stopPropagation()" onchange="event.stopPropagation()">${draft
+        ? `<div class="jn-compose">
+          <textarea id="cn-input" rows="2" placeholder="Add a note: how the complaint came in, what's been agreed, next steps…"></textarea>
+          <div class="jn-compose-bar"><span class="jn-hint">Saved as the first note when you log the complaint</span></div>
+        </div>`
+        : `<div class="jn-compose">
+          <textarea id="cn-input" rows="2" placeholder="Add a note: call outcome, TIO correspondence, resolution offered…"
+            onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();addComplaintNote()}"></textarea>
+          <div class="jn-compose-bar">
+            <span class="jn-hint">Ctrl+Enter to add · saves straight away</span>
+            <button class="btn btn-sm" id="cn-add" onclick="addComplaintNote()"><i class="ti ti-plus"></i> Add note</button>
+          </div>
+        </div>
+        <div class="jn-list" id="cn-list"><div class="jn-empty">Loading notes…</div></div>`}
+      </div>
+    </div>
+    <div id="complaint-error" class="form-error" style="display:none"></div>
+    <div class="port-savebar" id="complaint-savebar">
+      <span class="port-savemsg"></span>
+      <div style="display:flex;gap:8px">
+        ${draft ? `<button class="btn btn-sm" onclick="cancelComplaintDraft()">Cancel</button>` : ''}
+        <button class="btn btn-primary btn-sm" id="complaint-save-btn" onclick="saveComplaint()"><i class="ti ti-check"></i> ${draft?'Log complaint':'Save changes'}</button>
+      </div>
+    </div>
+  </div>`;
+  updateComplaintSaveBar();
+  switchComplaintTab(complaintTab);
+  if(keepNote) document.getElementById('cn-input').value = keepNote;
+  if(!draft){
+    if(complaintNotes[rec.id]) renderComplaintNotes();
+    loadComplaintNotes(rec.id);   // always refresh: someone else may have added notes
+  }
+}
+
+function switchComplaintTab(tab){
+  complaintTab = tab;
+  ['desc','notes'].forEach(t=>{
+    document.getElementById(`cd-tab-${t}`).classList.toggle('active', t===tab);
+    document.getElementById(`f-cmp-${t}`).style.display = t===tab ? '' : 'none';
+  });
+  if(tab==='notes') fitComplaintNoteClamps();
+}
+
+// Closing stamps today's date if none is set; reopening clears it
+function onComplaintStatusChange(){
+  const closed = document.getElementById('f-cmp-closed');
+  if(document.getElementById('f-cmp-status').value==='Closed'){ if(!closed.value) closed.value = today(); }
+  else closed.value = '';
+}
+
+// Only ever touches the save bar — re-rendering the pane on each keystroke would drop the caret.
+function markComplaintDirty(){
+  if(complaintDirty) return;
+  complaintDirty = true;
+  updateComplaintSaveBar();
+}
+
+function updateComplaintSaveBar(){
+  const bar = document.getElementById('complaint-savebar');
+  if(!bar) return;
+  const canSave = (complaintDirty || complaintDraft) && !complaintSaving;
+  bar.classList.toggle('dirty', complaintDirty);
+  bar.querySelector('.port-savemsg').textContent =
+    complaintDirty ? 'Unsaved changes' : complaintDraft ? 'Not saved yet' : 'All changes saved';
+  const btn = document.getElementById('complaint-save-btn');
+  btn.disabled = !canSave;
+  btn.style.opacity = canSave ? '1' : '0.5';
+  btn.style.cursor  = canSave ? 'pointer' : 'default';
+}
+
+async function saveComplaint(){
+  if(complaintSaving) return;
+  const draft = complaintDraft;
+  const rec   = draft ? null : allComplaints.find(c=>c.id===complaintSel);
+  if(!rec && !draft) return;
+  const g = f => document.getElementById('f-cmp-'+f);
+  const clientId = draft ? (g('client')?.value || '') : rec.client_id;
+  const payload = {
+    tio_ref:     g('tio').value.trim() || null,
+    complainant: g('complainant').value.trim() || null,
+    open_date:   g('open').value || null,
+    closed_date: g('closed').value || null,
+    status:      g('status').value,
+    assigned_to: g('assigned').value || null,
+    description: g('desc').value.trim() || null
+  };
+  const err  = document.getElementById('complaint-error');
+  err.style.display = 'none';
+  const fail = m => { err.textContent = m; err.style.display = 'block'; };
+  if(draft && !clientId)   return fail('Please select a client.');
+  if(!payload.open_date)   return fail('Open date is required.');
+  if(payload.closed_date && payload.closed_date < payload.open_date) return fail("Closed date can't be before the open date.");
+  // A draft's notes box becomes the complaint's first note once the complaint exists
+  const draftNote = draft ? (document.getElementById('cn-input')?.value||'').trim() : '';
+  let draftNoteFailed = false;
+  complaintSaving = true;
+  const btn = document.getElementById('complaint-save-btn');
+  if(btn){ btn.disabled = true; btn.style.opacity = '0.5'; }
+  setSyncStatus('syncing');
+  try {
+    if(rec){
+      // Capture the pre-edit values so the audit log can show a real field-level diff
+      const oldData = {};
+      Object.keys(payload).forEach(k=>{ oldData[k] = rec[k]; });
+      const { error } = await sb.from('complaints').update(payload).eq('id',rec.id);
+      if(error) throw error;
+      await logAudit('updated','complaints',rec.id,oldData,payload);
+      Object.assign(rec, payload);   // patch in place; no refetch, so scroll and selection survive
+      rec.profiles = allProfiles.find(u=>u.id===payload.assigned_to) || null;
+      sortComplaints();
+      toast('Complaint updated');
+    } else {
+      const { data, error } = await sb.from('complaints')
+        .insert({ ...payload, client_id:clientId, created_by:currentUser?.id })
+        .select(COMPLAINT_SELECT).single();
+      if(error) throw error;
+      await logAudit('created','complaints',data.id,{},{ ...payload, client_id:clientId });
+      allComplaints.push(data);
+      sortComplaints();
+      complaintSel   = data.id;
+      complaintDraft = false;
+      const noteOk = draftNote ? await addFirstComplaintNote(data.id, draftNote) : true;
+      draftNoteFailed = !noteOk;
+      if(!noteOk) toast("Complaint logged, but the note couldn't be saved. It's back in the notes box: press Add note to retry",'warn');
+      else toast(draftNote ? 'Complaint logged · note added' : 'Complaint logged');
+    }
+    complaintDirty = false;
+    renderComplaintsList();
+    renderComplaintDetail();
+    if(draftNoteFailed){
+      document.getElementById('cn-input').value = draftNote;
+      switchComplaintTab('notes');
+    }
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
+  finally { complaintSaving = false; updateComplaintSaveBar(); }
+}
+
+async function deleteComplaint(id){
+  if(!confirm('Delete this complaint and all its notes?')) return;
+  setSyncStatus('syncing');
+  try {
+    // RLS silently drops a delete it refuses, so ask for the row back to tell the two apart
+    const { data, error } = await sb.from('complaints').delete().eq('id',id).select('id');
+    if(error) throw error;
+    if(!data?.length) throw new Error('only admins can delete complaints');
+    await logAudit('deleted','complaints',id,{},{});
+    allComplaints = allComplaints.filter(c=>c.id!==id);
+    delete complaintNotes[id];
+    // Don't leave the detail pane pointing at a record that no longer exists
+    if(complaintSel===id){ complaintSel = null; complaintDirty = false; complaintDraft = false; }
+    toast('Complaint deleted');
+    if(currentPage==='client-profile') loadClientProfile(activeClientId);
+    else { renderComplaintsList(); renderComplaintDetail(); }
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
+}
+
+// ── Complaint notes log ──────────────────────────────────────
+// Same append-only log as job notes (shares its styles, JN_VISIBLE and fmtNoteWhen),
+// kept as its own functions so the Service Ticket notes code isn't touched.
+const complaintNotesSeq = {};  // complaint id → latest fetch number, so a slow older fetch can't overwrite a newer one
+
+async function loadComplaintNotes(complaintId){
+  const seq = complaintNotesSeq[complaintId] = (complaintNotesSeq[complaintId]||0) + 1;
+  try {
+    const { data, error } = await sb.from('complaint_notes').select('*,profiles(full_name)')
+      .eq('complaint_id',complaintId).order('created_at',{ascending:false});
+    if(error) throw error;
+    if(seq !== complaintNotesSeq[complaintId]) return;
+    complaintNotes[complaintId] = data || [];
+    if(complaintSel===complaintId && !complaintDraft) renderComplaintNotes();   // user may have moved on meanwhile
+  } catch(e){
+    const list = document.getElementById('cn-list');
+    if(list && complaintSel===complaintId && !complaintNotes[complaintId]) list.innerHTML = `<div class="jn-empty">Couldn't load notes: ${esc(e.message)}</div>`;
+  }
+}
+
+// Only re-renders the list and tab count, so the complaint form's edits and caret are left alone
+function renderComplaintNotes(){
+  const list = document.getElementById('cn-list');
+  const rec  = allComplaints.find(c=>c.id===complaintSel);
+  if(!list || !rec) return;
+  captureComplaintNoteEdit();
+  const notes = complaintNotes[rec.id] || [];
+  if(complaintNoteEdit && !notes.some(n=>n.id===complaintNoteEdit.id)) complaintNoteEdit = null;   // deleted meanwhile
+  const edit = complaintNoteEdit;
+  // The note's text, or the in-place editor when this is the note being edited
+  const body = (id, text) => edit?.id===id
+    ? `<div class="jn-editor">
+        <textarea id="cn-edit" class="fi" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();saveComplaintNoteEdit()}else if(event.key==='Escape'){cancelComplaintNoteEdit()}">${esc(edit.value)}</textarea>
+        <div class="jn-editor-bar">
+          <span class="jn-hint">Ctrl+Enter to save · Esc to cancel</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm" onclick="cancelComplaintNoteEdit()">Cancel</button>
+            <button class="btn btn-sm btn-primary" onclick="saveComplaintNoteEdit()"><i class="ti ti-check"></i> Save</button>
+          </div>
+        </div>
+      </div>`
+    : `<div class="jn-text clamp">${esc(text)}</div>
+      <button class="jn-more" style="display:none" onclick="toggleJobNoteClamp(this)">Show more</button>`;
+  const entries = notes.map(n=>{
+    const editor = n.updated_at ? (allProfiles.find(p=>p.id===n.updated_by)?.full_name || 'someone') : '';
+    return `<div class="jn-entry">
+      <div class="jn-av">${esc(initials(n.profiles?.full_name))}</div>
+      <div class="jn-body">
+        <div class="jn-meta">
+          <span class="jn-author">${esc(n.profiles?.full_name||'Unknown')}</span>
+          <span class="jn-when">${fmtNoteWhen(n.created_at)}</span>
+          ${n.updated_at ? `<span class="jn-edited" title="Edited by ${esc(editor)}, ${esc(fmtNoteWhen(n.updated_at))}">(edited)</span>` : ''}
+          <span class="jn-acts">
+            ${(isAdmin() || n.created_by===currentUser?.id) && !edit ? `<button class="jn-act" title="Edit note" onclick="startComplaintNoteEdit('${n.id}')"><i class="ti ti-pencil"></i></button>` : ''}
+            ${isAdmin() && !edit ? `<button class="jn-act jn-act-del" title="Delete note" onclick="deleteComplaintNote('${n.id}')"><i class="ti ti-trash"></i></button>` : ''}
+          </span>
+        </div>
+        ${body(n.id, n.text)}
+      </div>
+    </div>`;
+  });
+  const older = entries.length - JN_VISIBLE;
+  // Keep the note being edited on screen even if it's one of the older ones
+  const editIdx = edit ? notes.findIndex(n=>n.id===edit.id) : -1;
+  const showAll = complaintNotesOlder || older <= 0 || editIdx >= JN_VISIBLE;
+  list.innerHTML = !entries.length
+    ? `<div class="jn-empty">No notes yet. Add the first update above.</div>`
+    : entries.slice(0, showAll ? entries.length : JN_VISIBLE).join('') + (older > 0
+      ? `<div class="jn-older"><button class="btn btn-sm" onclick="complaintNotesOlder=!complaintNotesOlder;renderComplaintNotes()">
+          <i class="ti ti-chevron-${showAll?'up':'down'}"></i> ${showAll ? 'Hide older notes' : `Show ${older} older note${older===1?'':'s'}`}</button></div>`
+      : '');
+  const count = document.getElementById('cn-count');
+  if(count) count.textContent = entries.length;
+  fitComplaintNoteClamps();
+}
+
+// "Show more" only where the 3-line clamp actually hides text; needs the list on screen to measure
+function fitComplaintNoteClamps(){
+  const list = document.getElementById('cn-list');
+  if(!list || !list.offsetParent) return;
+  list.querySelectorAll('.jn-text.clamp').forEach(t=>{
+    t.nextElementSibling.style.display = t.scrollHeight > t.clientHeight + 1 ? '' : 'none';
+  });
+}
+
+// Copy what's typed in the open editor into state, so a re-render doesn't lose it
+function captureComplaintNoteEdit(){
+  const ta = document.getElementById('cn-edit');
+  if(ta && complaintNoteEdit) complaintNoteEdit.value = ta.value;
+}
+
+function startComplaintNoteEdit(id){
+  const text = (complaintNotes[complaintSel]||[]).find(n=>n.id===id)?.text ?? '';
+  complaintNoteEdit = { id, orig: text, value: text };
+  renderComplaintNotes();
+  const ta = document.getElementById('cn-edit');
+  if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+}
+
+function cancelComplaintNoteEdit(){
+  complaintNoteEdit = null;
+  renderComplaintNotes();
+}
+
+async function saveComplaintNoteEdit(){
+  if(complaintNoteSaving) return;
+  captureComplaintNoteEdit();
+  const ed = complaintNoteEdit;
+  const complaintId = complaintSel;
+  if(!ed || !complaintId) return;
+  const text = ed.value.trim();
+  if(text === ed.orig.trim()){ cancelComplaintNoteEdit(); return; }
+  if(!text){ toast(isAdmin() ? "A note can't be empty. Delete it instead." : "A note can't be empty.",'warn'); return; }
+  complaintNoteSaving = true;
+  setSyncStatus('syncing');
+  try {
+    // RLS silently skips a refused update, so ask for the row back to tell the two apart
+    const { data, error } = await sb.from('complaint_notes').update({ text }).eq('id',ed.id).select('id,text,updated_at,updated_by');
+    if(error) throw error;
+    if(!data?.length) throw new Error('you can only edit your own notes');
+    await logAudit('updated','complaint_notes',ed.id,{ complaint_id: complaintId, text: ed.orig },{ complaint_id: complaintId, text });
+    complaintNotes[complaintId] = (complaintNotes[complaintId]||[]).map(n=>n.id===ed.id ? { ...n, ...data[0] } : n);
+    if(complaintSel===complaintId){ complaintNoteEdit = null; renderComplaintNotes(); }
+    loadComplaintNotes(complaintId);
+    toast('Note updated');
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Edit not saved: '+e.message,'error'); }
+  finally { complaintNoteSaving = false; }
+}
+
+async function addComplaintNote(){
+  if(complaintNoteSaving) return;
+  const complaintId = complaintSel;
+  const input = document.getElementById('cn-input');
+  if(!complaintId || !input) return;
+  const text = input.value.trim();
+  if(!text){ toast('Type a note first','warn'); input.focus(); return; }
+  complaintNoteSaving = true;
+  const btn = document.getElementById('cn-add');
+  if(btn){ btn.disabled = true; btn.style.opacity = '0.5'; }
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await sb.from('complaint_notes').insert({ complaint_id: complaintId, text, created_by: currentUser.id })
+      .select('*,profiles(full_name)').single();
+    if(error) throw error;
+    await logAudit('created','complaint_notes',data.id,{},{ complaint_id: complaintId, text });
+    complaintNotes[complaintId] = [data, ...(complaintNotes[complaintId]||[])];
+    if(complaintSel===complaintId){
+      input.value = '';
+      renderComplaintNotes();
+    }
+    loadComplaintNotes(complaintId);   // supersedes any fetch still in flight, which wouldn't include this note
+    toast('Note added');
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Note not saved: '+e.message,'error'); }
+  finally {
+    complaintNoteSaving = false;
+    if(btn){ btn.disabled = false; btn.style.opacity = '1'; }
+  }
+}
+
+// Never throws: the complaint is already saved, and a "Save failed" here would invite a retry
+// that duplicates it. On failure the caller puts the text back in the notes box.
+async function addFirstComplaintNote(complaintId, text){
+  try {
+    const { data, error } = await sb.from('complaint_notes').insert({ complaint_id: complaintId, text, created_by: currentUser.id })
+      .select('*,profiles(full_name)').single();
+    if(error) throw error;
+    await logAudit('created','complaint_notes',data.id,{},{ complaint_id: complaintId, text });
+    complaintNotes[complaintId] = [data];
+    return true;
+  } catch(e){ console.warn('First complaint note failed:', e); return false; }
+}
+
+async function deleteComplaintNote(id){
+  if(!confirm('Delete this note? This can\'t be undone.')) return;
+  const complaintId = complaintSel;
+  const note = (complaintNotes[complaintId]||[]).find(n=>n.id===id);
+  setSyncStatus('syncing');
+  try {
+    // RLS silently drops a delete it refuses, so ask for the row back to tell the two apart
+    const { data, error } = await sb.from('complaint_notes').delete().eq('id',id).select('id');
+    if(error) throw error;
+    if(!data?.length) throw new Error('only admins can delete notes');
+    await logAudit('deleted','complaint_notes',id,{ complaint_id: complaintId, text: note?.text },{});
+    complaintNotes[complaintId] = (complaintNotes[complaintId]||[]).filter(n=>n.id!==id);
+    renderComplaintNotes();
+    loadComplaintNotes(complaintId);
+    toast('Note deleted');
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
+}
+
+// ============================================================
 //  USERS
 // ============================================================
 async function loadUsers(){
@@ -2327,7 +2940,8 @@ const AUDIT_LABELS = {
   title:'Title', type:'Type', status:'Status', client_id:'Client', site_id:'Site',
   assigned_to:'Assigned to', due_date:'Scheduled date', cost:'Cost', approval_date:'Approval date',
   description:'Description', job_notes:'Job notes', job_id:'Job', text:'Text', role:'Role', notes:'Notes',
-  phone_numbers:'Phone numbers', ticket_url:'Ticket link', losing_carrier:'Losing carrier', port_date:'Port date', port_time:'Port time'
+  phone_numbers:'Phone numbers', ticket_url:'Ticket link', losing_carrier:'Losing carrier', port_date:'Port date', port_time:'Port time',
+  tio_ref:'TIO reference', complainant:'Complainant', open_date:'Open date', closed_date:'Closed date', complaint_id:'Complaint'
 };
 const AUDIT_SENSITIVE = new Set(['system_credentials','cred_router','cred_phone_system','cred_other']);
 const auditNorm = v => (v===null||v===undefined||v==='') ? '' : (typeof v==='boolean' ? v : String(v));
@@ -2338,6 +2952,7 @@ function fmtAuditVal(key, val){
   if(key==='client_id') return allClients.find(c=>c.id===val)?.company || val;
   if(key==='assigned_to') return allProfiles.find(p=>p.id===val)?.full_name || val;
   if(key==='job_id'){ const j = allJobs.find(x=>x.id===val); return j ? `${j.clients?.company||'Unknown'} · ${jobSubtitle(j)}` : val; }
+  if(key==='complaint_id'){ const c = allComplaints.find(x=>x.id===val); return c ? `${c.clients?.company||'Unknown'} · ${c.complainant||c.tio_ref||'Complaint'}` : val; }
   if(Array.isArray(val)) return val.join(', ') || '(empty)';
   return String(val);
 }
