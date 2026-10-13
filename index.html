@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.21">
+<meta name="version" content="v1.0.22">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -283,7 +283,7 @@ select.fi { cursor: pointer; }
 .port-carrier, .port-who { font-size: 11px; color: var(--text2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .port-carrier i, .port-who i { font-size: 11px; }
 .port-detail { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
-.port-det { padding: 1.1rem 1.25rem 1.25rem; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.port-det { padding: 14px 1.25rem 1.25rem; display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .port-empty { margin: auto; }
 /* Notes absorb whatever height the fixed fields don't use */
 .port-notes-group { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -291,7 +291,12 @@ select.fi { cursor: pointer; }
 .port-det-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .port-det-tid { font-size: 19px; font-weight: 500; display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
 .port-det-co { margin-top: 5px; font-size: 13px; color: var(--text2); }
-.port-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(165px,1fr)); gap: 0.9rem 1.25rem; margin-top: 1.15rem; padding-top: 1.15rem; border-top: 1px solid var(--border); }
+.port-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(165px,1fr)); gap: 10px 1.25rem; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+/* Detail panes run tighter than modals so the notes / description box gets the height.
+   The grid gap does the row spacing, so form-group's own bottom margin is dropped here. */
+.port-grid .form-group { margin-bottom: 0; }
+.port-det label.lbl { margin-bottom: 3px; }
+.port-det input.fi, .port-det select.fi { padding-top: 6px; padding-bottom: 6px; }
 .jd-notes { min-height: 160px; }
 .jd-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
 .jd-tab { padding: 6px 14px; font-size: 13px; font-weight: 500; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s; }
@@ -505,7 +510,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.21</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.22</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -1579,7 +1584,7 @@ function renderJobDetail(kind){
         <label class="lbl">Approval date *</label><input class="fi" type="date" id="f-job-approval-${kind}" value="${rec?.approval_date||''}"${d}>
       </div>
     </div>
-    <div class="form-group port-notes-group jd-notes" style="margin-top:1rem">
+    <div class="form-group port-notes-group jd-notes" style="margin-top:12px">
       <div class="jd-tabs">
         <div class="jd-tab" id="jd-tab-desc-${kind}" onclick="switchJobDetailTab('${kind}','desc')">Description</div>
         <div class="jd-tab" id="jd-tab-notes-${kind}" onclick="switchJobDetailTab('${kind}','notes')">Job notes <span class="tab-count" id="jn-count-${kind}"${draft?' style="display:none"':''}>…</span></div>
@@ -2160,7 +2165,7 @@ function renderPortingDetail(){
         </select>
       </div>
     </div>
-    <div class="form-group port-notes-group" style="margin-top:1rem"><label class="lbl">Notes</label>
+    <div class="form-group port-notes-group" style="margin-top:12px"><label class="lbl">Notes</label>
       <textarea class="fi" id="f-port-notes" placeholder="Any notes about this port...">${esc(rec?.notes||'')}</textarea>
     </div>
     <div id="port-error" class="form-error" style="display:none"></div>
@@ -2515,7 +2520,7 @@ function renderComplaintDetail(){
       </div>
       <div class="form-group"><label class="lbl">Assigned to</label><select class="fi" id="f-cmp-assigned">${staffOpts}</select></div>
     </div>
-    <div class="form-group port-notes-group jd-notes" style="margin-top:1rem">
+    <div class="form-group port-notes-group jd-notes" style="margin-top:12px">
       <div class="jd-tabs">
         <div class="jd-tab" id="cd-tab-desc" onclick="switchComplaintTab('desc')">Description</div>
         <div class="jd-tab" id="cd-tab-notes" onclick="switchComplaintTab('notes')">Complaint notes <span class="tab-count" id="cn-count"${draft?' style="display:none"':''}>…</span></div>
