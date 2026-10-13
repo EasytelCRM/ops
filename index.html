@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.19">
+<meta name="version" content="v1.0.20">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -203,14 +203,14 @@ select.fi { cursor: pointer; }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
 .tab-count { background: var(--bg); color: var(--text3); font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
 
-/* ── Notes ── */
+/* ── Credentials ── */
 .note-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 8px; }
 .note-card.pinned { border-color: var(--accent); background: var(--accent-light); }
 .note-pinned-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
-.note-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.note-author { font-size: 12px; font-weight: 500; color: var(--text2); }
-.note-date { font-size: 11px; color: var(--text3); }
 .note-text { font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
+.creds-display { min-height: 22px; color: var(--text2); font-family: 'DM Mono', monospace; font-size: 12px; }
+.creds-display.empty-val { color: var(--text3); font-style: italic; }
+.creds-section { margin-top: 14px; }
 .creds-edit { width: 100%; padding: 8px; border: 1px solid var(--border2); border-radius: var(--radius); font-size: 13px; font-family: 'DM Mono', monospace; background: var(--surface); color: var(--text); resize: vertical; min-height: 80px; outline: none; line-height: 1.6; }
 .creds-edit:focus { border-color: var(--accent); }
 
@@ -504,7 +504,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.19</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.20</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -557,29 +557,29 @@ select.fi { cursor: pointer; }
           <div>
             <div class="tabs">
               <div class="tab active" id="client-tab-btn-jobs" onclick="switchClientTab('jobs')"><i class="ti ti-tool" style="font-size:15px"></i> Jobs <span class="tab-count" id="tab-jobs-count">0</span></div>
-              <div class="tab" id="client-tab-btn-notes" onclick="switchClientTab('notes')"><i class="ti ti-notes" style="font-size:15px"></i> Notes <span class="tab-count" id="tab-notes-count">0</span></div>
+              <div class="tab" id="client-tab-btn-creds" onclick="switchClientTab('creds')"><i class="ti ti-lock" style="font-size:15px"></i> Credentials</div>
               <div class="tab" id="client-tab-btn-porting" onclick="switchClientTab('porting')"><i class="ti ti-phone-outgoing" style="font-size:15px"></i> Porting <span class="tab-count" id="tab-porting-count">0</span></div>
               <div class="tab" id="client-tab-btn-sites" onclick="switchClientTab('sites')"><i class="ti ti-map-pin" style="font-size:15px"></i> Sites <span class="tab-count" id="tab-sites-count">0</span></div>
             </div>
 
-            <!-- Notes tab -->
-            <div id="client-tab-notes" style="display:none">
-              <!-- System Credentials (pinned) -->
+            <!-- Credentials tab -->
+            <div id="client-tab-creds" style="display:none">
               <div class="note-card pinned" id="creds-card">
-                <div class="note-pinned-label"><i class="ti ti-lock" style="font-size:13px"></i> System Credentials</div>
-                <div id="creds-display" class="note-text" style="min-height:40px;color:var(--text2);font-family:'DM Mono',monospace;font-size:12px"></div>
-                <textarea class="creds-edit" id="creds-edit" placeholder="Enter credentials, IPs, passwords, router logins..." style="display:none"></textarea>
+                <div class="note-pinned-label"><i class="ti ti-router" style="font-size:13px"></i> Router</div>
+                <div id="creds-display-router" class="note-text creds-display"></div>
+                <textarea class="creds-edit" id="creds-edit-router" placeholder="Router URL, password..." style="display:none"></textarea>
+                <div class="note-pinned-label creds-section"><i class="ti ti-phone" style="font-size:13px"></i> Phone System</div>
+                <div id="creds-display-phone" class="note-text creds-display"></div>
+                <textarea class="creds-edit" id="creds-edit-phone" placeholder="Phone system URL, username, password..." style="display:none"></textarea>
+                <div class="note-pinned-label creds-section"><i class="ti ti-key" style="font-size:13px"></i> Other</div>
+                <div id="creds-display-other" class="note-text creds-display"></div>
+                <textarea class="creds-edit" id="creds-edit-other" placeholder="Any other logins, IPs, notes..." style="display:none"></textarea>
                 <div style="display:flex;gap:6px;margin-top:8px" id="creds-actions">
                   <button class="btn btn-sm" id="creds-edit-btn" onclick="editCreds()"><i class="ti ti-edit"></i> Edit</button>
                   <button class="btn btn-sm btn-primary" id="creds-save-btn" onclick="saveCreds()" style="display:none"><i class="ti ti-check"></i> Save</button>
                   <button class="btn btn-sm" id="creds-cancel-btn" onclick="cancelCreds()" style="display:none">Cancel</button>
                 </div>
               </div>
-              <!-- Regular notes -->
-              <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-                <button class="btn btn-primary btn-sm" onclick="openNoteModal()"><i class="ti ti-plus"></i> Add note</button>
-              </div>
-              <div id="notes-list"></div>
             </div>
 
             <!-- Jobs tab -->
@@ -1066,7 +1066,7 @@ function closeSidebar(){ document.getElementById('sidebar').classList.remove('op
 
 // ── Client profile tabs ──
 function switchClientTab(tab){
-  ['notes','jobs','porting','sites'].forEach(t=>{
+  ['creds','jobs','porting','sites'].forEach(t=>{
     const btn = document.getElementById('client-tab-btn-'+t);
     if(btn) btn.classList.toggle('active', t===tab);
     const panel = document.getElementById('client-tab-'+t);
@@ -1159,11 +1159,10 @@ function renderClientsList(){
 async function loadClientProfile(id){
   setSyncStatus('syncing');
   try {
-    const [{ data: client }, { data: sites }, { data: jobs }, { data: notes }, { data: ports }] = await Promise.all([
+    const [{ data: client }, { data: sites }, { data: jobs }, { data: ports }] = await Promise.all([
       sb.from('clients').select('*').eq('id',id).single(),
       sb.from('sites').select('*').eq('client_id',id).order('created_at',{ascending:true}),
       sb.from('jobs').select('*,sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('client_id',id).order('due_date',{ascending:true,nullsFirst:false}),
-      sb.from('notes').select('*,profiles(full_name)').eq('client_id',id).order('created_at',{ascending:false}),
       sb.from('porting').select('*').eq('client_id',id).order('port_date',{ascending:true,nullsFirst:false})
     ]);
     activeClientData = client;
@@ -1187,7 +1186,6 @@ async function loadClientProfile(id){
       </div>`;
 
     // ── Tab counts ──
-    document.getElementById('tab-notes-count').textContent   = (notes||[]).length;
     document.getElementById('tab-jobs-count').textContent    = (jobs||[]).length;
     document.getElementById('tab-porting-count').textContent = (ports||[]).length;
     document.getElementById('tab-sites-count').textContent   = (sites||[]).length;
@@ -1208,27 +1206,11 @@ async function loadClientProfile(id){
         </div>`).join('')
       : `<div class="empty"><i class="ti ti-phone-outgoing"></i><p>No porting tickets yet.</p></div>`;
 
-    // ── System credentials ──
-    const credsDisplay = document.getElementById('creds-display');
-    const credsEdit    = document.getElementById('creds-edit');
-    credsDisplay.textContent = client.system_credentials || 'No credentials stored yet.';
-    credsEdit.value = client.system_credentials || '';
+    // ── Credentials ──
+    cancelCreds();
+    renderCreds(client);
     // Show edit button only to admins and assigned technicians
     document.getElementById('creds-edit-btn').style.display = (isAdminOrOps() || jobs?.some(j=>j.assigned_to===currentUser?.id)) ? '' : 'none';
-
-    // ── Notes ──
-    document.getElementById('notes-list').innerHTML = (notes||[]).length
-      ? (notes||[]).map(n=>`<div class="note-card">
-          <div class="note-meta">
-            <span class="note-author"><i class="ti ti-user" style="font-size:12px"></i> ${esc(n.profiles?.full_name||'Unknown')}</span>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="note-date">${fmtDate(n.created_at)}</span>
-              ${isAdmin()||n.created_by===currentUser?.id?`<button class="btn btn-sm btn-danger" onclick="deleteNote('${n.id}')"><i class="ti ti-trash"></i></button>`:''}
-            </div>
-          </div>
-          <div class="note-text">${esc(n.text)}</div>
-        </div>`).join('')
-      : `<div class="empty"><i class="ti ti-notes"></i><p>No notes yet.</p></div>`;
 
     // ── Jobs ──
     document.getElementById('client-jobs-list').innerHTML = (jobs||[]).length
@@ -1269,29 +1251,45 @@ async function loadClientProfile(id){
   } catch(e){ setSyncStatus('error'); toast('Error loading profile: '+e.message,'error'); }
 }
 
-// ── System Credentials ──
-function editCreds(){
-  document.getElementById('creds-display').style.display = 'none';
-  document.getElementById('creds-edit').style.display    = '';
-  document.getElementById('creds-edit-btn').style.display   = 'none';
-  document.getElementById('creds-save-btn').style.display   = '';
-  document.getElementById('creds-cancel-btn').style.display = '';
+// ── Credentials ──
+// Element suffix → clients column
+const CRED_FIELDS = { router:'cred_router', phone:'cred_phone_system', other:'cred_other' };
+
+function renderCreds(client){
+  Object.entries(CRED_FIELDS).forEach(([k,col])=>{
+    const val  = client?.[col] || '';
+    const disp = document.getElementById('creds-display-'+k);
+    disp.textContent = val || 'Nothing stored yet.';
+    disp.classList.toggle('empty-val', !val);
+    document.getElementById('creds-edit-'+k).value = val;
+  });
 }
+function toggleCredsEdit(on){
+  Object.keys(CRED_FIELDS).forEach(k=>{
+    document.getElementById('creds-display-'+k).style.display = on ? 'none' : '';
+    document.getElementById('creds-edit-'+k).style.display    = on ? '' : 'none';
+  });
+  document.getElementById('creds-edit-btn').style.display   = on ? 'none' : '';
+  document.getElementById('creds-save-btn').style.display   = on ? '' : 'none';
+  document.getElementById('creds-cancel-btn').style.display = on ? '' : 'none';
+}
+function editCreds(){ toggleCredsEdit(true); }
 function cancelCreds(){
-  document.getElementById('creds-display').style.display = '';
-  document.getElementById('creds-edit').style.display    = 'none';
-  document.getElementById('creds-edit-btn').style.display   = '';
-  document.getElementById('creds-save-btn').style.display   = 'none';
-  document.getElementById('creds-cancel-btn').style.display = 'none';
+  renderCreds(activeClientData);   // drop anything typed
+  toggleCredsEdit(false);
 }
 async function saveCreds(){
-  const val = document.getElementById('creds-edit').value;
+  const payload = {}, before = {};
+  Object.entries(CRED_FIELDS).forEach(([k,col])=>{
+    payload[col] = document.getElementById('creds-edit-'+k).value.trim() || null;
+    before[col]  = activeClientData?.[col] ?? null;
+  });
   setSyncStatus('syncing');
   try {
-    await sb.from('clients').update({ system_credentials: val }).eq('id', activeClientId);
-    await logAudit('updated','clients',activeClientId,{ system_credentials: activeClientData?.system_credentials },{ system_credentials: val });
-    activeClientData.system_credentials = val;
-    document.getElementById('creds-display').textContent = val || 'No credentials stored yet.';
+    const { error } = await sb.from('clients').update(payload).eq('id', activeClientId);
+    if(error) throw error;
+    await logAudit('updated','clients',activeClientId,before,payload);
+    Object.assign(activeClientData, payload);
     cancelCreds();
     setSyncStatus('ok'); toast('Credentials saved');
   } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
@@ -2325,12 +2323,13 @@ const AUDIT_LABELS = {
   company:'Company', account_number:'Account number', phone:'Phone', email:'Email',
   svc_internet:'Internet service', svc_webex:'Webex service', svc_nec:'NEC service',
   system_credentials:'System credentials',
+  cred_router:'Router credentials', cred_phone_system:'Phone system credentials', cred_other:'Other credentials',
   title:'Title', type:'Type', status:'Status', client_id:'Client', site_id:'Site',
   assigned_to:'Assigned to', due_date:'Scheduled date', cost:'Cost', approval_date:'Approval date',
   description:'Description', job_notes:'Job notes', job_id:'Job', text:'Text', role:'Role', notes:'Notes',
   phone_numbers:'Phone numbers', ticket_url:'Ticket link', losing_carrier:'Losing carrier', port_date:'Port date', port_time:'Port time'
 };
-const AUDIT_SENSITIVE = new Set(['system_credentials']);
+const AUDIT_SENSITIVE = new Set(['system_credentials','cred_router','cred_phone_system','cred_other']);
 const auditNorm = v => (v===null||v===undefined||v==='') ? '' : (typeof v==='boolean' ? v : String(v));
 
 function fmtAuditVal(key, val){
@@ -2616,42 +2615,6 @@ async function deleteJob(id){
     await logAudit('deleted','jobs',id,{},{});
     toast('Job deleted');
     if(currentPage==='client-profile') loadClientProfile(activeClientId); else loadJobs();
-  } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
-}
-
-// ============================================================
-//  NOTE MODAL
-// ============================================================
-function openNoteModal(){
-  openModal(`<div class="modal">
-    <div class="modal-hdr"><h3>Add note</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
-    <div class="form-group"><label class="lbl">Note *</label><textarea class="fi" id="f-note" placeholder="Enter details about this interaction..."></textarea></div>
-    <div class="modal-ftr">
-      <button class="btn" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="submitAddNote()">Save note</button>
-    </div>
-  </div>`);
-}
-
-async function submitAddNote(){
-  const text = document.getElementById('f-note').value.trim();
-  if(!text){ toast('Note cannot be empty','warn'); return; }
-  setSyncStatus('syncing');
-  try {
-    const { data, error } = await sb.from('notes').insert({ client_id: activeClientId, text, created_by: currentUser.id }).select().single();
-    if(error) throw error;
-    await logAudit('created','notes',data.id,{},{text});
-    closeModal(); toast('Note saved'); loadClientProfile(activeClientId);
-  } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
-}
-
-async function deleteNote(id){
-  if(!confirm('Delete this note?')) return;
-  setSyncStatus('syncing');
-  try {
-    await sb.from('notes').delete().eq('id',id);
-    await logAudit('deleted','notes',id,{},{});
-    toast('Note deleted'); loadClientProfile(activeClientId);
   } catch(e){ setSyncStatus('error'); toast('Delete failed: '+e.message,'error'); }
 }
 
