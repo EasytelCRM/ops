@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.22">
+<meta name="version" content="v1.0.23">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -510,7 +510,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.22</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.23</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -1299,7 +1299,7 @@ async function loadClientProfile(id){
       ? (jobs||[]).map(j=>`<div class="job-card">
           ${typeBadge(j.type)}
           <div class="job-body">
-            <div class="job-title${isAdminOrOps()||j.assigned_to===currentUser?.id?' job-link':''}" ${isAdminOrOps()||j.assigned_to===currentUser?.id?`onclick="openJobPage('${jobKindOf(j)}','${j.id}')"`:''} >${j.type==='New Install'?svcLabel(client):esc(j.title)}</div>
+            <div class="job-title job-link" onclick="openJobPage('${jobKindOf(j)}','${j.id}')">${j.type==='New Install'?svcLabel(client):esc(j.title)}</div>
             <div class="job-meta">
               ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
               ${statusBadge(j.status)}
