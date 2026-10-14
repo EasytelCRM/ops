@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.26">
+<meta name="version" content="v1.0.27">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -151,6 +151,8 @@ tr.clickable:hover td { background: var(--bg); }
 .badge-purple { background: #2a1a3e; color: #9b6dcc; }
 .badge-red { background: var(--red-light); color: var(--red); }
 .badge-gray { background: var(--bg); color: var(--text2); border: 1px solid var(--border); }
+.users-sec td { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; background: var(--bg); }
+.user-off { opacity: .6; }
 
 /* ============================================================
    FORMS
@@ -507,7 +509,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.26</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.27</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -838,6 +840,15 @@ async function fetchAll(makeQuery){
 function isAdmin(){ return currentProfile?.role === 'admin'; }
 function isOps(){ return currentProfile?.role === 'ops'; }
 function isAdminOrOps(){ return isAdmin() || isOps(); }
+// Pending (never approved) and deactivated accounts have active === false; a missing column counts as active
+const isActiveStaff = p => p?.active !== false;
+
+// "Assigned to" options: active staff, plus whoever is already assigned so saving never silently unassigns them
+function staffOptions(selectedId){
+  return `<option value="">— Unassigned —</option>` + allProfiles
+    .filter(u=>isActiveStaff(u) || u.id===selectedId)
+    .map(u=>`<option value="${u.id}"${selectedId===u.id?' selected':''}>${esc(u.full_name)}${isActiveStaff(u)?'':' (deactivated)'}</option>`).join('');
+}
 
 let _syncWatchdog = null;
 function setSyncStatus(s){
@@ -911,7 +922,20 @@ async function doLogin(){
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader" style="animation:spin 0.7s linear infinite"></i> Signing in...';
   const { error } = await sb.auth.signInWithPassword({ email, password: pw });
   btn.disabled = false; btn.innerHTML = '<i class="ti ti-login"></i> Sign in';
-  if(error){ errEl.textContent = error.message; errEl.style.display = 'block'; }
+  if(error){
+    // Deactivated accounts are banned in Supabase Auth
+    errEl.textContent = (error.code==='user_banned' || /banned/i.test(error.message)) ? DEACTIVATED_MSG : error.message;
+    errEl.style.display = 'block';
+  }
+}
+
+const DEACTIVATED_MSG = 'This account has been deactivated. Contact an admin.';
+const PENDING_MSG     = "Your account is waiting for an admin to approve it. Try again once you've been told it's active.";
+
+function showLoginError(msg){
+  showScreen('login');
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = msg; errEl.style.display = 'block';
 }
 
 async function doSetPassword(){
@@ -1012,6 +1036,12 @@ function toggleNav(){
 
 async function initApp(){
   const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  // Pending and deactivated accounts can still hold a session but the database shows them nothing
+  if(profile && !isActiveStaff(profile)){
+    await sb.auth.signOut();
+    showLoginError(profile.deactivated_at ? DEACTIVATED_MSG : PENDING_MSG);
+    return;
+  }
   currentProfile = profile;
   if(localStorage.getItem('navCollapsed')) document.getElementById('app').classList.add('nav-collapsed');
 
@@ -1404,7 +1434,7 @@ async function loadJobs(){
       fetchAll(()=>sb.from('jobs').select(JOB_SELECT).order('due_date',{ascending:true,nullsFirst:false})),
       fetchAll(()=>sb.from('clients').select('id,company').order('company')),
       fetchAll(()=>sb.from('sites').select('id,name,client_id')),
-      sb.from('profiles').select('id,full_name').order('full_name')
+      sb.from('profiles').select('*').order('full_name')
     ]);
     allJobs = jobs || [];
     if(clients) jobClients = clients;
@@ -1480,7 +1510,7 @@ async function newJobDraft(kind){
     if(sites)   allSites   = sites;
   }
   if(!allProfiles.length){
-    const { data } = await sb.from('profiles').select('id,full_name').order('full_name');
+    const { data } = await sb.from('profiles').select('*').order('full_name');
     allProfiles = data || [];
   }
   jobSel[kind]   = null;
@@ -1552,8 +1582,7 @@ function renderJobDetail(kind){
     .map(x=>`<option value="${x.id}"${rec?.site_id===x.id?' selected':''}>${esc(x.name)}</option>`).join('');
   const techDraft  = draft && !isAdminOrOps();   // techs are always assigned the jobs they log
   const assignee   = techDraft ? currentUser?.id : rec?.assigned_to;
-  const staffOpts  = `<option value="">— Unassigned —</option>` + allProfiles
-    .map(u=>`<option value="${u.id}"${assignee===u.id?' selected':''}>${esc(u.full_name)}</option>`).join('');
+  const staffOpts  = staffOptions(assignee);
 
   el.innerHTML = `<div class="port-det" oninput="markJobDirty('${kind}')" onchange="markJobDirty('${kind}')">
     <div class="port-det-head">
@@ -2378,7 +2407,7 @@ async function loadComplaints(){
     const [complaints, clients, profRes] = await Promise.all([
       fetchAll(()=>sb.from('complaints').select(COMPLAINT_SELECT).order('open_date',{ascending:false}).order('created_at',{ascending:false})),
       fetchAll(()=>sb.from('clients').select('id,company').order('company')),
-      sb.from('profiles').select('id,full_name').order('full_name')
+      sb.from('profiles').select('*').order('full_name')
     ]);
     allComplaints = complaints || [];
     if(clients) complaintClients = clients;
@@ -2441,7 +2470,7 @@ async function newComplaintDraft(){
     if(clients) complaintClients = clients;
   }
   if(!allProfiles.length){
-    const { data } = await sb.from('profiles').select('id,full_name').order('full_name');
+    const { data } = await sb.from('profiles').select('*').order('full_name');
     allProfiles = data || [];
   }
   complaintSel   = null;
@@ -2506,8 +2535,7 @@ function renderComplaintDetail(){
   if(samePane) captureComplaintNoteEdit(); else complaintNoteEdit = null;
   el.dataset.complaint = rec?.id || '';
   const clientOpts = complaintClients.map(c=>`<option value="${c.id}"${c.id===complaintDraftClientId?' selected':''}>${esc(c.company)}</option>`).join('');
-  const staffOpts  = `<option value="">— Unassigned —</option>` + allProfiles
-    .map(u=>`<option value="${u.id}"${rec?.assigned_to===u.id?' selected':''}>${esc(u.full_name)}</option>`).join('');
+  const staffOpts  = staffOptions(rec?.assigned_to);
   const sub = rec ? [rec.tio_ref ? `TIO ${esc(rec.tio_ref)}` : 'No TIO ref', rec.complainant ? esc(rec.complainant) : null].filter(Boolean).join(' · ') : '';
 
   el.innerHTML = `<div class="port-det" oninput="markComplaintDirty()" onchange="markComplaintDirty()">
@@ -2899,24 +2927,65 @@ async function loadUsers(){
   try {
     const { data } = await sb.from('profiles').select('*').order('full_name');
     allProfiles = data || [];
-    const tb = document.getElementById('users-tbody');
-    tb.innerHTML = allProfiles.map(p=>`
-      <tr>
-        <td><div style="display:flex;align-items:center;gap:8px"><div class="user-avatar" style="width:28px;height:28px;font-size:10px">${initials(p.full_name)}</div>${esc(p.full_name)}</div></td>
+    // Pending: signed up but never approved. Deactivated: switched off by an admin (keeps their history).
+    const pending     = allProfiles.filter(p=>!isActiveStaff(p) && !p.deactivated_at);
+    const active      = allProfiles.filter(isActiveStaff);
+    const deactivated = allProfiles.filter(p=>!isActiveStaff(p) && p.deactivated_at);
+    const grouped = pending.length || deactivated.length;
+    const section = (label, rows) => !rows.length ? ''
+      : (grouped ? `<tr class="users-sec"><td colspan="5">${label} (${rows.length})</td></tr>` : '') + rows.map(userRowHTML).join('');
+    document.getElementById('users-tbody').innerHTML =
+      section('Waiting for approval', pending) + section('Active', active) + section('Deactivated', deactivated);
+    setSyncStatus('ok');
+  } catch(e){ setSyncStatus('error'); toast('Error loading users: '+e.message,'error'); }
+}
+
+function userRowHTML(p){
+  const live = isActiveStaff(p);
+  // Status buttons only once the database has the account-status column
+  const statusReady = 'active' in p;
+  const status = live ? ''
+    : p.deactivated_at ? `<span class="badge badge-red" title="Deactivated ${esc(fmtDate(p.deactivated_at))}">Deactivated</span>`
+    : `<span class="badge badge-amber">Waiting for approval</span>`;
+  const statusBtn = !statusReady ? ''
+    : live ? `<button class="btn btn-sm" onclick="setUserActive('${p.id}',false)"><i class="ti ti-user-off"></i> Deactivate</button>`
+    : `<button class="btn btn-sm btn-primary" onclick="setUserActive('${p.id}',true)"><i class="ti ti-user-check"></i> ${p.deactivated_at?'Reactivate':'Activate'}</button>`;
+  return `
+      <tr${!live && p.deactivated_at ? ' class="user-off"' : ''}>
+        <td><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="user-avatar" style="width:28px;height:28px;font-size:10px">${initials(p.full_name)}</div>${esc(p.full_name)} ${status}</div></td>
         <td style="color:var(--text2)">${esc(p.email)}</td>
         <td><span class="badge ${p.role==='admin'?'badge-blue':p.role==='ops'?'badge-amber':'badge-gray'}">${p.role==='admin'?'Admin':p.role==='ops'?'Ops':'Tech'}</span></td>
         <td style="font-size:12px;color:var(--text2)">${fmtDate(p.created_at)}</td>
         <td>
-          ${p.id !== currentUser?.id ? `
+          ${p.id !== currentUser?.id ? `<div style="display:flex;align-items:center;gap:6px">
             <select class="fi" style="width:120px;padding:4px 8px;font-size:12px" onchange="updateUserRole('${p.id}',this.value)">
               <option value="technician" ${p.role==='technician'?'selected':''}>Tech</option>
               <option value="ops" ${p.role==='ops'?'selected':''}>Ops</option>
               <option value="admin" ${p.role==='admin'?'selected':''}>Admin</option>
-            </select>` : '<span style="font-size:12px;color:var(--text3)">You</span>'}
+            </select>${statusBtn}</div>` : '<span style="font-size:12px;color:var(--text3)">You</span>'}
         </td>
-      </tr>`).join('');
-    setSyncStatus('ok');
-  } catch(e){ setSyncStatus('error'); toast('Error loading users: '+e.message,'error'); }
+      </tr>`;
+}
+
+// Activate, reactivate or deactivate via set_user_active(), which also blocks/unblocks sign-in,
+// signs a deactivated user out everywhere, unassigns their open work and writes the audit entry.
+async function setUserActive(id, makeActive){
+  const p = allProfiles.find(x=>x.id===id);
+  const name = p?.full_name || p?.email || 'this user';
+  if(!makeActive && !confirm(`Deactivate ${name}?\n\nThey'll be signed out on every device and won't be able to log back in. Their open jobs and complaints will become Unassigned. Everything they've logged stays as it is.`)) return;
+  setSyncStatus('syncing');
+  try {
+    const { data, error } = await sb.rpc('set_user_active', { target: id, make_active: makeActive });
+    if(error) throw error;
+    if(makeActive) toast(`${name} activated`);
+    else {
+      const plural = (n, word) => `${n} ${word}${n===1?'':'s'}`;
+      const freed = [data?.jobs_unassigned ? plural(data.jobs_unassigned,'job') : '',
+                     data?.complaints_unassigned ? plural(data.complaints_unassigned,'complaint') : ''].filter(Boolean);
+      toast(`${name} deactivated` + (freed.length ? ` · ${freed.join(' and ')} unassigned` : ''));
+    }
+    await loadUsers();
+  } catch(e){ setSyncStatus('error'); toast('Failed: '+e.message,'error'); }
 }
 
 async function updateUserRole(id, role){
@@ -2960,7 +3029,8 @@ const AUDIT_LABELS = {
   assigned_to:'Assigned to', due_date:'Scheduled date', cost:'Cost', approval_date:'Approval date',
   description:'Description', job_notes:'Job notes', job_id:'Job', text:'Text', role:'Role', notes:'Notes',
   phone_numbers:'Phone numbers', ticket_url:'Ticket link', losing_carrier:'Losing carrier', port_date:'Port date', port_time:'Port time',
-  tio_ref:'TIO reference', complainant:'Complainant', open_date:'Open date', closed_date:'Closed date', complaint_id:'Complaint'
+  tio_ref:'TIO reference', complainant:'Complainant', open_date:'Open date', closed_date:'Closed date', complaint_id:'Complaint',
+  jobs_unassigned:'Open jobs unassigned', complaints_unassigned:'Open complaints unassigned'
 };
 const AUDIT_SENSITIVE = new Set(['system_credentials','cred_router','cred_phone_system','cred_other']);
 const auditNorm = v => (v===null||v===undefined||v==='') ? '' : (typeof v==='boolean' ? v : String(v));
@@ -2994,6 +3064,11 @@ function auditDiff(a){
       const label = esc(AUDIT_LABELS[k] || k);
       if(AUDIT_SENSITIVE.has(k)){ rows.push(`<div class="audit-change">${label}: <em>set</em></div>`); return; }
       rows.push(`<div class="audit-change">${label}: <span class="audit-new">${esc(fmtAuditVal(k,v))}</span></div>`);
+    });
+  } else if(a.action==='deactivated'){
+    const newD = a.new_data||{};
+    ['jobs_unassigned','complaints_unassigned'].forEach(k=>{
+      rows.push(`<div class="audit-change">${AUDIT_LABELS[k]}: <span class="audit-new">${esc(String(newD[k]??0))}</span></div>`);
     });
   }
   return rows.length ? `<div class="audit-changes">${rows.join('')}</div>` : '';
