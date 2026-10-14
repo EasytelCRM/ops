@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.25">
+<meta name="version" content="v1.0.26">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -507,7 +507,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.25</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.26</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -574,7 +574,7 @@ select.fi { cursor: pointer; }
             <!-- Jobs tab -->
             <div id="client-tab-jobs">
               <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px">
-                <button class="btn btn-primary btn-sm" onclick="openJobPage('installs',null,activeClientId)"><i class="ti ti-tool"></i> Log install</button>
+                <button class="btn btn-primary btn-sm" id="btn-client-log-install" onclick="openJobPage('installs',null,activeClientId)" style="display:none"><i class="ti ti-tool"></i> Log install</button>
                 <button class="btn btn-primary btn-sm" onclick="openJobPage('service',null,activeClientId)"><i class="ti ti-headset"></i> Log service</button>
               </div>
               <div id="client-jobs-list"></div>
@@ -583,7 +583,7 @@ select.fi { cursor: pointer; }
             <!-- Porting tab -->
             <div id="client-tab-porting" style="display:none">
               <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-                <button class="btn btn-primary btn-sm" onclick="openPortingPage(null,activeClientId)"><i class="ti ti-plus"></i> Log port</button>
+                <button class="btn btn-primary btn-sm" id="btn-client-log-port" onclick="openPortingPage(null,activeClientId)" style="display:none"><i class="ti ti-plus"></i> Log port</button>
               </div>
               <div id="client-porting-list"></div>
             </div>
@@ -1030,10 +1030,13 @@ async function initApp(){
     document.getElementById('btn-add-client').style.display = '';
     document.getElementById('nav-complaints').style.display = '';
     document.getElementById('client-tab-btn-complaints').style.display = '';
+    // Techs log service tickets only; installs and porting are admin/ops
+    document.getElementById('btn-add-job-installs').style.display = '';
+    document.getElementById('btn-add-porting').style.display = '';
+    document.getElementById('btn-client-log-install').style.display = '';
+    document.getElementById('btn-client-log-port').style.display = '';
   }
-  document.getElementById('btn-add-job-installs').style.display = '';
   document.getElementById('btn-add-job-service').style.display = '';
-  document.getElementById('btn-add-porting').style.display = '';
 
   // Seed history so the dashboard is the base state
   history.replaceState({ type: 'page', name: 'dashboard' }, '');
@@ -1069,9 +1072,9 @@ function showPage(name, el, _push=true){
   document.getElementById('topbar-title').textContent = titles[name] || name;
   // Update top CTA
   const cta = document.getElementById('topbar-cta');
-  if(name==='porting') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="newPortingDraft()"><i class="ti ti-plus"></i> Log port</button>`;
+  if(name==='porting' && isAdminOrOps()) cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="newPortingDraft()"><i class="ti ti-plus"></i> Log port</button>`;
   else if(name==='complaints') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="newComplaintDraft()"><i class="ti ti-plus"></i> Log complaint</button>`;
-  else if(name==='installs' || name==='service') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="newJobDraft('${name}')"><i class="ti ti-plus"></i> Log job</button>`;
+  else if((name==='installs' && isAdminOrOps()) || name==='service') cta.innerHTML = `<button class="btn btn-primary btn-sm" onclick="newJobDraft('${name}')"><i class="ti ti-plus"></i> Log job</button>`;
   else cta.innerHTML = '';
   closeSidebar();
   if(_push) history.pushState({ type: 'page', name }, '');
@@ -1278,8 +1281,8 @@ async function loadClientProfile(id){
       : `<div class="empty"><i class="ti ti-message-report"></i><p>No complaints logged.</p></div>`;
 
     // ── Credentials ──
-    // Edit buttons only for admins and assigned technicians
-    credsCanEdit = isAdminOrOps() || !!jobs?.some(j=>j.assigned_to===currentUser?.id);
+    // Edit buttons only for admin/ops; techs can read credentials but not change them
+    credsCanEdit = isAdminOrOps();
     renderCreds();
 
     // ── Jobs ──
@@ -1392,7 +1395,7 @@ const JOB_KINDS = {
 const jobKindOf   = j => j.type==='New Install' ? 'installs' : 'service';
 // Installs are identified by the client's services; service tickets by their own title.
 const jobSubtitle = j => j.type==='New Install' ? svcLabel(j.clients) : (j.title || '—');
-const canEditJob  = j => isAdminOrOps() || j.assigned_to===currentUser?.id;
+const canEditJob  = () => isAdminOrOps();   // techs only add notes to existing jobs
 
 async function loadJobs(){
   setSyncStatus('syncing');
@@ -1465,6 +1468,7 @@ async function selectJob(kind, id){
 }
 
 async function newJobDraft(kind){
+  if(kind==='installs' && !isAdminOrOps()) return;   // techs log service tickets only
   if(!await confirmDiscardJob(kind)) return;
   // User may hit "Log job" before loadJobs has filled the pickers
   if(!jobClients.length || !allSites.length){
@@ -1489,6 +1493,7 @@ async function newJobDraft(kind){
 // Client profile and dashboard hand off to the Installs/Service page instead of a job modal,
 // so there's one place jobs are created and edited.
 async function openJobPage(kind, id, clientId){
+  if(!id && kind==='installs' && !isAdminOrOps()) return;   // techs log service tickets only
   if(!await confirmDiscardJob(kind)) return;
   jobSel[kind]         = id || null;
   jobDraft[kind]       = !id;
@@ -1538,7 +1543,7 @@ function renderJobDetail(kind){
   const keepNote = samePane ? (document.getElementById('jn-input-'+kind)?.value||'') : '';
   if(samePane) captureJobNoteEdit(kind); else jobNoteEdit[kind] = null;
   el.dataset.job = rec?.id || '';
-  const ro = !draft && !canEditJob(rec);   // techs can only edit jobs assigned to them
+  const ro = !draft && !canEditJob();   // techs can't edit a job once it's logged, only add notes
   const d  = ro ? ' disabled' : '';
   const isInstall = (rec?.type || (kind==='installs' ? 'New Install' : 'Service')) === 'New Install';
   const clientId  = rec?.client_id || (draft && jobDraftClient[kind]) || '';
@@ -1564,7 +1569,7 @@ function renderJobDetail(kind){
       ${draft ? `<div class="form-group" style="grid-column:1/-1"><label class="lbl">Client *</label>
         <select class="fi" id="f-job-client-${kind}" onchange="onJobClientChange('${kind}')"><option value="">— select client —</option>${clientOpts}</select></div>` : ''}
       <div class="form-group"><label class="lbl">Type *</label>
-        <select class="fi" id="f-job-type-${kind}" onchange="onJobTypeChange('${kind}')"${d}>
+        <select class="fi" id="f-job-type-${kind}" onchange="onJobTypeChange('${kind}')"${techDraft?' disabled':d}>
           <option${isInstall?' selected':''}>New Install</option>
           <option${isInstall?'':' selected'}>Service</option>
         </select>
@@ -1611,7 +1616,7 @@ function renderJobDetail(kind){
     </div>
     <div id="job-error-${kind}" class="form-error" style="display:none"></div>
     ${ro
-      ? `<div class="port-savebar"><span class="port-savemsg">Read only — this job is not assigned to you.</span></div>`
+      ? `<div class="port-savebar"><span class="port-savemsg">Read only — add a note to update this job.</span></div>`
       : `<div class="port-savebar" id="job-savebar-${kind}">
       <span class="port-savemsg"></span>
       <div style="display:flex;gap:8px">
@@ -1704,7 +1709,7 @@ function renderJobNotes(kind){
           <span class="jn-when">${fmtNoteWhen(n.created_at)}</span>
           ${n.updated_at ? `<span class="jn-edited" title="Edited by ${esc(editor)}, ${esc(fmtNoteWhen(n.updated_at))}">(edited)</span>` : ''}
           <span class="jn-acts">
-            ${isAdmin() || n.created_by===currentUser?.id ? editBtn(n.id) : ''}
+            ${isAdmin() || (isOps() && n.created_by===currentUser?.id) ? editBtn(n.id) : ''}
             ${isAdmin() && !edit ? `<button class="jn-act jn-act-del" title="Delete note" onclick="deleteJobNote('${kind}','${n.id}')"><i class="ti ti-trash"></i></button>` : ''}
           </span>
         </div>
@@ -2102,6 +2107,7 @@ async function selectPorting(id){
 }
 
 async function newPortingDraft(){
+  if(!isAdminOrOps()) return;   // porting is read-only for techs
   if(!await confirmDiscardPorting()) return;
   // User may land on Porting directly, before the client list has been fetched
   if(!portingClients.length){
@@ -2142,6 +2148,8 @@ function renderPortingDetail(){
     el.innerHTML = `<div class="empty port-empty" style="padding:3.5rem 1rem"><i class="ti ti-phone-outgoing"></i><p>Select a ticket to view or edit it.</p></div>`;
     return;
   }
+  const ro = !isAdminOrOps();   // porting is read-only for techs
+  const d  = ro ? ' disabled' : '';
   const clientOptions = portingClients.map(c=>`<option value="${c.id}" ${c.id===portingDraftClientId?'selected':''}>${esc(c.company)}</option>`).join('');
   el.innerHTML = `<div class="port-det" oninput="markPortingDirty()" onchange="markPortingDirty()">
     <div class="port-det-head">
@@ -2156,29 +2164,31 @@ function renderPortingDetail(){
     <div class="port-grid">
       ${portingDraft ? `<div class="form-group" style="grid-column:1/-1"><label class="lbl">Client *</label>
         <select class="fi" id="f-port-client"><option value="">— select client —</option>${clientOptions}</select></div>` : ''}
-      <div class="form-group" style="grid-column:1/-1"><label class="lbl">Ticket link</label><input class="fi" id="f-port-url" autocomplete="off" value="${esc(rec?.ticket_url||'')}" placeholder="Paste the Assist Portal link — the REQ number is filled in for you" oninput="portingUrlChanged(this.value)">
+      <div class="form-group" style="grid-column:1/-1"><label class="lbl">Ticket link</label><input class="fi" id="f-port-url" autocomplete="off" value="${esc(rec?.ticket_url||'')}" placeholder="Paste the Assist Portal link — the REQ number is filled in for you" oninput="portingUrlChanged(this.value)"${d}>
         <div class="form-error" id="port-url-hint" style="display:none;margin-top:4px"></div></div>
-      <div class="form-group"><label class="lbl">Ticket number</label><input class="fi" id="f-port-numbers" autocomplete="off" value="${esc(rec?.phone_numbers==='TBC'?'':rec?.phone_numbers||'')}" placeholder="Blank = TBC (Pending only)"></div>
-      <div class="form-group"><label class="lbl">Losing carrier *</label><input class="fi" id="f-port-carrier" value="${esc(rec?.losing_carrier||'')}" placeholder="e.g. Telstra"></div>
-      <div class="form-group"><label class="lbl">Port date</label><input class="fi" type="date" id="f-port-date" value="${rec?.port_date||''}"></div>
-      <div class="form-group"><label class="lbl">Port time</label><input class="fi" type="time" id="f-port-time" value="${rec?.port_time||''}"></div>
+      <div class="form-group"><label class="lbl">Ticket number</label><input class="fi" id="f-port-numbers" autocomplete="off" value="${esc(rec?.phone_numbers==='TBC'?'':rec?.phone_numbers||'')}" placeholder="Blank = TBC (Pending only)"${d}></div>
+      <div class="form-group"><label class="lbl">Losing carrier *</label><input class="fi" id="f-port-carrier" value="${esc(rec?.losing_carrier||'')}" placeholder="e.g. Telstra"${d}></div>
+      <div class="form-group"><label class="lbl">Port date</label><input class="fi" type="date" id="f-port-date" value="${rec?.port_date||''}"${d}></div>
+      <div class="form-group"><label class="lbl">Port time</label><input class="fi" type="time" id="f-port-time" value="${rec?.port_time||''}"${d}></div>
       <div class="form-group"><label class="lbl">Status</label>
-        <select class="fi" id="f-port-status">
+        <select class="fi" id="f-port-status"${d}>
           ${['Pending','Complete','Cancelled'].map(s=>`<option value="${s}" ${(rec?.status||'Pending')===s?'selected':''}>${s}</option>`).join('')}
         </select>
       </div>
     </div>
     <div class="form-group port-notes-group" style="margin-top:12px"><label class="lbl">Notes</label>
-      <textarea class="fi" id="f-port-notes" placeholder="Any notes about this port...">${esc(rec?.notes||'')}</textarea>
+      <textarea class="fi" id="f-port-notes" placeholder="Any notes about this port..."${d}>${esc(rec?.notes||'')}</textarea>
     </div>
     <div id="port-error" class="form-error" style="display:none"></div>
-    <div class="port-savebar" id="port-savebar">
+    ${ro
+      ? `<div class="port-savebar"><span class="port-savemsg">Read only — ask ops to update this ticket.</span></div>`
+      : `<div class="port-savebar" id="port-savebar">
       <span class="port-savemsg"></span>
       <div style="display:flex;gap:8px">
         ${portingDraft ? `<button class="btn btn-sm" onclick="cancelPortingDraft()">Cancel</button>` : ''}
         <button class="btn btn-primary btn-sm" id="port-save-btn" onclick="savePorting()"><i class="ti ti-check"></i> ${portingDraft?'Log port':'Save changes'}</button>
       </div>
-    </div>
+    </div>`}
   </div>`;
   updatePortingSaveBar();
 }
@@ -2324,6 +2334,7 @@ function portingStatusBadge(s){
 // Client profile hands off to the Porting page instead of a modal. The old modal reused the
 // Porting pane's field ids, so with a ticket open there (hidden) it saved that ticket's values.
 async function openPortingPage(id, clientId){
+  if(!id && !isAdminOrOps()) return;   // porting is read-only for techs
   if(!await confirmDiscardPorting()) return;
   selectedPortingId     = id || null;
   portingDraft          = !id;
