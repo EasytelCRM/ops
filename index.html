@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.23">
+<meta name="version" content="v1.0.24">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -204,15 +204,12 @@ select.fi { cursor: pointer; }
 .tab-count { background: var(--bg); color: var(--text3); font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
 
 /* ── Credentials ── */
-.note-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 8px; }
-.note-card.pinned { border-color: var(--accent); background: var(--accent-light); }
-.note-pinned-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
-.note-text { font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
-.creds-display { min-height: 22px; color: var(--text2); font-family: 'DM Mono', monospace; font-size: 12px; }
-.creds-display.empty-val { color: var(--text3); font-style: italic; }
-.creds-section { margin-top: 14px; }
-.creds-edit { width: 100%; padding: 8px; border: 1px solid var(--border2); border-radius: var(--radius); font-size: 13px; font-family: 'DM Mono', monospace; background: var(--surface); color: var(--text); resize: vertical; min-height: 80px; outline: none; line-height: 1.6; }
-.creds-edit:focus { border-color: var(--accent); }
+.cred-card .site-name { display: flex; align-items: center; gap: 6px; }
+.cred-card .site-name i { font-size: 14px; color: var(--text3); }
+.cred-val { font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: var(--text); }
+.cred-val.empty-val { color: var(--text3); font-style: italic; }
+.cred-val a { color: var(--accent); }
+.cred-input { min-height: 90px; resize: vertical; margin-top: 4px; }
 
 /* ── Jobs ── */
 .job-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.875rem 1rem; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; }
@@ -510,7 +507,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.23</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.24</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -571,22 +568,7 @@ select.fi { cursor: pointer; }
 
             <!-- Credentials tab -->
             <div id="client-tab-creds" style="display:none">
-              <div class="note-card pinned" id="creds-card">
-                <div class="note-pinned-label"><i class="ti ti-router" style="font-size:13px"></i> Router</div>
-                <div id="creds-display-router" class="note-text creds-display"></div>
-                <textarea class="creds-edit" id="creds-edit-router" placeholder="Router URL, password..." style="display:none"></textarea>
-                <div class="note-pinned-label creds-section"><i class="ti ti-phone" style="font-size:13px"></i> Phone System</div>
-                <div id="creds-display-phone" class="note-text creds-display"></div>
-                <textarea class="creds-edit" id="creds-edit-phone" placeholder="Phone system URL, username, password..." style="display:none"></textarea>
-                <div class="note-pinned-label creds-section"><i class="ti ti-key" style="font-size:13px"></i> Other</div>
-                <div id="creds-display-other" class="note-text creds-display"></div>
-                <textarea class="creds-edit" id="creds-edit-other" placeholder="Any other logins, IPs, notes..." style="display:none"></textarea>
-                <div style="display:flex;gap:6px;margin-top:8px" id="creds-actions">
-                  <button class="btn btn-sm" id="creds-edit-btn" onclick="editCreds()"><i class="ti ti-edit"></i> Edit</button>
-                  <button class="btn btn-sm btn-primary" id="creds-save-btn" onclick="saveCreds()" style="display:none"><i class="ti ti-check"></i> Save</button>
-                  <button class="btn btn-sm" id="creds-cancel-btn" onclick="cancelCreds()" style="display:none">Cancel</button>
-                </div>
-              </div>
+              <div id="creds-list"></div>
             </div>
 
             <!-- Jobs tab -->
@@ -1289,10 +1271,9 @@ async function loadClientProfile(id){
       : `<div class="empty"><i class="ti ti-message-report"></i><p>No complaints logged.</p></div>`;
 
     // ── Credentials ──
-    cancelCreds();
-    renderCreds(client);
-    // Show edit button only to admins and assigned technicians
-    document.getElementById('creds-edit-btn').style.display = (isAdminOrOps() || jobs?.some(j=>j.assigned_to===currentUser?.id)) ? '' : 'none';
+    // Edit buttons only for admins and assigned technicians
+    credsCanEdit = isAdminOrOps() || !!jobs?.some(j=>j.assigned_to===currentUser?.id);
+    renderCreds();
 
     // ── Jobs ──
     document.getElementById('client-jobs-list').innerHTML = (jobs||[]).length
@@ -1334,46 +1315,61 @@ async function loadClientProfile(id){
 }
 
 // ── Credentials ──
-// Element suffix → clients column
-const CRED_FIELDS = { router:'cred_router', phone:'cred_phone_system', other:'cred_other' };
+// Three separate cards, each edited and saved on its own
+const CRED_FIELDS = [
+  { k:'router', col:'cred_router',       label:'Router',       icon:'ti-router', ph:'Router URL, password...' },
+  { k:'phone',  col:'cred_phone_system', label:'Phone System', icon:'ti-phone',  ph:'Phone system URL, username, password...' },
+  { k:'other',  col:'cred_other',        label:'Other',        icon:'ti-key',    ph:'Any other logins, IPs, notes...' }
+];
+let credsCanEdit = false;
+const credField = k => CRED_FIELDS.find(f=>f.k===k);
 
-function renderCreds(client){
-  Object.entries(CRED_FIELDS).forEach(([k,col])=>{
-    const val  = client?.[col] || '';
-    const disp = document.getElementById('creds-display-'+k);
-    disp.textContent = val || 'Nothing stored yet.';
-    disp.classList.toggle('empty-val', !val);
-    document.getElementById('creds-edit-'+k).value = val;
+// Escape, then turn http(s) URLs into links (trailing punctuation stays outside the link)
+function linkify(s){
+  return esc(s).replace(/https?:\/\/(?:(?!&quot;)[^\s<])+/gi, m=>{
+    const url = m.replace(/[.,;:!?)]+$/,'');
+    return `<a href="${url}" target="_blank" rel="noopener">${url}</a>${m.slice(url.length)}`;
   });
 }
-function toggleCredsEdit(on){
-  Object.keys(CRED_FIELDS).forEach(k=>{
-    document.getElementById('creds-display-'+k).style.display = on ? 'none' : '';
-    document.getElementById('creds-edit-'+k).style.display    = on ? '' : 'none';
-  });
-  document.getElementById('creds-edit-btn').style.display   = on ? 'none' : '';
-  document.getElementById('creds-save-btn').style.display   = on ? '' : 'none';
-  document.getElementById('creds-cancel-btn').style.display = on ? '' : 'none';
+function credCardHtml(f, editing){
+  const val = activeClientData?.[f.col] || '';
+  const body = editing
+    ? `<textarea class="fi cred-input" id="cred-input-${f.k}" placeholder="${f.ph}">${esc(val)}</textarea>
+       <div style="display:flex;gap:6px;margin-top:8px">
+         <button class="btn btn-sm btn-primary" onclick="saveCred('${f.k}')"><i class="ti ti-check"></i> Save</button>
+         <button class="btn btn-sm" onclick="cancelCred('${f.k}')">Cancel</button>
+       </div>`
+    : `<div class="cred-val${val?'':' empty-val'}">${val ? linkify(val) : 'Nothing stored yet.'}</div>`;
+  return `<div class="site-card cred-card" id="cred-card-${f.k}">
+    <div class="site-body">
+      <div class="site-name"><i class="ti ${f.icon}"></i> ${f.label}</div>
+      ${body}
+    </div>
+    ${credsCanEdit && !editing ? `<div style="flex-shrink:0"><button class="btn btn-sm" title="Edit ${f.label}" onclick="editCred('${f.k}')"><i class="ti ti-edit"></i></button></div>` : ''}
+  </div>`;
 }
-function editCreds(){ toggleCredsEdit(true); }
-function cancelCreds(){
-  renderCreds(activeClientData);   // drop anything typed
-  toggleCredsEdit(false);
+function renderCreds(){
+  document.getElementById('creds-list').innerHTML = CRED_FIELDS.map(f=>credCardHtml(f,false)).join('');
 }
-async function saveCreds(){
-  const payload = {}, before = {};
-  Object.entries(CRED_FIELDS).forEach(([k,col])=>{
-    payload[col] = document.getElementById('creds-edit-'+k).value.trim() || null;
-    before[col]  = activeClientData?.[col] ?? null;
-  });
+function editCred(k){
+  document.getElementById('cred-card-'+k).outerHTML = credCardHtml(credField(k), true);
+  document.getElementById('cred-input-'+k).focus();
+}
+function cancelCred(k){
+  document.getElementById('cred-card-'+k).outerHTML = credCardHtml(credField(k), false);
+}
+async function saveCred(k){
+  const f   = credField(k);
+  const val = document.getElementById('cred-input-'+k).value.trim() || null;
+  const before = { [f.col]: activeClientData?.[f.col] ?? null };
   setSyncStatus('syncing');
   try {
-    const { error } = await sb.from('clients').update(payload).eq('id', activeClientId);
+    const { error } = await sb.from('clients').update({ [f.col]: val }).eq('id', activeClientId);
     if(error) throw error;
-    await logAudit('updated','clients',activeClientId,before,payload);
-    Object.assign(activeClientData, payload);
-    cancelCreds();
-    setSyncStatus('ok'); toast('Credentials saved');
+    await logAudit('updated','clients',activeClientId,before,{ [f.col]: val });
+    activeClientData[f.col] = val;
+    cancelCred(k);
+    setSyncStatus('ok'); toast(f.label+' credentials saved');
   } catch(e){ setSyncStatus('error'); toast('Save failed: '+e.message,'error'); }
 }
 
