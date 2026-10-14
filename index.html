@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.28">
+<meta name="version" content="v1.0.29">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -509,7 +509,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.28</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.29</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -1320,7 +1320,7 @@ async function loadClientProfile(id){
       ? (jobs||[]).map(j=>`<div class="job-card">
           ${typeBadge(j.type)}
           <div class="job-body">
-            <div class="job-title job-link" onclick="openJobPage('${jobKindOf(j)}','${j.id}')">${j.type==='New Install'?svcLabel(client):esc(j.title)}</div>
+            <div class="job-title job-link" onclick="openJobPage('${jobKindOf(j)}','${j.id}')">${j.type==='New Install'?svcLabel(client):esc(j.title)}${safeTicketUrl(j.ticket_url)?` <a href="${esc(j.ticket_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open ticket"><i class="ti ti-external-link"></i></a>`:''}</div>
             <div class="job-meta">
               ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
               ${statusBadge(j.status)}
@@ -1468,7 +1468,7 @@ function renderJobsList(kind){
 function jobRowHTML(j, kind){
   const due = j.status==='Pending' && daysOut(j.due_date) <= 1;
   return `<button class="port-row${j.id===jobSel[kind]?' sel':''}" onclick="selectJob('${kind}','${j.id}')">
-    <div class="port-row-top"><span class="port-tid">${esc(j.clients?.company||'Unknown')}</span>${statusBadge(j.status)}</div>
+    <div class="port-row-top"><span class="port-tid">${esc(j.clients?.company||'Unknown')}${safeTicketUrl(j.ticket_url)?' <i class="ti ti-link" title="Has ticket link"></i>':''}</span>${statusBadge(j.status)}</div>
     <div class="port-co">${esc(jobSubtitle(j))}</div>
     <div class="port-row-bot">
       <span class="port-when${due?' due':''}">${fmtDate(j.due_date)}</span>
@@ -1587,7 +1587,7 @@ function renderJobDetail(kind){
   el.innerHTML = `<div class="port-det" oninput="markJobDirty('${kind}')" onchange="markJobDirty('${kind}')">
     <div class="port-det-head">
       <div>
-        <div class="port-det-tid">${draft ? JOB_KINDS[kind].draft : esc(rec.clients?.company||'Unknown')}${draft ? '' : ' '+statusBadge(rec.status)}</div>
+        <div class="port-det-tid">${draft ? JOB_KINDS[kind].draft : ticketHeadingLink(rec.ticket_url, rec.clients?.company||'Unknown')}${draft ? '' : ' '+statusBadge(rec.status)}</div>
         <div class="port-det-co">${draft
           ? 'Pick a client and fill in the job, then save.'
           : `${esc(jobSubtitle(rec))} · ${esc(rec.clients?.account_number||'—')} · <span style="color:var(--accent);cursor:pointer" onclick="confirmDiscardJob('${kind}').then(ok=>{ if(ok) openClientProfile('${rec.client_id}') })">Open client</span>`}</div>
@@ -1610,6 +1610,9 @@ function renderJobDetail(kind){
       </div>
       <div class="form-group" id="f-job-title-wrap-${kind}" style="grid-column:1/-1${isInstall?';display:none':''}">
         <label class="lbl">Title *</label><input class="fi" id="f-job-title-${kind}" value="${esc(rec?.title||'')}" placeholder="e.g. NBN line installation"${d}>
+      </div>
+      <div class="form-group" id="f-job-url-wrap-${kind}" style="grid-column:1/-1${isInstall?';display:none':''}">
+        <label class="lbl">Ticket link</label><input class="fi" id="f-job-url-${kind}" autocomplete="off" value="${esc(rec?.ticket_url||'')}" placeholder="Paste the Assist Portal link"${d}>
       </div>
       <div class="form-group"><label class="lbl">Site</label><select class="fi" id="f-job-site-${kind}"${d}>${siteOpts}</select></div>
       <div class="form-group"><label class="lbl">Assigned to</label><select class="fi" id="f-job-assigned-${kind}"${techDraft?' disabled':d}>${staffOpts}</select></div>
@@ -1904,7 +1907,8 @@ function onJobClientChange(kind){
 function onJobTypeChange(kind){
   const isInstall = document.getElementById(`f-job-type-${kind}`).value === 'New Install';
   document.getElementById(`f-job-title-wrap-${kind}`).style.display    = isInstall ? 'none' : '';
-  document.getElementById(`f-job-cost-wrap-${kind}`).style.display     = isInstall ? 'none' : '';
+  document.getElementById(`f-job-url-wrap-${kind}`).style.display      = isInstall ? 'none' : '';
+  document.getElementById(`f-job-cost-wrap-${kind}`).style.display    = isInstall ? 'none' : '';
   document.getElementById(`f-job-approval-wrap-${kind}`).style.display = isInstall ? '' : 'none';
 }
 
@@ -1937,6 +1941,7 @@ async function saveJob(kind){
   const type      = g('type').value;
   const isInstall = type === 'New Install';
   const title     = g('title').value.trim();
+  const url       = isInstall ? null : (g('url').value.trim() || null);
   const clientId  = draft ? (g('client')?.value || '') : rec.client_id;
   const assigned  = (draft && !isAdminOrOps()) ? currentUser.id : (g('assigned').value || null);
   const err  = document.getElementById('job-error-'+kind);
@@ -1945,11 +1950,13 @@ async function saveJob(kind){
   if(draft && !clientId)                return fail('Please select a client.');
   if(!isInstall && !title)              return fail('Job title is required.');
   if(isInstall && !g('approval').value) return fail('Approval date is required for new installs.');
+  if(url && !safeTicketUrl(url))        return fail('Ticket link must start with http:// or https://.');
   // A draft's notes box becomes the job's first note once the job exists
   const draftNote = draft ? (document.getElementById('jn-input-'+kind)?.value||'').trim() : '';
   let draftNoteFailed = false;
   const payload = {
     title: title || null, type,
+    ticket_url: url,
     status: g('status').value,
     site_id: g('site').value || null,
     assigned_to: assigned,
@@ -2183,7 +2190,7 @@ function renderPortingDetail(){
   el.innerHTML = `<div class="port-det" oninput="markPortingDirty()" onchange="markPortingDirty()">
     <div class="port-det-head">
       <div>
-        <div class="port-det-tid">${portingDraft ? 'New porting ticket' : portingTicketLink(rec)}${portingDraft ? '' : ' '+portingStatusBadge(rec.status)}</div>
+        <div class="port-det-tid">${portingDraft ? 'New porting ticket' : ticketHeadingLink(rec.ticket_url, rec.phone_numbers)}${portingDraft ? '' : ' '+portingStatusBadge(rec.status)}</div>
         <div class="port-det-co">${portingDraft
           ? 'Pick a client and fill in the ticket, then save.'
           : `<span style="color:var(--accent);cursor:pointer" onclick="confirmDiscardPorting().then(ok=>{ if(ok) openClientProfile('${rec.client_id}') })">${esc(rec.clients?.company||'Unknown')}</span> · ${esc(rec.clients?.account_number||'—')}`}</div>
@@ -2325,11 +2332,12 @@ function portingUrlChanged(url){
   hint.style.display = hint.textContent ? 'block' : 'none';
 }
 
-function portingTicketLink(rec){
-  const url = safeTicketUrl(rec.ticket_url);
+// Detail-pane heading that opens the ticket portal when the record has a link
+function ticketHeadingLink(url, label){
+  url = safeTicketUrl(url);
   return url
-    ? `<a href="${esc(url)}" target="_blank" rel="noopener" title="Open ticket" style="color:inherit;text-decoration:none">${esc(rec.phone_numbers)} <i class="ti ti-external-link" style="font-size:15px;color:var(--accent)"></i></a>`
-    : esc(rec.phone_numbers);
+    ? `<a href="${esc(url)}" target="_blank" rel="noopener" title="Open ticket" style="color:inherit;text-decoration:none">${esc(label)} <i class="ti ti-external-link" style="font-size:15px;color:var(--accent)"></i></a>`
+    : esc(label);
 }
 
 // Warn (not block) when the number is already on another ticket — a number can
