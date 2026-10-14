@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.24">
+<meta name="version" content="v1.0.25">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -507,7 +507,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.24</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.25</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -535,7 +535,7 @@ select.fi { cursor: pointer; }
            CLIENTS LIST
       ══════════════════════════════════════════ -->
       <div class="page" id="page-clients">
-        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="client-search" placeholder="Search company, account #, phone..." oninput="renderClientsList()"></div>
+        <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="client-search" placeholder="Search company, account #, phone, IP..." oninput="renderClientsList()"></div>
         <div class="card">
           <div class="card-head">
             <h3 id="clients-count">All clients</h3>
@@ -1175,13 +1175,20 @@ async function loadClients(){
 
 function renderClientsList(){
   const q = (document.getElementById('client-search')||{}).value?.toLowerCase()||'';
-  const f = allClients.filter(c=>!q || c.company.toLowerCase().includes(q) || (c.account_number||'').toLowerCase().includes(q) || (c.phone||'').includes(q));
+  // Credentials are searched too (e.g. an IP); only the matching field's name is shown, never its text
+  const basicHit = c => c.company.toLowerCase().includes(q) || (c.account_number||'').toLowerCase().includes(q) || (c.phone||'').includes(q);
+  const credHit  = c => CRED_FIELDS.find(cf=>(c[cf.col]||'').toLowerCase().includes(q));
+  const credNote = c => {
+    const hit = q && !basicHit(c) && credHit(c);
+    return hit ? `<div style="font-size:11px;color:var(--text3);margin-top:2px"><i class="ti ti-lock" style="font-size:11px"></i> Match in ${hit.label} credentials</div>` : '';
+  };
+  const f = allClients.filter(c=>!q || basicHit(c) || credHit(c));
   document.getElementById('clients-count').textContent = `All clients (${f.length})`;
   const tb = document.getElementById('clients-tbody');
   if(!tb) return;
   tb.innerHTML = f.length ? f.map(c=>`
     <tr class="clickable" onclick="openClientProfile('${c.id}')">
-      <td><strong style="font-weight:500">${esc(c.company)}</strong></td>
+      <td><strong style="font-weight:500">${esc(c.company)}</strong>${credNote(c)}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.account_number)||'—'}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.phone)||'—'}</td>
       <td>${svcBadges(c)}</td>
