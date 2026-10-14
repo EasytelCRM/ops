@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.29">
+<meta name="version" content="v1.0.30">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -509,7 +509,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.29</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.30</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -2116,8 +2116,8 @@ function renderPortingList(){
 function portingRowHTML(p){
   const due = p.status==='Pending' && daysOut(p.port_date) <= 1;
   return `<button class="port-row${p.id===selectedPortingId?' sel':''}" onclick="selectPorting('${p.id}')">
-    <div class="port-row-top"><span class="port-tid">${esc(p.phone_numbers)}${safeTicketUrl(p.ticket_url)?' <i class="ti ti-link" title="Has ticket link"></i>':''}</span>${portingStatusBadge(p.status)}</div>
-    <div class="port-co">${esc(p.clients?.company||'Unknown')}</div>
+    <div class="port-row-top"><span class="port-tid">${esc(p.clients?.company||'Unknown')}${safeTicketUrl(p.ticket_url)?' <i class="ti ti-link" title="Has ticket link"></i>':''}</span>${portingStatusBadge(p.status)}</div>
+    <div class="port-co">${esc(p.phone_numbers)}</div>
     <div class="port-row-bot">
       <span class="port-when${due?' due':''}">${fmtDate(p.port_date)}${p.port_time?` · ${p.port_time.slice(0,5)}`:''}</span>
       ${p.losing_carrier?`<span class="port-carrier"><i class="ti ti-building"></i> ${esc(p.losing_carrier)}</span>`:''}
@@ -2190,10 +2190,10 @@ function renderPortingDetail(){
   el.innerHTML = `<div class="port-det" oninput="markPortingDirty()" onchange="markPortingDirty()">
     <div class="port-det-head">
       <div>
-        <div class="port-det-tid">${portingDraft ? 'New porting ticket' : ticketHeadingLink(rec.ticket_url, rec.phone_numbers)}${portingDraft ? '' : ' '+portingStatusBadge(rec.status)}</div>
+        <div class="port-det-tid">${portingDraft ? 'New porting ticket' : ticketHeadingLink(rec.ticket_url, rec.clients?.company||'Unknown')}${portingDraft ? '' : ' '+portingStatusBadge(rec.status)}</div>
         <div class="port-det-co">${portingDraft
           ? 'Pick a client and fill in the ticket, then save.'
-          : `<span style="color:var(--accent);cursor:pointer" onclick="confirmDiscardPorting().then(ok=>{ if(ok) openClientProfile('${rec.client_id}') })">${esc(rec.clients?.company||'Unknown')}</span> · ${esc(rec.clients?.account_number||'—')}`}</div>
+          : `${esc(rec.phone_numbers)} · ${esc(rec.clients?.account_number||'—')} · <span style="color:var(--accent);cursor:pointer" onclick="confirmDiscardPorting().then(ok=>{ if(ok) openClientProfile('${rec.client_id}') })">Open client</span>`}</div>
       </div>
       ${(!portingDraft && isAdminOrOps()) ? `<button class="btn btn-sm btn-danger" onclick="deletePorting('${rec.id}')"><i class="ti ti-trash"></i> Delete</button>` : ''}
     </div>
