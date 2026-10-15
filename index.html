@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.30">
+<meta name="version" content="v1.0.31">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -21,7 +21,7 @@
   --amber: #7a4a00; --amber-light: #fef3e2;
   --red: #8a1a1a; --red-light: #faeaea;
   --radius: 8px; --radius-lg: 12px;
-  --sidebar-w: 240px;
+  --sidebar-w: 164px;
 }
 html.dark {
   /* Tells the browser to paint native controls dark — without it the date/time
@@ -60,9 +60,9 @@ body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); col
 .app.nav-collapsed .sidebar { width: 0; min-width: 0; border-right: none; }
 .nav-toggle { background: none; border: none; cursor: pointer; color: var(--text2); font-size: 18px; padding: 4px; display: flex; align-items: center; flex-shrink: 0; }
 .nav-toggle:hover { color: var(--text); }
-.logo { padding: 1.25rem 1rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.logo { padding: 1.25rem 0.75rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
 .logo-icon { width: 30px; height: 30px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; flex-shrink: 0; }
-.logo h1 { font-size: 14px; font-weight: 600; }
+.logo h1 { font-size: 13px; font-weight: 600; white-space: nowrap; }
 .logo p { font-size: 10px; color: var(--text3); }
 nav { padding: 0.75rem 0.5rem; overflow-y: auto; flex: 1; }
 .nav-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); padding: 8px 0.75rem 4px; }
@@ -74,7 +74,7 @@ nav { padding: 0.75rem 0.5rem; overflow-y: auto; flex: 1; }
 .user-chip { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: var(--radius); font-size: 12px; }
 .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; flex-shrink: 0; }
 .user-info { flex: 1; min-width: 0; }
-.user-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-name { font-weight: 500; overflow-wrap: anywhere; }   /* narrow sidebar: wrap long names rather than cut them off */
 .user-role { font-size: 10px; color: var(--text3); text-transform: capitalize; }
 
 /* ── Main ── */
@@ -475,7 +475,7 @@ select.fi { cursor: pointer; }
   <!-- ── Sidebar ── -->
   <aside class="sidebar" id="sidebar">
     <div class="logo">
-      <img src="logo.png" alt="Easytel" style="height:28px;width:auto">
+      <img src="logo.png" alt="Easytel" style="height:24px;width:auto">
       <div><h1>Easytel CRM</h1><p>Operations</p></div>
     </div>
     <nav>
@@ -509,7 +509,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.30</span>
+        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.31</span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -671,9 +671,9 @@ select.fi { cursor: pointer; }
           <div class="port-col">
             <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="porting-search" placeholder="Search client, account no. or number..." oninput="renderPortingList()"></div>
             <div class="filter-bar" id="porting-status-filters">
-              <button class="filter-btn" onclick="setPortingFilter('Pending',this)">Pending</button>
+              <button class="filter-btn active" onclick="setPortingFilter('Pending',this)">Pending</button>
               <button class="filter-btn" onclick="setPortingFilter('Complete',this)">Complete</button>
-              <button class="filter-btn active" onclick="setPortingFilter('all',this)">All</button>
+              <button class="filter-btn" onclick="setPortingFilter('all',this)">All</button>
             </div>
             <div class="card port-list-card">
               <div class="card-head">
@@ -781,7 +781,7 @@ let allClients     = [];
 let allJobs        = [];
 let allPorting     = [];
 let portingClients = [];  // lightweight {id,company} list for the porting client dropdown — kept separate so it never clobbers the full allClients cache
-let portingFilter  = 'all';
+let portingFilter  = 'Pending';
 let selectedPortingId = null;   // ticket currently shown in the detail pane
 let portingDirty      = false;  // detail pane has edits that aren't saved
 let portingDraft      = false;  // detail pane is an unsaved new ticket
@@ -1637,9 +1637,10 @@ function renderJobDetail(kind){
         </div>`
         : `<div class="jn-compose">
           <textarea id="jn-input-${kind}" rows="2" placeholder="Add a note: progress update, follow-up, call outcome…"
+            oninput="updateJobSaveBar('${kind}')"
             onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();addJobNote('${kind}')}"></textarea>
           <div class="jn-compose-bar">
-            <span class="jn-hint">Ctrl+Enter to add · saves straight away</span>
+            <span class="jn-hint">${ro ? 'Ctrl+Enter to add · saves straight away' : 'Ctrl+Enter to add · or it goes in with Save changes'}</span>
             <button class="btn btn-sm" id="jn-add-${kind}" onclick="addJobNote('${kind}')"><i class="ti ti-plus"></i> Add note</button>
           </div>
         </div>
@@ -1657,9 +1658,9 @@ function renderJobDetail(kind){
       </div>
     </div>`}
   </div>`;
-  if(!ro) updateJobSaveBar(kind);
   switchJobDetailTab(kind, jobTab[kind]);
   if(keepNote) document.getElementById('jn-input-'+kind).value = keepNote;
+  if(!ro) updateJobSaveBar(kind);   // after the note's back: a typed note counts as unsaved
   if(!draft){
     if(jobNotes[rec.id]) renderJobNotes(kind);
     loadJobNotes(kind, rec.id);   // always refresh: someone else may have added notes
@@ -1845,7 +1846,7 @@ async function saveJobNoteEdit(kind){
 }
 
 async function addJobNote(kind){
-  if(jobNoteSaving) return;
+  if(jobNoteSaving || jobSaving) return;   // a save in flight may already be adding this note
   const jobId = jobSel[kind];
   const input = document.getElementById('jn-input-'+kind);
   if(!jobId || !input) return;
@@ -1864,6 +1865,7 @@ async function addJobNote(kind){
     if(jobSel[kind]===jobId){
       input.value = '';
       renderJobNotes(kind);
+      updateJobSaveBar(kind);
     }
     loadJobNotes(kind, jobId);   // supersedes any fetch still in flight, which wouldn't include this note
     toast('Note added');
@@ -1922,10 +1924,13 @@ function markJobDirty(kind){
 function updateJobSaveBar(kind){
   const bar = document.getElementById('job-savebar-'+kind);
   if(!bar) return;
-  const canSave = (jobDirty[kind] || jobDraft[kind]) && !jobSaving;
-  bar.classList.toggle('dirty', jobDirty[kind]);
+  // A note typed into an existing job's box goes in with Save, so it counts as unsaved
+  const typedNote = !jobDraft[kind] && !!(document.getElementById('jn-input-'+kind)?.value||'').trim();
+  const unsaved   = jobDirty[kind] || typedNote;
+  const canSave = (unsaved || jobDraft[kind]) && !jobSaving;
+  bar.classList.toggle('dirty', unsaved);
   bar.querySelector('.port-savemsg').textContent =
-    jobDirty[kind] ? 'Unsaved changes' : jobDraft[kind] ? 'Not saved yet' : 'All changes saved';
+    unsaved ? 'Unsaved changes' : jobDraft[kind] ? 'Not saved yet' : 'All changes saved';
   const btn = document.getElementById('job-save-btn-'+kind);
   btn.disabled = !canSave;
   btn.style.opacity = canSave ? '1' : '0.5';
@@ -1933,10 +1938,14 @@ function updateJobSaveBar(kind){
 }
 
 async function saveJob(kind){
-  if(jobSaving) return;
+  if(jobSaving || jobNoteSaving) return;
   const draft = jobDraft[kind];
   const rec   = draft ? null : allJobs.find(j=>j.id===jobSel[kind]);
   if(!rec && !draft) return;
+  // Whatever's in the notes box goes in with the save: a new job's first note, or another on an existing one
+  const typedNote = (document.getElementById('jn-input-'+kind)?.value||'').trim();
+  // Only a note typed: just add it, without an empty "updated" entry in the audit log
+  if(rec && !jobDirty[kind]) return typedNote ? addJobNote(kind) : undefined;
   const g = f => document.getElementById(`f-job-${f}-${kind}`);
   const type      = g('type').value;
   const isInstall = type === 'New Install';
@@ -1951,9 +1960,7 @@ async function saveJob(kind){
   if(!isInstall && !title)              return fail('Job title is required.');
   if(isInstall && !g('approval').value) return fail('Approval date is required for new installs.');
   if(url && !safeTicketUrl(url))        return fail('Ticket link must start with http:// or https://.');
-  // A draft's notes box becomes the job's first note once the job exists
-  const draftNote = draft ? (document.getElementById('jn-input-'+kind)?.value||'').trim() : '';
-  let draftNoteFailed = false;
+  let noteFailed = false;
   const payload = {
     title: title || null, type,
     ticket_url: url,
@@ -1985,7 +1992,10 @@ async function saveJob(kind){
       rec.sites    = allSites.find(x=>x.id===payload.site_id) || null;
       rec.profiles = allProfiles.find(u=>u.id===payload.assigned_to) || null;
       saved = rec;
-      toast('Job updated');
+      const noteOk = typedNote ? await insertJobNote(rec.id, typedNote) : true;
+      noteFailed = !noteOk;
+      if(!noteOk) toast("Job updated, but the note couldn't be saved. It's still in the notes box: press Add note to retry",'warn');
+      else toast(typedNote ? 'Job updated · note added' : 'Job updated');
     } else {
       const { data, error } = await sb.from('jobs')
         .insert({ ...payload, client_id:clientId, created_by:currentUser?.id })
@@ -1998,10 +2008,10 @@ async function saveJob(kind){
       saved = data;
       jobDraft[kind] = false;
       const portOk  = isInstall ? await createInstallPorting(clientId) : true;
-      const noteOk  = draftNote ? await addFirstJobNote(data.id, draftNote) : true;
-      draftNoteFailed = !noteOk;
+      const noteOk  = typedNote ? await insertJobNote(data.id, typedNote) : true;
+      noteFailed = !noteOk;
       // One toast: they stack in the same spot, so a second would hide the first
-      const done = ['Job logged', isInstall && portOk && 'porting ticket created (TBC)', draftNote && noteOk && 'note added'].filter(Boolean).join(' · ');
+      const done = ['Job logged', isInstall && portOk && 'porting ticket created (TBC)', typedNote && noteOk && 'note added'].filter(Boolean).join(' · ');
       const missed = [!portOk && 'the porting ticket', !noteOk && 'the note'].filter(Boolean).join(' and ');
       if(missed) toast(`Job logged, but ${missed} couldn't be saved${noteOk ? '' : ". The note is back in the notes box: press Add note to retry"}`,'warn');
       else toast(done);
@@ -2012,11 +2022,13 @@ async function saveJob(kind){
     jobSel[kind]     = null;
     jobSel[destKind] = saved.id;
     if(destKind !== kind) toast(`Moved to ${JOB_KINDS[destKind].heading}`);
+    // A note that went in leaves the box, or the re-render would carry it over
+    if(typedNote && !noteFailed){ const input = document.getElementById('jn-input-'+kind); if(input) input.value = ''; }
     renderJobsPage('installs');
     renderJobsPage('service');
-    if(draftNoteFailed){
+    if(noteFailed){
       const input = document.getElementById('jn-input-'+destKind);
-      if(input) input.value = draftNote;
+      if(input) input.value = typedNote;
       switchJobDetailTab(destKind, 'notes');
     }
     setSyncStatus('ok');
@@ -2024,17 +2036,18 @@ async function saveJob(kind){
   finally { jobSaving = false; updateJobSaveBar('installs'); updateJobSaveBar('service'); }
 }
 
-// Never throws: the job is already saved, and a "Save failed" here would invite a retry
-// that duplicates it. On failure the caller puts the text back in the notes box.
-async function addFirstJobNote(jobId, text){
+// The note typed in the box when the job is saved. Never throws: the job is already saved,
+// and a "Save failed" here would invite a retry that duplicates it. On failure the caller
+// puts the text back in the notes box.
+async function insertJobNote(jobId, text){
   try {
     const { data, error } = await sb.from('job_notes').insert({ job_id: jobId, text, created_by: currentUser.id })
       .select('*,profiles(full_name)').single();
     if(error) throw error;
     await logAudit('created','job_notes',data.id,{},{ job_id: jobId, text });
-    jobNotes[jobId] = [data];
+    jobNotes[jobId] = [data, ...(jobNotes[jobId]||[])];
     return true;
-  } catch(e){ console.warn('First job note failed:', e); return false; }
+  } catch(e){ console.warn('Job note on save failed:', e); return false; }
 }
 
 // A new install always has numbers to port, so its porting ticket is logged up front.
@@ -2583,9 +2596,10 @@ function renderComplaintDetail(){
         </div>`
         : `<div class="jn-compose">
           <textarea id="cn-input" rows="2" placeholder="Add a note: call outcome, TIO correspondence, resolution offered…"
+            oninput="updateComplaintSaveBar()"
             onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();addComplaintNote()}"></textarea>
           <div class="jn-compose-bar">
-            <span class="jn-hint">Ctrl+Enter to add · saves straight away</span>
+            <span class="jn-hint">Ctrl+Enter to add · or it goes in with Save changes</span>
             <button class="btn btn-sm" id="cn-add" onclick="addComplaintNote()"><i class="ti ti-plus"></i> Add note</button>
           </div>
         </div>
@@ -2601,9 +2615,9 @@ function renderComplaintDetail(){
       </div>
     </div>
   </div>`;
-  updateComplaintSaveBar();
   switchComplaintTab(complaintTab);
   if(keepNote) document.getElementById('cn-input').value = keepNote;
+  updateComplaintSaveBar();   // after the note's back: a typed note counts as unsaved
   if(!draft){
     if(complaintNotes[rec.id]) renderComplaintNotes();
     loadComplaintNotes(rec.id);   // always refresh: someone else may have added notes
@@ -2636,10 +2650,13 @@ function markComplaintDirty(){
 function updateComplaintSaveBar(){
   const bar = document.getElementById('complaint-savebar');
   if(!bar) return;
-  const canSave = (complaintDirty || complaintDraft) && !complaintSaving;
-  bar.classList.toggle('dirty', complaintDirty);
+  // A note typed into an existing complaint's box goes in with Save, so it counts as unsaved
+  const typedNote = !complaintDraft && !!(document.getElementById('cn-input')?.value||'').trim();
+  const unsaved   = complaintDirty || typedNote;
+  const canSave = (unsaved || complaintDraft) && !complaintSaving;
+  bar.classList.toggle('dirty', unsaved);
   bar.querySelector('.port-savemsg').textContent =
-    complaintDirty ? 'Unsaved changes' : complaintDraft ? 'Not saved yet' : 'All changes saved';
+    unsaved ? 'Unsaved changes' : complaintDraft ? 'Not saved yet' : 'All changes saved';
   const btn = document.getElementById('complaint-save-btn');
   btn.disabled = !canSave;
   btn.style.opacity = canSave ? '1' : '0.5';
@@ -2647,10 +2664,14 @@ function updateComplaintSaveBar(){
 }
 
 async function saveComplaint(){
-  if(complaintSaving) return;
+  if(complaintSaving || complaintNoteSaving) return;
   const draft = complaintDraft;
   const rec   = draft ? null : allComplaints.find(c=>c.id===complaintSel);
   if(!rec && !draft) return;
+  // Whatever's in the notes box goes in with the save: a new complaint's first note, or another on an existing one
+  const typedNote = (document.getElementById('cn-input')?.value||'').trim();
+  // Only a note typed: just add it, without an empty "updated" entry in the audit log
+  if(rec && !complaintDirty) return typedNote ? addComplaintNote() : undefined;
   const g = f => document.getElementById('f-cmp-'+f);
   const clientId = draft ? (g('client')?.value || '') : rec.client_id;
   const payload = {
@@ -2668,9 +2689,7 @@ async function saveComplaint(){
   if(draft && !clientId)   return fail('Please select a client.');
   if(!payload.open_date)   return fail('Open date is required.');
   if(payload.closed_date && payload.closed_date < payload.open_date) return fail("Closed date can't be before the open date.");
-  // A draft's notes box becomes the complaint's first note once the complaint exists
-  const draftNote = draft ? (document.getElementById('cn-input')?.value||'').trim() : '';
-  let draftNoteFailed = false;
+  let noteFailed = false;
   complaintSaving = true;
   const btn = document.getElementById('complaint-save-btn');
   if(btn){ btn.disabled = true; btn.style.opacity = '0.5'; }
@@ -2686,7 +2705,10 @@ async function saveComplaint(){
       Object.assign(rec, payload);   // patch in place; no refetch, so scroll and selection survive
       rec.profiles = allProfiles.find(u=>u.id===payload.assigned_to) || null;
       sortComplaints();
-      toast('Complaint updated');
+      const noteOk = typedNote ? await insertComplaintNote(rec.id, typedNote) : true;
+      noteFailed = !noteOk;
+      if(!noteOk) toast("Complaint updated, but the note couldn't be saved. It's still in the notes box: press Add note to retry",'warn');
+      else toast(typedNote ? 'Complaint updated · note added' : 'Complaint updated');
     } else {
       const { data, error } = await sb.from('complaints')
         .insert({ ...payload, client_id:clientId, created_by:currentUser?.id })
@@ -2697,16 +2719,18 @@ async function saveComplaint(){
       sortComplaints();
       complaintSel   = data.id;
       complaintDraft = false;
-      const noteOk = draftNote ? await addFirstComplaintNote(data.id, draftNote) : true;
-      draftNoteFailed = !noteOk;
+      const noteOk = typedNote ? await insertComplaintNote(data.id, typedNote) : true;
+      noteFailed = !noteOk;
       if(!noteOk) toast("Complaint logged, but the note couldn't be saved. It's back in the notes box: press Add note to retry",'warn');
-      else toast(draftNote ? 'Complaint logged · note added' : 'Complaint logged');
+      else toast(typedNote ? 'Complaint logged · note added' : 'Complaint logged');
     }
     complaintDirty = false;
+    // A note that went in leaves the box, or the re-render would carry it over
+    if(typedNote && !noteFailed) document.getElementById('cn-input').value = '';
     renderComplaintsList();
     renderComplaintDetail();
-    if(draftNoteFailed){
-      document.getElementById('cn-input').value = draftNote;
+    if(noteFailed){
+      document.getElementById('cn-input').value = typedNote;
       switchComplaintTab('notes');
     }
     setSyncStatus('ok');
@@ -2865,7 +2889,7 @@ async function saveComplaintNoteEdit(){
 }
 
 async function addComplaintNote(){
-  if(complaintNoteSaving) return;
+  if(complaintNoteSaving || complaintSaving) return;   // a save in flight may already be adding this note
   const complaintId = complaintSel;
   const input = document.getElementById('cn-input');
   if(!complaintId || !input) return;
@@ -2884,6 +2908,7 @@ async function addComplaintNote(){
     if(complaintSel===complaintId){
       input.value = '';
       renderComplaintNotes();
+      updateComplaintSaveBar();
     }
     loadComplaintNotes(complaintId);   // supersedes any fetch still in flight, which wouldn't include this note
     toast('Note added');
@@ -2895,17 +2920,18 @@ async function addComplaintNote(){
   }
 }
 
-// Never throws: the complaint is already saved, and a "Save failed" here would invite a retry
-// that duplicates it. On failure the caller puts the text back in the notes box.
-async function addFirstComplaintNote(complaintId, text){
+// The note typed in the box when the complaint is saved. Never throws: the complaint is already
+// saved, and a "Save failed" here would invite a retry that duplicates it. On failure the
+// caller puts the text back in the notes box.
+async function insertComplaintNote(complaintId, text){
   try {
     const { data, error } = await sb.from('complaint_notes').insert({ complaint_id: complaintId, text, created_by: currentUser.id })
       .select('*,profiles(full_name)').single();
     if(error) throw error;
     await logAudit('created','complaint_notes',data.id,{},{ complaint_id: complaintId, text });
-    complaintNotes[complaintId] = [data];
+    complaintNotes[complaintId] = [data, ...(complaintNotes[complaintId]||[])];
     return true;
-  } catch(e){ console.warn('First complaint note failed:', e); return false; }
+  } catch(e){ console.warn('Complaint note on save failed:', e); return false; }
 }
 
 async function deleteComplaintNote(id){
