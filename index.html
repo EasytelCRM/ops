@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.31">
+<meta name="version" content="v1.0.32">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -369,6 +369,8 @@ select.fi { cursor: pointer; }
 ============================================================ */
 .toast { position: fixed; bottom: 1.25rem; right: 1.25rem; background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: var(--radius); font-size: 13px; z-index: 9999; display: flex; align-items: center; gap: 8px; animation: slideUp 0.2s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-width: calc(100vw - 2.5rem); }
 @keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+/* New version deployed while there's unsaved work: ask, don't reload */
+.update-bar { position: fixed; top: 0.75rem; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 8px 8px 16px; border-radius: var(--radius); font-size: 13px; z-index: 9998; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); width: max-content; max-width: calc(100vw - 2rem); }
 
 /* ============================================================
    MOBILE
@@ -509,7 +511,7 @@ select.fi { cursor: pointer; }
       <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" title="Toggle navigation"><i class="ti ti-layout-sidebar" id="nav-toggle-icon"></i></button>
       <h2 id="topbar-title">Dashboard</h2>
       <div class="topbar-actions">
-        <span style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()">v1.0.31</span>
+        <span id="app-version" style="font-size:9px;color:var(--text3);font-family:'DM Sans',system-ui,sans-serif;cursor:default" onclick="location.reload()"></span>
         <div class="sync-dot" id="sync-dot" title="Synced"></div>
         <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode"><i class="ti ti-moon" id="dark-icon"></i></button>
         <button class="btn btn-sm" onclick="refreshCurrentPage()"><i class="ti ti-refresh"></i></button>
@@ -744,6 +746,10 @@ select.fi { cursor: pointer; }
 
 <!-- Modal container -->
 <div id="modal-root"></div>
+<div class="update-bar" id="update-bar" style="display:none">
+  <i class="ti ti-refresh"></i><span>A new version of the CRM is available. Save your work, then reload.</span>
+  <button class="btn btn-primary btn-sm" onclick="reloadFromUpdateBar()">Reload</button>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ============================================================
@@ -872,6 +878,74 @@ function toast(msg, type='ok'){
   const icon = type==='error'?'ti-alert-circle':type==='warn'?'ti-alert-triangle':'ti-check';
   t.innerHTML = `<i class="ti ${icon}"></i> ${esc(msg)}`;
   document.body.appendChild(t); setTimeout(()=>t.remove(), 3000);
+}
+
+// ============================================================
+//  NEW-VERSION CHECK
+//  GitHub Pages lets browsers reuse the page for 10 minutes, and a tab left open never
+//  reloads, so the app looks for a newer deploy itself: at sign-in, every 5 minutes, and
+//  whenever the tab comes back into view. It only reloads on its own when nothing would be
+//  lost; otherwise a bar asks the user to save and reload.
+// ============================================================
+const APP_VERSION = document.querySelector('meta[name="version"]').content;
+document.getElementById('app-version').textContent = APP_VERSION;
+let _newVersion       = null;   // version on the server, once it's found to differ from this one
+let _lastUpdateCheck  = 0;
+let _updateCheckStarted = false;
+
+// The update reload adds ?v= to get past the cache; tidy it out of the address bar
+{
+  const u = new URL(location.href);
+  if(u.searchParams.has('v')){ u.searchParams.delete('v'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); }
+}
+
+async function checkForUpdate(){
+  if(_newVersion || Date.now() - _lastUpdateCheck < 60000) return;   // tab focus can fire in bursts
+  _lastUpdateCheck = Date.now();
+  try {
+    // A query string the CDN hasn't seen, plus no-store, so neither cache answers
+    const res = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
+    if(!res.ok) return;
+    const m = (await res.text()).match(/<meta name="version" content="([^"]+)">/);
+    if(m && m[1] !== APP_VERSION) _newVersion = m[1];
+  } catch(e){ /* offline or mid-deploy: try again next time */ }
+}
+
+// Anything an automatic reload would throw away
+function hasUnsavedWork(){
+  if(document.getElementById('modal-root').innerHTML !== '') return true;
+  if(jobDirty.installs || jobDirty.service || jobDraft.installs || jobDraft.service) return true;
+  if(portingDirty || portingDraft || complaintDirty || complaintDraft) return true;
+  if(jobNoteEdit.installs || jobNoteEdit.service || complaintNoteEdit) return true;
+  if(jobSaving || jobNoteSaving || portingSaving || complaintSaving || complaintNoteSaving) return true;
+  return [...document.querySelectorAll('#jn-input-installs, #jn-input-service, #cn-input')].some(t=>t.value.trim());
+}
+
+async function runUpdateCheck(reloadIfSafe){
+  await checkForUpdate();
+  if(!_newVersion || document.getElementById('app').style.display === 'none') return;
+  if(reloadIfSafe && !hasUnsavedWork()) reloadForUpdate();
+  else document.getElementById('update-bar').style.display = '';
+}
+
+function reloadForUpdate(){
+  location.replace(location.pathname + '?v=' + Date.now());
+}
+
+async function reloadFromUpdateBar(){
+  if(document.getElementById('modal-root').innerHTML !== '') return toast('Finish or close the open form first, then reload','warn');
+  if(hasUnsavedWork() && !await confirmDiscard('Reloading will lose your unsaved changes. Reload anyway?')) return;
+  reloadForUpdate();
+}
+
+function startUpdateCheck(){
+  if(_updateCheckStarted) return;   // initApp runs again after a sign-out and sign-in
+  _updateCheckStarted = true;
+  runUpdateCheck(true);   // catches a stale page served from the browser cache at open
+  // While the user's looking at the tab, only offer the reload: it never jumps mid-task
+  setInterval(()=>runUpdateCheck(document.visibilityState !== 'visible'), 5*60000);
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') runUpdateCheck(true); });
+  window.addEventListener('focus', ()=>runUpdateCheck(true));
 }
 
 function showScreen(name){
@@ -1085,6 +1159,7 @@ async function initApp(){
   });
 
   showScreen('app');
+  startUpdateCheck();
   await loadDashboard();
   setInterval(()=>{ if(currentPage==='dashboard') loadDashboard(); }, 60000);
 }
