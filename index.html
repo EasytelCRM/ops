@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.32">
+<meta name="version" content="v1.0.33">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -617,7 +617,7 @@ select.fi { cursor: pointer; }
       <div class="page" id="page-installs">
         <div class="port-split">
           <div class="port-col">
-            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search-installs" placeholder="Search client or service..." oninput="renderJobsList('installs')"></div>
+            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search-installs" placeholder="Search client, service or notes..." oninput="renderJobsList('installs')"></div>
             <div class="filter-bar" id="job-filters-installs">
               <button class="filter-btn active" onclick="setJobFilter('installs','Pending',this)">Pending</button>
               <button class="filter-btn" onclick="setJobFilter('installs','Incomplete',this)">Incomplete</button>
@@ -644,7 +644,7 @@ select.fi { cursor: pointer; }
       <div class="page" id="page-service">
         <div class="port-split">
           <div class="port-col">
-            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search-service" placeholder="Search client or job title..." oninput="renderJobsList('service')"></div>
+            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="job-search-service" placeholder="Search client, job title or notes..." oninput="renderJobsList('service')"></div>
             <div class="filter-bar" id="job-filters-service">
               <button class="filter-btn active" onclick="setJobFilter('service','Pending',this)">Pending</button>
               <button class="filter-btn" onclick="setJobFilter('service','Incomplete',this)">Incomplete</button>
@@ -671,7 +671,7 @@ select.fi { cursor: pointer; }
       <div class="page" id="page-porting">
         <div class="port-split">
           <div class="port-col">
-            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="porting-search" placeholder="Search client, account no. or number..." oninput="renderPortingList()"></div>
+            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="porting-search" placeholder="Search client, account no., number or notes..." oninput="renderPortingList()"></div>
             <div class="filter-bar" id="porting-status-filters">
               <button class="filter-btn active" onclick="setPortingFilter('Pending',this)">Pending</button>
               <button class="filter-btn" onclick="setPortingFilter('Complete',this)">Complete</button>
@@ -697,7 +697,7 @@ select.fi { cursor: pointer; }
       <div class="page" id="page-complaints">
         <div class="port-split">
           <div class="port-col">
-            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="complaint-search" placeholder="Search client, account no., complainant or TIO ref..." oninput="renderComplaintsList()"></div>
+            <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="complaint-search" placeholder="Search client, account no., complainant, TIO ref or notes..." oninput="renderComplaintsList()"></div>
             <div class="filter-bar" id="complaint-filters">
               <button class="filter-btn active" onclick="setComplaintFilter('Pending',this)">Pending</button>
               <button class="filter-btn" onclick="setComplaintFilter('Closed',this)">Closed</button>
@@ -778,6 +778,7 @@ let jobSaving      = false;  // a save is in flight; blocks repeat clicks on eit
 let jobDraftClient = { installs: null,  service: null };  // client to preselect on a draft opened from a client profile
 let jobTab         = { installs: 'desc', service: 'desc' };  // Description / Job notes tab, kept across re-renders
 let jobNotes       = {};     // job id → its log entries (newest first), fetched when the job is opened
+let jobNoteIndex   = {};     // job id → all its notes' text, lowercased, for the list search
 let jobNotesOlder  = { installs: false, service: false };  // "Show older notes" expanded
 let jobNoteSaving  = false;  // a note insert/edit is in flight; blocks double-submits
 let jobNoteEdit    = { installs: null, service: null };  // note being edited in place: {id, orig, value}; id 'legacy' = old notes box
@@ -803,6 +804,7 @@ let complaintSaving    = false;   // a save is in flight; blocks repeat clicks
 let complaintDraftClientId = null; // client to preselect on a draft opened from a client profile
 let complaintTab       = 'desc';  // Description / Complaint notes tab, kept across re-renders
 let complaintNotes     = {};      // complaint id → its log entries (newest first)
+let complaintNoteIndex = {};      // complaint id → all its notes' text, lowercased, for the list search
 let complaintNotesOlder = false;  // "Show older notes" expanded
 let complaintNoteSaving = false;  // a note insert/edit is in flight; blocks double-submits
 let complaintNoteEdit  = null;    // note being edited in place: {id, orig, value}
@@ -843,6 +845,15 @@ async function fetchAll(makeQuery){
   }
   return all;
 }
+
+// Notes text for the list searches. The bulk index (record id → its notes, lowercased) comes
+// from the list load; a record's own log, once opened, is newer and wins.
+function indexNotes(rows, key){
+  const out = {};
+  rows.forEach(r=>{ out[r[key]] = (out[r[key]]||'') + '\n' + (r.text||'').toLowerCase(); });
+  return out;
+}
+const notesSearchText = (live, bulk) => live ? live.map(n=>n.text||'').join('\n').toLowerCase() : (bulk||'');
 function isAdmin(){ return currentProfile?.role === 'admin'; }
 function isOps(){ return currentProfile?.role === 'ops'; }
 function isAdminOrOps(){ return isAdmin() || isOps(); }
@@ -1505,13 +1516,15 @@ const canEditJob  = () => isAdminOrOps();   // techs only add notes to existing 
 async function loadJobs(){
   setSyncStatus('syncing');
   try {
-    const [jobs, clients, sites, profRes] = await Promise.all([
+    const [jobs, clients, sites, profRes, noteRows] = await Promise.all([
       fetchAll(()=>sb.from('jobs').select(JOB_SELECT).order('due_date',{ascending:true,nullsFirst:false})),
       fetchAll(()=>sb.from('clients').select('id,company').order('company')),
       fetchAll(()=>sb.from('sites').select('id,name,client_id')),
-      sb.from('profiles').select('*').order('full_name')
+      sb.from('profiles').select('*').order('full_name'),
+      fetchAll(()=>sb.from('job_notes').select('job_id,text').order('created_at')).catch(()=>null)   // search only: a failure keeps the last index
     ]);
     allJobs = jobs || [];
+    if(noteRows) jobNoteIndex = indexNotes(noteRows, 'job_id');
     if(clients) jobClients = clients;
     if(sites)   allSites   = sites;
     if(profRes?.data) allProfiles = profRes.data;
@@ -1529,7 +1542,8 @@ function renderJobsList(kind){
   const q = (document.getElementById('job-search-'+kind)||{}).value?.toLowerCase()||'';
   const f = allJobs.filter(j=>{
     if(jobKindOf(j)!==kind) return false;
-    const matchQ = !q || (j.clients?.company||'').toLowerCase().includes(q) || jobSubtitle(j).toLowerCase().includes(q);
+    const matchQ = !q || (j.clients?.company||'').toLowerCase().includes(q) || jobSubtitle(j).toLowerCase().includes(q)
+      || (j.job_notes||'').toLowerCase().includes(q) || notesSearchText(jobNotes[j.id], jobNoteIndex[j.id]).includes(q);
     return matchQ && (jobFilters[kind]==='all' || j.status===jobFilters[kind]);
   });
   const head = document.getElementById('job-count-'+kind);
@@ -2190,7 +2204,7 @@ async function loadPorting(){
 function renderPortingList(){
   const q = (document.getElementById('porting-search')||{}).value?.toLowerCase()||'';
   const f = allPorting.filter(p=>{
-    const matchQ = !q || (p.clients?.company||'').toLowerCase().includes(q) || (p.clients?.account_number||'').toLowerCase().includes(q) || p.phone_numbers.toLowerCase().includes(q);
+    const matchQ = !q || (p.clients?.company||'').toLowerCase().includes(q) || (p.clients?.account_number||'').toLowerCase().includes(q) || p.phone_numbers.toLowerCase().includes(q) || (p.notes||'').toLowerCase().includes(q);
     const matchStatus = portingFilter==='all' || p.status===portingFilter;
     return matchQ && matchStatus;
   });
@@ -2500,12 +2514,14 @@ function setComplaintFilter(val, el){
 async function loadComplaints(){
   setSyncStatus('syncing');
   try {
-    const [complaints, clients, profRes] = await Promise.all([
+    const [complaints, clients, profRes, noteRows] = await Promise.all([
       fetchAll(()=>sb.from('complaints').select(COMPLAINT_SELECT).order('open_date',{ascending:false}).order('created_at',{ascending:false})),
       fetchAll(()=>sb.from('clients').select('id,company').order('company')),
-      sb.from('profiles').select('*').order('full_name')
+      sb.from('profiles').select('*').order('full_name'),
+      fetchAll(()=>sb.from('complaint_notes').select('complaint_id,text').order('created_at')).catch(()=>null)   // search only: a failure keeps the last index
     ]);
     allComplaints = complaints || [];
+    if(noteRows) complaintNoteIndex = indexNotes(noteRows, 'complaint_id');
     if(clients) complaintClients = clients;
     if(profRes?.data) allProfiles = profRes.data;
     // Drop a selection that no longer exists (deleted elsewhere)
@@ -2526,7 +2542,8 @@ function sortComplaints(){
 function renderComplaintsList(){
   const q = (document.getElementById('complaint-search')||{}).value?.toLowerCase()||'';
   const f = allComplaints.filter(c=>{
-    const matchQ = !q || [c.clients?.company, c.clients?.account_number, c.complainant, c.tio_ref].some(v=>(v||'').toLowerCase().includes(q));
+    const matchQ = !q || [c.clients?.company, c.clients?.account_number, c.complainant, c.tio_ref].some(v=>(v||'').toLowerCase().includes(q))
+      || notesSearchText(complaintNotes[c.id], complaintNoteIndex[c.id]).includes(q);
     return matchQ && (complaintFilter==='all' || c.status===complaintFilter);
   });
   document.getElementById('complaint-count').textContent = `Complaints (${f.length})`;
