@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.33">
+<meta name="version" content="v1.0.34">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -306,6 +306,7 @@ select.fi { cursor: pointer; }
 .jn-compose { flex: none; border: 1px solid var(--border2); border-radius: var(--radius); padding: 6px 8px 8px; background: var(--surface); }
 .jn-compose:focus-within { border-color: var(--accent); }
 .port-notes-group .jn-compose textarea { flex: none; width: 100%; min-height: 52px; resize: vertical; border: none; outline: none; background: none; color: var(--text); font-family: inherit; font-size: 13px; line-height: 1.6; padding: 2px; }
+.port-notes-group .jn-compose.big textarea { min-height: 240px; }
 .jn-compose-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .jn-hint { font-size: 11px; color: var(--text3); }
 .jn-list { flex: 1; min-height: 0; overflow-y: auto; margin-top: 4px; }
@@ -808,6 +809,7 @@ let complaintNoteIndex = {};      // complaint id → all its notes' text, lower
 let complaintNotesOlder = false;  // "Show older notes" expanded
 let complaintNoteSaving = false;  // a note insert/edit is in flight; blocks double-submits
 let complaintNoteEdit  = null;    // note being edited in place: {id, orig, value}
+let noteBoxBig = (()=>{ try { return localStorage.getItem('tcrm_notebox_big')==='1'; } catch(e){ return false; } })();  // add-note box expanded, remembered per browser
 let allProfiles    = [];
 let _ignoreNextPop = false;  // prevents popstate loop when closeModal calls history.back()
 let _confirmPending = null;  // open unsaved-changes popup: {resolve, go}
@@ -1720,17 +1722,20 @@ function renderJobDetail(kind){
       </div>
       <textarea class="fi" id="f-job-desc-${kind}" placeholder="Job details..."${d}>${esc(rec?.description||'')}</textarea>
       <div class="jn-wrap" id="f-job-notes-${kind}" oninput="event.stopPropagation()" onchange="event.stopPropagation()">${draft
-        ? `<div class="jn-compose">
+        ? `<div class="jn-compose${noteBoxBig?' big':''}">
           <textarea id="jn-input-${kind}" rows="2" placeholder="Add a note: what's been agreed, access details, anything to follow up…"></textarea>
-          <div class="jn-compose-bar"><span class="jn-hint">Saved as the first note when you log the job</span></div>
+          <div class="jn-compose-bar"><span class="jn-hint">Saved as the first note when you log the job</span>${noteBoxBtn()}</div>
         </div>`
-        : `<div class="jn-compose">
+        : `<div class="jn-compose${noteBoxBig?' big':''}">
           <textarea id="jn-input-${kind}" rows="2" placeholder="Add a note: progress update, follow-up, call outcome…"
             oninput="updateJobSaveBar('${kind}')"
             onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();addJobNote('${kind}')}"></textarea>
           <div class="jn-compose-bar">
             <span class="jn-hint">${ro ? 'Ctrl+Enter to add · saves straight away' : 'Ctrl+Enter to add · or it goes in with Save changes'}</span>
-            <button class="btn btn-sm" id="jn-add-${kind}" onclick="addJobNote('${kind}')"><i class="ti ti-plus"></i> Add note</button>
+            <div style="display:flex;gap:6px">
+              ${noteBoxBtn()}
+              <button class="btn btn-sm" id="jn-add-${kind}" onclick="addJobNote('${kind}')"><i class="ti ti-plus"></i> Add note</button>
+            </div>
           </div>
         </div>
         <div class="jn-list" id="jn-list-${kind}"><div class="jn-empty">Loading notes…</div></div>`}
@@ -1770,6 +1775,23 @@ function switchJobDetailTab(kind, tab){
 // as the oldest entry so nothing written before the log existed goes missing.
 const JN_VISIBLE = 3;   // newest entries shown before "Show older notes"
 const jobNotesSeq = {};  // job id → latest fetch number, so a slow older fetch can't overwrite a newer one
+
+// Expand / shrink the add-note box (jobs and complaints share the setting)
+const noteBoxIcon = () => `ti ti-arrows-${noteBoxBig ? 'minimize' : 'maximize'}`;
+const noteBoxTip  = () => noteBoxBig ? 'Shrink the note box' : 'Expand the note box';
+const noteBoxBtn  = () => `<button class="btn btn-sm jn-size" title="${noteBoxTip()}" onclick="toggleNoteBox(this)"><i class="${noteBoxIcon()}"></i></button>`;
+function toggleNoteBox(btn){
+  noteBoxBig = !noteBoxBig;
+  try { localStorage.setItem('tcrm_notebox_big', noteBoxBig ? '1' : ''); } catch(e){}
+  // Every box, so one on a page that isn't showing doesn't go stale
+  document.querySelectorAll('.jn-compose').forEach(box=>{
+    box.classList.toggle('big', noteBoxBig);
+    const ta = box.querySelector('textarea');
+    if(ta) ta.style.height = '';   // drop any size dragged with the corner handle
+  });
+  document.querySelectorAll('.jn-size').forEach(b=>{ b.title = noteBoxTip(); b.firstElementChild.className = noteBoxIcon(); });
+  btn.closest('.jn-compose')?.querySelector('textarea')?.focus();
+}
 
 async function loadJobNotes(kind, jobId){
   const seq = jobNotesSeq[jobId] = (jobNotesSeq[jobId]||0) + 1;
@@ -2682,17 +2704,20 @@ function renderComplaintDetail(){
       </div>
       <textarea class="fi" id="f-cmp-desc" placeholder="What's the complaint about?">${esc(rec?.description||'')}</textarea>
       <div class="jn-wrap" id="f-cmp-notes" oninput="event.stopPropagation()" onchange="event.stopPropagation()">${draft
-        ? `<div class="jn-compose">
+        ? `<div class="jn-compose${noteBoxBig?' big':''}">
           <textarea id="cn-input" rows="2" placeholder="Add a note: how the complaint came in, what's been agreed, next steps…"></textarea>
-          <div class="jn-compose-bar"><span class="jn-hint">Saved as the first note when you log the complaint</span></div>
+          <div class="jn-compose-bar"><span class="jn-hint">Saved as the first note when you log the complaint</span>${noteBoxBtn()}</div>
         </div>`
-        : `<div class="jn-compose">
+        : `<div class="jn-compose${noteBoxBig?' big':''}">
           <textarea id="cn-input" rows="2" placeholder="Add a note: call outcome, TIO correspondence, resolution offered…"
             oninput="updateComplaintSaveBar()"
             onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();addComplaintNote()}"></textarea>
           <div class="jn-compose-bar">
             <span class="jn-hint">Ctrl+Enter to add · or it goes in with Save changes</span>
-            <button class="btn btn-sm" id="cn-add" onclick="addComplaintNote()"><i class="ti ti-plus"></i> Add note</button>
+            <div style="display:flex;gap:6px">
+              ${noteBoxBtn()}
+              <button class="btn btn-sm" id="cn-add" onclick="addComplaintNote()"><i class="ti ti-plus"></i> Add note</button>
+            </div>
           </div>
         </div>
         <div class="jn-list" id="cn-list"><div class="jn-empty">Loading notes…</div></div>`}
