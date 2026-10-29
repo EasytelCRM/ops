@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.38">
+<meta name="version" content="v1.0.39">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -153,6 +153,8 @@ tr.clickable:hover td { background: var(--bg); }
 .badge-gray { background: var(--bg); color: var(--text2); border: 1px solid var(--border); }
 .users-sec td { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; background: var(--bg); }
 .user-off { opacity: .6; }
+#users-tbody .user-rename { opacity: .5; }
+#users-tbody tr:hover .user-rename, #users-tbody .user-rename:focus-visible { opacity: 1; }
 
 /* ============================================================
    FORMS
@@ -342,6 +344,7 @@ select.fi { cursor: pointer; }
 #client-tab-notes .jn-av { width: 32px; height: 32px; font-size: 11px; }
 #client-tab-notes .jn-meta { font-size: 13px; }
 #client-tab-notes .jn-when, #client-tab-notes .jn-edited { font-size: 12px; }
+#client-tab-notes .jn-author { color: var(--text3); font-size: 12px; font-weight: 400; }
 #client-tab-notes .jn-text { font-size: 14px; margin-top: 4px; }
 #client-tab-notes .jn-text.clamp { -webkit-line-clamp: 6; }
 .cln-title-in { width: 100%; border: none; border-bottom: 1px solid var(--border); outline: none; background: none; color: var(--text); font-family: inherit; font-size: 22px; font-weight: 600; padding: 4px 2px 6px; margin-bottom: 4px; }
@@ -3165,7 +3168,7 @@ function userRowHTML(p){
     : `<button class="btn btn-sm btn-primary" onclick="setUserActive('${p.id}',true)"><i class="ti ti-user-check"></i> ${p.deactivated_at?'Reactivate':'Activate'}</button>`;
   return `
       <tr${!live && p.deactivated_at ? ' class="user-off"' : ''}>
-        <td><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="user-avatar" style="width:28px;height:28px;font-size:10px">${initials(p.full_name)}</div>${esc(p.full_name)} ${status}</div></td>
+        <td><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="user-avatar" style="width:28px;height:28px;font-size:10px">${initials(p.full_name)}</div><span id="user-name-${p.id}" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${userNameHTML(p)}</span> ${status}</div></td>
         <td style="color:var(--text2)">${esc(p.email)}</td>
         <td><span class="badge ${p.role==='admin'?'badge-blue':p.role==='ops'?'badge-amber':'badge-gray'}">${p.role==='admin'?'Admin':p.role==='ops'?'Ops':'Tech'}</span></td>
         <td style="font-size:12px;color:var(--text2)">${fmtDate(p.created_at)}</td>
@@ -3178,6 +3181,48 @@ function userRowHTML(p){
             </select>${statusBtn}</div>` : '<span style="font-size:12px;color:var(--text3)">You</span>'}
         </td>
       </tr>`;
+}
+
+const userNameHTML = p => `${esc(p.full_name)}<button class="jn-act user-rename" title="Change display name" onclick="startUserRename('${p.id}')"><i class="ti ti-pencil"></i></button>`;
+
+function startUserRename(id){
+  const p = allProfiles.find(x=>x.id===id);
+  const cell = document.getElementById('user-name-'+id);
+  if(!p || !cell) return;
+  cell.innerHTML = `<input class="fi" id="user-rename-${id}" maxlength="60" autocomplete="off" value="${esc(p.full_name)}" style="width:220px;padding:4px 8px;font-size:13px"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();saveUserRename('${id}')}else if(event.key==='Escape'){cancelUserRename('${id}')}">
+    <button class="btn btn-sm btn-primary" onclick="saveUserRename('${id}')"><i class="ti ti-check"></i> Save</button>
+    <button class="btn btn-sm" onclick="cancelUserRename('${id}')">Cancel</button>`;
+  const input = document.getElementById('user-rename-'+id);
+  input.focus(); input.select();
+}
+
+function cancelUserRename(id){
+  const p = allProfiles.find(x=>x.id===id);
+  const cell = document.getElementById('user-name-'+id);
+  if(p && cell) cell.innerHTML = userNameHTML(p);
+}
+
+// Through set_display_name(), which only admins may call and which changes nothing but the name
+async function saveUserRename(id){
+  const input = document.getElementById('user-rename-'+id);
+  const p = allProfiles.find(x=>x.id===id);
+  if(!input || !p) return;
+  const name = input.value.trim().replace(/\s+/g,' ');
+  if(!name){ toast('Enter a name','warn'); input.focus(); return; }
+  if(name === p.full_name){ cancelUserRename(id); return; }
+  setSyncStatus('syncing');
+  try {
+    const { error } = await sb.rpc('set_display_name', { target: id, new_name: name });
+    if(error) throw error;
+    if(id === currentUser?.id){
+      currentProfile.full_name = name;
+      document.getElementById('user-name').textContent = name;
+      document.getElementById('user-avatar').textContent = initials(name);
+    }
+    toast('Name updated');
+    await loadUsers();
+  } catch(e){ setSyncStatus('error'); toast('Name not changed: '+e.message,'error'); }
 }
 
 // Activate, reactivate or deactivate via set_user_active(), which also blocks/unblocks sign-in,
