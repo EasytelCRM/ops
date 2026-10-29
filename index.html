@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.36">
+<meta name="version" content="v1.0.37">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -344,6 +344,10 @@ select.fi { cursor: pointer; }
 #client-tab-notes .jn-when, #client-tab-notes .jn-edited { font-size: 12px; }
 #client-tab-notes .jn-text { font-size: 14px; margin-top: 4px; }
 #client-tab-notes .jn-text.clamp { -webkit-line-clamp: 6; }
+.cln-title-in { width: 100%; border: none; border-bottom: 1px solid var(--border); outline: none; background: none; color: var(--text); font-family: inherit; font-size: 15px; font-weight: 600; padding: 4px 2px 6px; margin-bottom: 4px; }
+.cln-title-in::placeholder { font-weight: 400; color: var(--text3); }
+.cln-edit-title { font-weight: 600; margin-bottom: 6px; }
+.jn-title { font-size: 16px; font-weight: 600; line-height: 1.35; margin-bottom: 3px; word-break: break-word; }
 .port-savebar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1.15rem; padding: 0.7rem 0.9rem; border-radius: var(--radius); background: var(--surface2); border: 1px solid var(--border); }
 .port-savebar.dirty { background: var(--amber-light); border-color: var(--amber); }
 .port-savemsg { font-size: 12.5px; color: var(--text3); }
@@ -589,6 +593,8 @@ select.fi { cursor: pointer; }
               </div>
               <div class="jn-wrap" oninput="event.stopPropagation()" onchange="event.stopPropagation()">
                 <div class="jn-compose" id="cln-compose" style="display:none">
+                  <input id="cln-title" class="cln-title-in" maxlength="120" autocomplete="off" placeholder="Heading, e.g. NBN outage: credit requested"
+                    onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();addClientNote()}else if(event.key==='Enter'){event.preventDefault();document.getElementById('cln-input').focus()}else if(event.key==='Escape'){cancelClientNote()}">
                   <textarea id="cln-input" rows="2" placeholder="Add a note: call outcome, account change, anything to follow up…"
                     onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();addClientNote()}else if(event.key==='Escape'){cancelClientNote()}"></textarea>
                   <div class="jn-compose-bar">
@@ -968,7 +974,7 @@ function hasUnsavedWork(){
   if(portingDirty || portingDraft || complaintDirty || complaintDraft) return true;
   if(jobNoteEdit.installs || jobNoteEdit.service || complaintNoteEdit || clientNoteEdit) return true;
   if(jobSaving || jobNoteSaving || portingSaving || complaintSaving || complaintNoteSaving || clientNoteSaving) return true;
-  return [...document.querySelectorAll('#jn-input-installs, #jn-input-service, #cn-input, #cln-input')].some(t=>t.value.trim());
+  return [...document.querySelectorAll('#jn-input-installs, #jn-input-service, #cn-input, #cln-input, #cln-title')].some(t=>t.value.trim());
 }
 
 async function runUpdateCheck(reloadIfSafe){
@@ -1251,6 +1257,7 @@ function openClientProfile(id, _push=true){
   // A different client starts the notes tab afresh; a refresh of the same one keeps what's typed
   if(id !== activeClientId){
     document.getElementById('cln-input').value = '';
+    document.getElementById('cln-title').value = '';
     showClientNoteBox(false);
     clientNoteEdit = null;
     clientNotesOlder = false;
@@ -3495,6 +3502,8 @@ function renderClientNotes(){
   const edit = clientNoteEdit;
   const body = (id, text) => edit?.id===id
     ? `<div class="jn-editor">
+        <input id="cln-edit-title" class="fi cln-edit-title" maxlength="120" autocomplete="off" placeholder="Heading" value="${esc(edit.title)}"
+          onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();saveClientNoteEdit()}else if(event.key==='Enter'){event.preventDefault();document.getElementById('cln-edit').focus()}else if(event.key==='Escape'){cancelClientNoteEdit()}">
         <textarea id="cln-edit" class="fi" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();saveClientNoteEdit()}else if(event.key==='Escape'){cancelClientNoteEdit()}">${esc(edit.value)}</textarea>
         <div class="jn-editor-bar">
           <span class="jn-hint">Ctrl+Enter to save · Esc to cancel</span>
@@ -3511,6 +3520,7 @@ function renderClientNotes(){
     return `<div class="jn-entry">
       <div class="jn-av">${esc(initials(n.profiles?.full_name))}</div>
       <div class="jn-body">
+        ${n.title && edit?.id!==n.id ? `<div class="jn-title">${esc(n.title)}</div>` : ''}
         <div class="jn-meta">
           <span class="jn-author">${esc(n.profiles?.full_name||'Unknown')}</span>
           <span class="jn-when">${fmtNoteWhen(n.created_at)}</span>
@@ -3551,11 +3561,14 @@ function fitClientNoteClamps(){
 function captureClientNoteEdit(){
   const ta = document.getElementById('cln-edit');
   if(ta && clientNoteEdit) clientNoteEdit.value = ta.value;
+  const ti = document.getElementById('cln-edit-title');
+  if(ti && clientNoteEdit) clientNoteEdit.title = ti.value;
 }
 
 function startClientNoteEdit(id){
-  const text = (clientNotes[activeClientId]||[]).find(n=>n.id===id)?.text ?? '';
-  clientNoteEdit = { id, orig: text, value: text };
+  const note = (clientNotes[activeClientId]||[]).find(n=>n.id===id);
+  const text = note?.text ?? '', title = note?.title ?? '';
+  clientNoteEdit = { id, orig: text, value: text, origTitle: title, title };
   renderClientNotes();
   const ta = document.getElementById('cln-edit');
   if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
@@ -3573,16 +3586,19 @@ async function saveClientNoteEdit(){
   const clientId = activeClientId;
   if(!ed || !clientId) return;
   const text = ed.value.trim();
-  if(text === ed.orig.trim()){ cancelClientNoteEdit(); return; }
+  const title = ed.title.trim();
+  if(text === ed.orig.trim() && title === ed.origTitle.trim()){ cancelClientNoteEdit(); return; }
+  // Notes from before headings existed may stay without one; a heading once set can't be blanked
+  if(!title && ed.origTitle.trim()){ toast("A note needs a heading.",'warn'); document.getElementById('cln-edit-title')?.focus(); return; }
   if(!text){ toast(isAdmin() ? "A note can't be empty. Delete it instead." : "A note can't be empty.",'warn'); return; }
   clientNoteSaving = true;
   setSyncStatus('syncing');
   try {
     // RLS silently skips a refused update, so ask for the row back to tell the two apart
-    const { data, error } = await sb.from('client_notes').update({ text }).eq('id',ed.id).select('id,text,updated_at,updated_by');
+    const { data, error } = await sb.from('client_notes').update({ text, title: title || null }).eq('id',ed.id).select('id,text,title,updated_at,updated_by');
     if(error) throw error;
     if(!data?.length) throw new Error('you can only edit your own notes');
-    await logAudit('updated','client_notes',ed.id,{ client_id: clientId, text: ed.orig },{ client_id: clientId, text });
+    await logAudit('updated','client_notes',ed.id,{ client_id: clientId, title: ed.origTitle || null, text: ed.orig },{ client_id: clientId, title: title || null, text });
     clientNotes[clientId] = (clientNotes[clientId]||[]).map(n=>n.id===ed.id ? { ...n, ...data[0] } : n);
     if(activeClientId===clientId){ clientNoteEdit = null; renderClientNotes(); }
     loadClientNotes(clientId);
@@ -3600,15 +3616,17 @@ function showClientNoteBox(open){
 
 function openClientNoteBox(){
   showClientNoteBox(true);
-  document.getElementById('cln-input').focus();
+  document.getElementById('cln-title').focus();
 }
 
 function cancelClientNote(){
   if(clientNoteSaving) return;
   const input = document.getElementById('cln-input');
-  if(input.value.trim() && !confirm('Discard this note?')) return;
+  const titleIn = document.getElementById('cln-title');
+  if((input.value.trim() || titleIn.value.trim()) && !confirm('Discard this note?')) return;
   input.value = '';
   input.style.height = '';
+  titleIn.value = '';
   showClientNoteBox(false);
 }
 
@@ -3616,22 +3634,26 @@ async function addClientNote(){
   if(clientNoteSaving) return;
   const clientId = activeClientId;
   const input = document.getElementById('cln-input');
-  if(!clientId || !input) return;
+  const titleIn = document.getElementById('cln-title');
+  if(!clientId || !input || !titleIn) return;
+  const title = titleIn.value.trim();
   const text = input.value.trim();
+  if(!title){ toast('Give the note a heading','warn'); titleIn.focus(); return; }
   if(!text){ toast('Type a note first','warn'); input.focus(); return; }
   clientNoteSaving = true;
   const btn = document.getElementById('cln-add');
   if(btn){ btn.disabled = true; btn.style.opacity = '0.5'; }
   setSyncStatus('syncing');
   try {
-    const { data, error } = await sb.from('client_notes').insert({ client_id: clientId, text, created_by: currentUser.id })
+    const { data, error } = await sb.from('client_notes').insert({ client_id: clientId, title, text, created_by: currentUser.id })
       .select('*,profiles(full_name)').single();
     if(error) throw error;
-    await logAudit('created','client_notes',data.id,{},{ client_id: clientId, text });
+    await logAudit('created','client_notes',data.id,{},{ client_id: clientId, title, text });
     clientNotes[clientId] = [data, ...(clientNotes[clientId]||[])];
     if(activeClientId===clientId){
       input.value = '';
       input.style.height = '';
+      titleIn.value = '';
       showClientNoteBox(false);
       renderClientNotes();
     }
@@ -3655,7 +3677,7 @@ async function deleteClientNote(id){
     const { data, error } = await sb.from('client_notes').delete().eq('id',id).select('id');
     if(error) throw error;
     if(!data?.length) throw new Error('only admins can delete notes');
-    await logAudit('deleted','client_notes',id,{ client_id: clientId, text: note?.text },{});
+    await logAudit('deleted','client_notes',id,{ client_id: clientId, title: note?.title || null, text: note?.text },{});
     clientNotes[clientId] = (clientNotes[clientId]||[]).filter(n=>n.id!==id);
     renderClientNotes();
     loadClientNotes(clientId);
