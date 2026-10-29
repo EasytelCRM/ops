@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.35">
+<meta name="version" content="v1.0.36">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -334,6 +334,16 @@ select.fi { cursor: pointer; }
 .jn-legacy .jn-text { color: var(--text2); }
 .jn-older { text-align: center; padding: 8px 0 2px; }
 .jn-empty { font-size: 13px; color: var(--text3); text-align: center; padding: 1.5rem 0; }
+/* Client notes: the log is the tab's main content, so it reads larger and runs with the page */
+#client-tab-notes .jn-wrap { min-height: 0; }
+#client-tab-notes .jn-compose { margin-bottom: 10px; }
+#client-tab-notes .jn-list { overflow: visible; margin-top: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 14px; }
+#client-tab-notes .jn-entry { gap: 12px; padding: 14px 2px; }
+#client-tab-notes .jn-av { width: 32px; height: 32px; font-size: 11px; }
+#client-tab-notes .jn-meta { font-size: 13px; }
+#client-tab-notes .jn-when, #client-tab-notes .jn-edited { font-size: 12px; }
+#client-tab-notes .jn-text { font-size: 14px; margin-top: 4px; }
+#client-tab-notes .jn-text.clamp { -webkit-line-clamp: 6; }
 .port-savebar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1.15rem; padding: 0.7rem 0.9rem; border-radius: var(--radius); background: var(--surface2); border: 1px solid var(--border); }
 .port-savebar.dirty { background: var(--amber-light); border-color: var(--amber); }
 .port-savemsg { font-size: 12.5px; color: var(--text3); }
@@ -574,15 +584,19 @@ select.fi { cursor: pointer; }
 
             <!-- Notes tab -->
             <div id="client-tab-notes" class="port-notes-group">
+              <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+                <button class="btn btn-primary btn-sm" id="cln-open" onclick="openClientNoteBox()"><i class="ti ti-plus"></i> Add note</button>
+              </div>
               <div class="jn-wrap" oninput="event.stopPropagation()" onchange="event.stopPropagation()">
-                <div class="jn-compose">
+                <div class="jn-compose" id="cln-compose" style="display:none">
                   <textarea id="cln-input" rows="2" placeholder="Add a note: call outcome, account change, anything to follow up…"
-                    onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();addClientNote()}"></textarea>
+                    onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();addClientNote()}else if(event.key==='Escape'){cancelClientNote()}"></textarea>
                   <div class="jn-compose-bar">
-                    <span class="jn-hint">Ctrl+Enter to add · saves straight away</span>
+                    <span class="jn-hint">Ctrl+Enter to add · Esc to cancel</span>
                     <div style="display:flex;gap:6px">
                       <span id="cln-size"></span>
-                      <button class="btn btn-sm" id="cln-add" onclick="addClientNote()"><i class="ti ti-plus"></i> Add note</button>
+                      <button class="btn btn-sm" onclick="cancelClientNote()">Cancel</button>
+                      <button class="btn btn-sm btn-primary" id="cln-add" onclick="addClientNote()"><i class="ti ti-plus"></i> Add note</button>
                     </div>
                   </div>
                 </div>
@@ -1237,6 +1251,7 @@ function openClientProfile(id, _push=true){
   // A different client starts the notes tab afresh; a refresh of the same one keeps what's typed
   if(id !== activeClientId){
     document.getElementById('cln-input').value = '';
+    showClientNoteBox(false);
     clientNoteEdit = null;
     clientNotesOlder = false;
     if(!clientNotes[id]){
@@ -3453,6 +3468,7 @@ async function deleteClient(id){
 // Same append-only log as job notes (shares its styles, JN_VISIBLE and fmtNoteWhen) on the
 // client profile's Notes tab. The add box is static markup, so a refresh keeps what's typed.
 const clientNotesSeq = {};  // client id → latest fetch number, so a slow older fetch can't overwrite a newer one
+const CLN_VISIBLE = 10;     // newest client notes shown before "Show older notes"
 
 async function loadClientNotes(clientId){
   const seq = clientNotesSeq[clientId] = (clientNotesSeq[clientId]||0) + 1;
@@ -3508,13 +3524,13 @@ function renderClientNotes(){
       </div>
     </div>`;
   });
-  const older = entries.length - JN_VISIBLE;
+  const older = entries.length - CLN_VISIBLE;
   // Keep the note being edited on screen even if it's one of the older ones
   const editIdx = edit ? notes.findIndex(n=>n.id===edit.id) : -1;
-  const showAll = clientNotesOlder || older <= 0 || editIdx >= JN_VISIBLE;
+  const showAll = clientNotesOlder || older <= 0 || editIdx >= CLN_VISIBLE;
   list.innerHTML = !entries.length
-    ? `<div class="jn-empty">No notes yet. Add the first one above.</div>`
-    : entries.slice(0, showAll ? entries.length : JN_VISIBLE).join('') + (older > 0
+    ? `<div class="jn-empty">No notes yet. Click Add note to write the first one.</div>`
+    : entries.slice(0, showAll ? entries.length : CLN_VISIBLE).join('') + (older > 0
       ? `<div class="jn-older"><button class="btn btn-sm" onclick="clientNotesOlder=!clientNotesOlder;renderClientNotes()">
           <i class="ti ti-chevron-${showAll?'up':'down'}"></i> ${showAll ? 'Hide older notes' : `Show ${older} older note${older===1?'':'s'}`}</button></div>`
       : '');
@@ -3576,6 +3592,26 @@ async function saveClientNoteEdit(){
   finally { clientNoteSaving = false; }
 }
 
+// The add box stays hidden until "Add note" is clicked, so the notes themselves get the room
+function showClientNoteBox(open){
+  document.getElementById('cln-compose').style.display = open ? '' : 'none';
+  document.getElementById('cln-open').style.display = open ? 'none' : '';
+}
+
+function openClientNoteBox(){
+  showClientNoteBox(true);
+  document.getElementById('cln-input').focus();
+}
+
+function cancelClientNote(){
+  if(clientNoteSaving) return;
+  const input = document.getElementById('cln-input');
+  if(input.value.trim() && !confirm('Discard this note?')) return;
+  input.value = '';
+  input.style.height = '';
+  showClientNoteBox(false);
+}
+
 async function addClientNote(){
   if(clientNoteSaving) return;
   const clientId = activeClientId;
@@ -3595,6 +3631,8 @@ async function addClientNote(){
     clientNotes[clientId] = [data, ...(clientNotes[clientId]||[])];
     if(activeClientId===clientId){
       input.value = '';
+      input.style.height = '';
+      showClientNoteBox(false);
       renderClientNotes();
     }
     loadClientNotes(clientId);   // supersedes any fetch still in flight, which wouldn't include this note
