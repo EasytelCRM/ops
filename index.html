@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.40">
+<meta name="version" content="v1.0.41">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -280,6 +280,9 @@ select.fi { cursor: pointer; }
 .port-tid { font-size: 13px; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
 .port-row.sel .port-tid { color: var(--accent-text); }
 .port-co { font-size: 13px; color: var(--text2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.port-row-mid { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.port-row-mid .port-co { min-width: 0; }
+.port-row-mid .badge { flex-shrink: 0; margin-top: 2px; }
 .port-row-bot { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 3px; }
 .port-when { font-size: 11px; color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .port-when.due { color: var(--amber); font-weight: 500; }
@@ -1644,8 +1647,8 @@ function renderJobsList(kind){
 function jobRowHTML(j, kind){
   const due = j.status==='Pending' && daysOut(j.due_date) <= 1;
   return `<button class="port-row${j.id===jobSel[kind]?' sel':''}" onclick="selectJob('${kind}','${j.id}')">
-    <div class="port-row-top"><span class="port-tid">${esc(j.clients?.company||'Unknown')}${safeTicketUrl(j.ticket_url)?' <i class="ti ti-link" title="Has ticket link"></i>':''}</span><span>${jobNoNotes(j)?'<span class="badge badge-purple"><i class="ti ti-notes-off"></i> No Notes</span> ':''}${statusBadge(j.status)}</span></div>
-    <div class="port-co">${esc(jobSubtitle(j))}</div>
+    <div class="port-row-top"><span class="port-tid">${esc(j.clients?.company||'Unknown')}${safeTicketUrl(j.ticket_url)?' <i class="ti ti-link" title="Has ticket link"></i>':''}</span>${statusBadge(j.status)}</div>
+    <div class="port-row-mid"><div class="port-co">${esc(jobSubtitle(j))}</div>${jobNoNotes(j)?'<span class="badge badge-purple"><i class="ti ti-notes-off"></i> No Notes</span>':''}</div>
     <div class="port-row-bot">
       <span class="port-when${due?' due':''}">${fmtDate(j.due_date)}</span>
       <span class="port-who"><i class="ti ti-user"></i> ${esc(j.profiles?.full_name||'Unassigned')}</span>
