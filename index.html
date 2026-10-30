@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.44">
+<meta name="version" content="v1.0.45">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -118,6 +118,30 @@ nav { padding: 0.75rem 0.5rem; overflow-y: auto; flex: 1; }
 .stat-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
 .stat-value { font-size: 26px; font-weight: 300; letter-spacing: -1px; }
 .stat-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.stat-sub.up { color: var(--green); }
+.stat-sub.down { color: var(--red); }
+
+/* ── Sales dashboard ── */
+.dash-kpis { grid-template-columns: repeat(3,1fr); }
+.dash-chart { display: flex; align-items: flex-end; gap: 6px; height: 170px; }
+.dash-bar-col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 3px; }
+.dash-bar-n { font-size: 11px; color: var(--text2); }
+.dash-bar { width: 100%; max-width: 44px; min-height: 2px; background: var(--border2); border-radius: 3px 3px 0 0; }
+.dash-bar.hi { background: var(--accent); }
+.dash-bar-m { font-size: 11px; color: var(--text3); }
+.dash-split { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.4fr); gap: 1rem; margin-bottom: 1rem; }
+.dash-split .card { margin-bottom: 0; }
+.dash-svc { margin-bottom: 14px; }
+.dash-svc:last-child { margin-bottom: 0; }
+.dash-svc-top { display: flex; justify-content: space-between; font-size: 13px; }
+.dash-svc-top span:last-child { color: var(--text2); }
+.dash-svc-track { height: 6px; background: var(--bg); border-radius: 3px; margin-top: 5px; overflow: hidden; }
+.dash-svc-fill { height: 100%; background: var(--accent); }
+.dash-deal { display: flex; align-items: center; gap: 10px; padding: 9px 1.25rem; border-bottom: 1px solid var(--border); font-size: 13px; cursor: pointer; }
+.dash-deal:last-child { border-bottom: none; }
+.dash-deal:hover { background: var(--bg); }
+.dash-deal-co { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dash-deal-date { font-size: 12px; color: var(--text3); white-space: nowrap; }
 
 /* ============================================================
    CARDS
@@ -404,6 +428,7 @@ input.fi.cln-edit-title { font-size: 22px; font-weight: 600; margin-bottom: 6px;
   .sidebar-backdrop.visible { display: block; }
   .topbar-menu { display: flex; }
   .stats-grid { grid-template-columns: repeat(2,1fr); }
+  .dash-split { grid-template-columns: 1fr; }
   .profile-layout { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
   .modal-2col { grid-template-columns: 1fr; }
@@ -412,6 +437,7 @@ input.fi.cln-edit-title { font-size: 22px; font-weight: 600; margin-bottom: 6px;
 }
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: 1fr 1fr; }
+  .dash-kpis { grid-template-columns: 1fr; }
   .modal { padding: 1.25rem; }
 }
 
@@ -547,6 +573,31 @@ input.fi.cln-edit-title { font-size: 22px; font-weight: 600; margin-bottom: 6px;
            DASHBOARD
       ══════════════════════════════════════════ -->
       <div class="page active" id="page-dashboard">
+        <div class="filter-bar" id="dash-periods">
+          <button class="filter-btn active" data-p="month" onclick="setDashPeriod('month')">This month</button>
+          <button class="filter-btn" data-p="last" onclick="setDashPeriod('last')">Last month</button>
+          <button class="filter-btn" data-p="quarter" onclick="setDashPeriod('quarter')">This quarter</button>
+          <button class="filter-btn" data-p="fy" onclick="setDashPeriod('fy')">Financial year to date</button>
+        </div>
+        <div class="stats-grid dash-kpis">
+          <div class="stat-card"><div class="stat-label" id="dash-won-label">Deals won</div><div class="stat-value" id="dash-won">—</div><div class="stat-sub" id="dash-won-sub"></div></div>
+          <div class="stat-card"><div class="stat-label">In progress</div><div class="stat-value" id="dash-open">—</div><div class="stat-sub" id="dash-open-sub"></div></div>
+          <div class="stat-card"><div class="stat-label">Financial year to date</div><div class="stat-value" id="dash-fy">—</div><div class="stat-sub" id="dash-fy-sub"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Deals per month</h3><span style="font-size:12px;color:var(--text3)">Last 12 months</span></div>
+          <div class="card-body"><div class="dash-chart" id="dash-chart"></div></div>
+        </div>
+        <div class="dash-split">
+          <div class="card">
+            <div class="card-head"><h3>Services sold</h3><span style="font-size:12px;color:var(--text3)" id="dash-svc-period"></span></div>
+            <div class="card-body" id="dash-svc"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Recent deals</h3><button class="btn btn-sm" onclick="showPage('installs',document.querySelector('[data-page=installs]'))">View all</button></div>
+            <div id="dash-recent"></div>
+          </div>
+        </div>
         <div class="card">
           <div class="card-head"><h3 style="color:#c8a03c">Pending Installs</h3><button class="btn btn-sm" onclick="showPage('installs',document.querySelector('[data-page=installs]'))">View all</button></div>
           <div id="dash-installs-pending" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="empty" style="grid-column:1/-1"><i class="ti ti-refresh" style="animation:spin 1s linear infinite"></i><p>Loading...</p></div></div>
@@ -1326,21 +1377,124 @@ function toggleNoNotesFilter(){
 // ============================================================
 //  DASHBOARD
 // ============================================================
+// A deal is a New Install, won on its approval date. Installs logged before approval dates
+// were recorded fall back to the day they were created.
+let dashDeals  = [];
+let dashPeriod = 'month';
+// Deals were only logged in the CRM from May 2026, so earlier periods would compare against near-empty months
+const DASH_DEALS_FROM = '2026-05-01';
+const dashYmd   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const dealDate  = j => j.approval_date || (j.created_at ? dashYmd(new Date(j.created_at)) : '');
+const dashMonth = (d, fmt='long') => d.toLocaleDateString('en-AU',{month:fmt});
+// The same point in month m: day d kept inside that month (31 Oct → 30 Sep), or its last day
+// when today is the end of a month (30 Nov → 31 Oct)
+const dashDay   = (y, m, d, monthEnd) => new Date(y, m, monthEnd ? new Date(y, m+1, 0).getDate() : Math.min(d, new Date(y, m+1, 0).getDate()));
+
+// The selected period and the one it's compared with. A period still under way is compared
+// with the same point in the previous one, so a half-finished quarter doesn't always look down.
+function dashRange(p, today){
+  const y = today.getFullYear(), m = today.getMonth(), d = today.getDate();
+  const end = d === new Date(y, m+1, 0).getDate();
+  if(p==='last') return { from:new Date(y,m-1,1), to:new Date(y,m,0), prevFrom:new Date(y,m-2,1), prevTo:new Date(y,m-1,0),
+    label:dashMonth(new Date(y,m-1,1)), prevLabel:dashMonth(new Date(y,m-2,1)) };
+  if(p==='quarter'){
+    const qm = m - m%3, from = new Date(y,qm,1);
+    return { from, to:today, prevFrom:new Date(y,qm-3,1), prevTo:dashDay(y,m-3,d,end), label:`${dashMonth(from,'short')} to ${dashMonth(new Date(y,qm+2,1),'short')} quarter`, prevLabel:'this point last quarter' };
+  }
+  if(p==='fy'){
+    const fy = m >= 6 ? y : y-1;
+    return { from:new Date(fy,6,1), to:today, prevFrom:new Date(fy-1,6,1), prevTo:dashDay(y-1,m,d,end),
+      label:`FY ${fy}–${String(fy+1).slice(2)}`, prevLabel:'this point last year' };
+  }
+  return { from:new Date(y,m,1), to:today, prevFrom:new Date(y,m-1,1), prevTo:dashDay(y,m-1,d,end),
+    label:dashMonth(today), prevLabel:`this point in ${dashMonth(new Date(y,m-1,1))}` };
+}
+
+function dashCount(from, to){
+  const a = dashYmd(from), b = dashYmd(to);
+  return dashDeals.filter(j=>{ const dd = dealDate(j); return dd >= a && dd <= b; });
+}
+
+function dashCompare(n, prev, prevLabel, prevFrom){
+  if(dashYmd(prevFrom) < DASH_DEALS_FROM) return { text:'Not enough history to compare', cls:'' };
+  const diff = n - prev.length;
+  if(!diff) return { text:`Same as ${prevLabel} (${prev.length})`, cls:'' };
+  return { text:`${diff>0?'Up':'Down'} ${Math.abs(diff)} on ${prevLabel} (${prev.length})`, cls:diff>0?'up':'down' };
+}
+
+function setDashPeriod(p){
+  dashPeriod = p;
+  renderDashSales();
+}
+
+function renderDashSales(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  document.querySelectorAll('#dash-periods .filter-btn').forEach(b=>b.classList.toggle('active', b.dataset.p===dashPeriod));
+  const r    = dashRange(dashPeriod, today);
+  const won  = dashCount(r.from, r.to);
+  const cmp  = dashCompare(won.length, dashCount(r.prevFrom, r.prevTo), r.prevLabel, r.prevFrom);
+  document.getElementById('dash-won-label').textContent = `Deals won · ${r.label}`;
+  document.getElementById('dash-won').textContent       = won.length;
+  const sub = document.getElementById('dash-won-sub');
+  sub.textContent = cmp.text;
+  sub.className   = 'stat-sub' + (cmp.cls ? ' '+cmp.cls : '');
+
+  const pending    = dashDeals.filter(j=>j.status==='Pending').length;
+  const incomplete = dashDeals.filter(j=>j.status==='Incomplete').length;
+  document.getElementById('dash-open').textContent     = pending + incomplete;
+  document.getElementById('dash-open-sub').textContent = `${pending} pending · ${incomplete} incomplete`;
+  const fy = dashRange('fy', today);
+  document.getElementById('dash-fy').textContent     = dashCount(fy.from, fy.to).length;
+  document.getElementById('dash-fy-sub').textContent = `Since ${fmtDate(dashYmd(fy.from))}`;
+
+  // Last 12 months, this one included; months inside the selected period are highlighted
+  const months = Array.from({length:12}, (_,i)=>new Date(today.getFullYear(), today.getMonth()-11+i, 1));
+  const counts = months.map(mo=>dashCount(mo, new Date(mo.getFullYear(), mo.getMonth()+1, 0)).length);
+  const max    = Math.max(1, ...counts);
+  const inSel  = mo => mo >= new Date(r.from.getFullYear(), r.from.getMonth(), 1) && mo <= r.to;
+  document.getElementById('dash-chart').innerHTML = months.map((mo,i)=>`<div class="dash-bar-col" title="${mo.toLocaleDateString('en-AU',{month:'long',year:'numeric'})}: ${counts[i]} deal${counts[i]===1?'':'s'}">
+      <span class="dash-bar-n">${counts[i]||''}</span>
+      <div class="dash-bar${inSel(mo)?' hi':''}" style="height:${Math.round(counts[i]/max*130)}px"></div>
+      <span class="dash-bar-m">${dashMonth(mo,'short')}</span>
+    </div>`).join('');
+
+  // A deal can include several services, so the shares can add up to more than 100%
+  document.getElementById('dash-svc-period').textContent = r.label;
+  document.getElementById('dash-svc').innerHTML = won.length
+    ? JOB_SVCS.map(([col,label])=>{
+        const n = won.filter(j=>j[col]).length, pct = Math.round(n/won.length*100);
+        return `<div class="dash-svc"><div class="dash-svc-top"><span>${label}</span><span>${n} · ${pct}%</span></div>
+          <div class="dash-svc-track"><div class="dash-svc-fill" style="width:${pct}%"></div></div></div>`;
+      }).join('')
+    : `<div class="empty" style="padding:1rem 0"><p>No deals in this period.</p></div>`;
+
+  const recent = [...dashDeals].sort((a,b)=>dealDate(b).localeCompare(dealDate(a)) || (b.created_at||'').localeCompare(a.created_at||'')).slice(0,8);
+  document.getElementById('dash-recent').innerHTML = recent.length
+    ? recent.map(j=>`<div class="dash-deal" onclick="openJobPage('installs','${j.id}')">
+        <div class="dash-deal-co">${esc(j.clients?.company||'Unknown')}<span style="display:flex;gap:4px">${svcBadges(j,true)}</span></div>
+        <span class="dash-deal-date">${fmtDate(dealDate(j))}</span>${statusBadge(j.status)}
+      </div>`).join('')
+    : `<div class="empty"><i class="ti ti-tool"></i><p>No deals yet.</p></div>`;
+}
+
 async function loadDashboard(){
   setSyncStatus('syncing');
   try {
-    const [clients, jobs] = await Promise.all([
+    const [clients, jobs, deals] = await Promise.all([
       fetchAll(()=>sb.from('clients').select('*,sites(id),jobs(id,type,status)').order('company')),
-      fetchAll(()=>sb.from('jobs').select('*,clients(company,account_number,svc_internet,svc_webex,svc_nec),sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('type','New Install').in('status',['Pending','Incomplete']).order('approval_date',{ascending:true,nullsFirst:false}))
+      fetchAll(()=>sb.from('jobs').select('*,clients(company,account_number,svc_internet,svc_webex,svc_nec),sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('type','New Install').in('status',['Pending','Incomplete']).order('approval_date',{ascending:true,nullsFirst:false})),
+      fetchAll(()=>sb.from('jobs').select('id,status,approval_date,created_at,svc_internet,svc_webex,svc_nec,clients(company)').eq('type','New Install'))
     ]);
     allClients = clients || [];
     allJobs    = jobs    || [];
+    dashDeals  = deals   || [];
+    renderDashSales();
 
 
     // Recent jobs
     const installCard = j => `<div class="job-card" onclick="openJobPage('installs','${j.id}')" style="cursor:pointer;${j.status==='Pending'&&j.approval_date&&(new Date()-new Date(j.approval_date))>604800000&&!j.due_date?'border-left:3px solid var(--red)':''}">
           <div class="job-body">
-            <div class="job-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${esc(j.clients?.company||'Unknown')}<span style="display:flex;gap:4px">${svcBadges(j.clients,true)}</span></div>
+            <div class="job-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${esc(j.clients?.company||'Unknown')}<span style="display:flex;gap:4px">${svcBadges(j,true)}</span></div>
             <div class="job-meta"></div>
           </div>
           <div style="text-align:right;font-size:12px;color:var(--text2);flex-shrink:0">
@@ -1593,8 +1747,10 @@ const JOB_KINDS = {
 };
 // Anything that isn't a New Install is a service ticket, matching the old tab split.
 const jobKindOf   = j => j.type==='New Install' ? 'installs' : 'service';
-// Installs are identified by the client's services; service tickets by their own title.
-const jobSubtitle = j => j.type==='New Install' ? svcLabel(j.clients) : (j.title || '—');
+// Installs are identified by the services sold on them; service tickets by their own title.
+const jobSubtitle = j => j.type==='New Install' ? svcLabel(j) : (j.title || '—');
+// Services ticked on a New Install (the deal); the sales dashboard counts these
+const JOB_SVCS    = [['svc_internet','Internet'],['svc_webex','Webex'],['svc_nec','NEC']];
 const canEditJob  = () => isAdminOrOps();   // techs only add notes to existing jobs
 // A past-due install with nothing in the notes log or the old notes box. An old box holding only
 // a placeholder like "." or "-" (no letters or digits) counts as empty. Unknown (false) until
@@ -1607,7 +1763,7 @@ async function loadJobs(){
   try {
     const [jobs, clients, sites, profRes, noteRows] = await Promise.all([
       fetchAll(()=>sb.from('jobs').select(JOB_SELECT).order('due_date',{ascending:true,nullsFirst:false})),
-      fetchAll(()=>sb.from('clients').select('id,company').order('company')),
+      fetchAll(()=>sb.from('clients').select('id,company,svc_internet,svc_webex,svc_nec').order('company')),
       fetchAll(()=>sb.from('sites').select('id,name,client_id')),
       sb.from('profiles').select('*').order('full_name'),
       fetchAll(()=>sb.from('job_notes').select('job_id,text').order('created_at')).catch(()=>null)   // search only: a failure keeps the last index
@@ -1688,7 +1844,7 @@ async function newJobDraft(kind){
   // User may hit "Log job" before loadJobs has filled the pickers
   if(!jobClients.length || !allSites.length){
     const [clients, sites] = await Promise.all([
-      fetchAll(()=>sb.from('clients').select('id,company').order('company')),
+      fetchAll(()=>sb.from('clients').select('id,company,svc_internet,svc_webex,svc_nec').order('company')),
       fetchAll(()=>sb.from('sites').select('id,name,client_id'))
     ]);
     if(clients) jobClients = clients;
@@ -1769,6 +1925,8 @@ function renderJobDetail(kind){
   const assignee   = techDraft ? currentUser?.id : rec?.assigned_to;
   const staffOpts  = staffOptions(assignee);
   const createdLock = isAdmin() ? '' : ' disabled';   // only admins can re-date a ticket or change who logged it
+  // A new install starts with the client's current services ticked; a saved one shows what was sold
+  const svcFrom     = rec || jobClients.find(c=>c.id===clientId);
 
   el.innerHTML = `<div class="port-det" oninput="markJobDirty('${kind}')" onchange="markJobDirty('${kind}')">
     <div class="port-det-head">
@@ -1814,6 +1972,12 @@ function renderJobDetail(kind){
       </div>`}
       <div class="form-group" id="f-job-approval-wrap-${kind}" style="${isInstall?'':'display:none'}">
         <label class="lbl">Approval date *</label><input class="fi" type="date" id="f-job-approval-${kind}" value="${rec?.approval_date||''}"${d}>
+      </div>
+      <div class="form-group" id="f-job-svc-wrap-${kind}" style="grid-column:1/-1${isInstall?'':';display:none'}">
+        <label class="lbl">Services sold</label>
+        <div class="checkbox-group">
+          ${JOB_SVCS.map(([col,label])=>`<label class="checkbox-label"><input type="checkbox" id="f-job-${col}-${kind}"${svcFrom?.[col]?' checked':''}${d}> ${label}</label>`).join('')}
+        </div>
       </div>
     </div>
     <div class="form-group port-notes-group jd-notes" style="margin-top:12px">
@@ -2121,6 +2285,9 @@ function onJobClientChange(kind){
   if(!sel) return;
   sel.innerHTML = `<option value="">— none —</option>` + allSites.filter(x=>x.client_id===cid)
     .map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+  // Services sold start from what the client already has
+  const client = jobClients.find(c=>c.id===cid);
+  JOB_SVCS.forEach(([col])=>{ const cb = document.getElementById(`f-job-${col}-${kind}`); if(cb) cb.checked = !!client?.[col]; });
 }
 
 // Installs are tracked by approval date; service tickets carry a title and a cost
@@ -2130,6 +2297,7 @@ function onJobTypeChange(kind){
   document.getElementById(`f-job-url-wrap-${kind}`).style.display      = isInstall ? 'none' : '';
   document.getElementById(`f-job-cost-wrap-${kind}`).style.display    = isInstall ? 'none' : '';
   document.getElementById(`f-job-approval-wrap-${kind}`).style.display = isInstall ? '' : 'none';
+  document.getElementById(`f-job-svc-wrap-${kind}`).style.display      = isInstall ? '' : 'none';
   // Created fields only exist once the ticket is saved
   ['created','createdby'].forEach(f=>{
     const w = document.getElementById(`f-job-${f}-wrap-${kind}`);
@@ -2193,6 +2361,7 @@ async function saveJob(kind){
     due_date: g('due').value || null,
     cost: isInstall ? null : (g('cost').value || null),
     approval_date: isInstall ? (g('approval').value || null) : null,
+    ...Object.fromEntries(JOB_SVCS.map(([col])=>[col, isInstall && !!g(col)?.checked])),
     description: g('desc').value.trim()
     // job_notes is no longer written: the old text box is read-only history under the notes log
   };
