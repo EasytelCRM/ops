@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.39">
+<meta name="version" content="v1.0.40">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -259,6 +259,8 @@ select.fi { cursor: pointer; }
 .filter-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.12s; }
 .filter-btn:hover { background: var(--bg); }
 .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-btn.nonotes-btn { margin-left: auto; }
+.filter-btn.nonotes-btn.active { background: #9b6dcc; border-color: #9b6dcc; }   /* matches .badge-purple, free of the status colours */
 
 /* ============================================================
    PORTING SPLIT VIEW
@@ -666,6 +668,7 @@ input.fi.cln-edit-title { font-size: 22px; font-weight: 600; margin-bottom: 6px;
               <button class="filter-btn" onclick="setJobFilter('installs','Incomplete',this)">Incomplete</button>
               <button class="filter-btn" onclick="setJobFilter('installs','Complete',this)">Complete</button>
               <button class="filter-btn" onclick="setJobFilter('installs','all',this)">All</button>
+              <button class="filter-btn nonotes-btn" id="job-nonotes-installs" onclick="toggleNoNotesFilter()" title="Show only installs with no job notes">No Notes</button>
             </div>
             <div class="card port-list-card">
               <div class="card-head">
@@ -822,6 +825,8 @@ let jobDraftClient = { installs: null,  service: null };  // client to preselect
 let jobTab         = { installs: 'desc', service: 'desc' };  // Description / Job notes tab, kept across re-renders
 let jobNotes       = {};     // job id → its log entries (newest first), fetched when the job is opened
 let jobNoteIndex   = {};     // job id → all its notes' text, lowercased, for the list search
+let jobNoteIndexReady = false;  // the index has loaded at least once, so a missing entry really means no notes
+let jobNoNotesOnly = false;  // installs list: "No Notes" pill, on top of the status filter
 let jobNotesOlder  = { installs: false, service: false };  // "Show older notes" expanded
 let jobNoteSaving  = false;  // a note insert/edit is in flight; blocks double-submits
 let jobNoteEdit    = { installs: null, service: null };  // note being edited in place: {id, orig, value}; id 'legacy' = old notes box
@@ -1301,9 +1306,13 @@ function switchClientTab(tab){
 // ── Job filters ──
 function setJobFilter(kind, val, el){
   jobFilters[kind] = val;
-  document.querySelectorAll(`#job-filters-${kind} .filter-btn`).forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll(`#job-filters-${kind} .filter-btn:not(.nonotes-btn)`).forEach(b=>b.classList.remove('active'));
   if(el) el.classList.add('active');
   renderJobsList(kind);
+}
+function toggleNoNotesFilter(){
+  jobNoNotesOnly = !jobNoNotesOnly;
+  renderJobsList('installs');
 }
 
 // ============================================================
@@ -1579,6 +1588,10 @@ const jobKindOf   = j => j.type==='New Install' ? 'installs' : 'service';
 // Installs are identified by the client's services; service tickets by their own title.
 const jobSubtitle = j => j.type==='New Install' ? svcLabel(j.clients) : (j.title || '—');
 const canEditJob  = () => isAdminOrOps();   // techs only add notes to existing jobs
+// An install with nothing in the notes log or the old notes box. Unknown (false) until the
+// notes have loaded, so a failed fetch doesn't flag every job.
+const jobNoNotes  = j => j.type==='New Install' && !(j.job_notes||'').trim()
+  && (jobNotes[j.id] ? !jobNotes[j.id].length : jobNoteIndexReady && !jobNoteIndex[j.id]);
 
 async function loadJobs(){
   setSyncStatus('syncing');
@@ -1591,7 +1604,7 @@ async function loadJobs(){
       fetchAll(()=>sb.from('job_notes').select('job_id,text').order('created_at')).catch(()=>null)   // search only: a failure keeps the last index
     ]);
     allJobs = jobs || [];
-    if(noteRows) jobNoteIndex = indexNotes(noteRows, 'job_id');
+    if(noteRows){ jobNoteIndex = indexNotes(noteRows, 'job_id'); jobNoteIndexReady = true; }
     if(clients) jobClients = clients;
     if(sites)   allSites   = sites;
     if(profRes?.data) allProfiles = profRes.data;
@@ -1607,12 +1620,19 @@ function renderJobsPage(kind){ renderJobsList(kind); renderJobDetail(kind); }
 
 function renderJobsList(kind){
   const q = (document.getElementById('job-search-'+kind)||{}).value?.toLowerCase()||'';
-  const f = allJobs.filter(j=>{
+  let f = allJobs.filter(j=>{
     if(jobKindOf(j)!==kind) return false;
     const matchQ = !q || (j.clients?.company||'').toLowerCase().includes(q) || jobSubtitle(j).toLowerCase().includes(q)
       || (j.job_notes||'').toLowerCase().includes(q) || notesSearchText(jobNotes[j.id], jobNoteIndex[j.id]).includes(q);
     return matchQ && (jobFilters[kind]==='all' || j.status===jobFilters[kind]);
   });
+  // The pill counts what it would show, so it's useful before it's switched on
+  const pill = document.getElementById('job-nonotes-'+kind);
+  if(pill){
+    pill.textContent = `No Notes (${f.filter(jobNoNotes).length})`;
+    pill.classList.toggle('active', jobNoNotesOnly);
+    if(jobNoNotesOnly) f = f.filter(jobNoNotes);
+  }
   const head = document.getElementById('job-count-'+kind);
   if(head) head.textContent = `${JOB_KINDS[kind].heading} (${f.length})`;
   const list = document.getElementById('job-list-'+kind);
@@ -1624,7 +1644,7 @@ function renderJobsList(kind){
 function jobRowHTML(j, kind){
   const due = j.status==='Pending' && daysOut(j.due_date) <= 1;
   return `<button class="port-row${j.id===jobSel[kind]?' sel':''}" onclick="selectJob('${kind}','${j.id}')">
-    <div class="port-row-top"><span class="port-tid">${esc(j.clients?.company||'Unknown')}${safeTicketUrl(j.ticket_url)?' <i class="ti ti-link" title="Has ticket link"></i>':''}</span>${statusBadge(j.status)}</div>
+    <div class="port-row-top"><span class="port-tid">${esc(j.clients?.company||'Unknown')}${safeTicketUrl(j.ticket_url)?' <i class="ti ti-link" title="Has ticket link"></i>':''}</span><span>${jobNoNotes(j)?'<span class="badge badge-purple"><i class="ti ti-notes-off"></i> No Notes</span> ':''}${statusBadge(j.status)}</span></div>
     <div class="port-co">${esc(jobSubtitle(j))}</div>
     <div class="port-row-bot">
       <span class="port-when${due?' due':''}">${fmtDate(j.due_date)}</span>
@@ -1865,8 +1885,11 @@ async function loadJobNotes(kind, jobId){
       .eq('job_id',jobId).order('created_at',{ascending:false});
     if(error) throw error;
     if(seq !== jobNotesSeq[jobId]) return;
+    const rec = allJobs.find(j=>j.id===jobId);
+    const wasNoNotes = rec && jobNoNotes(rec);
     jobNotes[jobId] = data || [];
     if(jobSel[kind]===jobId && !jobDraft[kind]) renderJobNotes(kind);   // user may have moved on meanwhile
+    if(rec && jobNoNotes(rec)!==wasNoNotes) renderJobsList(kind);   // someone else added or removed the only note
   } catch(e){
     const list = document.getElementById('jn-list-'+kind);
     if(list && jobSel[kind]===jobId && !jobNotes[jobId]) list.innerHTML = `<div class="jn-empty">Couldn't load notes: ${esc(e.message)}</div>`;
@@ -2005,6 +2028,7 @@ async function saveJobNoteEdit(kind){
       if(error) throw error;
       await logAudit('updated','jobs',rec.id,{ job_notes: rec.job_notes },{ job_notes: text || null });
       rec.job_notes = text || null;
+      renderJobsList(kind);   // clearing the old box may leave the job with no notes
     } else {
       // RLS silently skips a refused update, so ask for the row back to tell the two apart
       const { data, error } = await sb.from('job_notes').update({ text }).eq('id',ed.id).select('id,text,updated_at,updated_by');
@@ -2038,6 +2062,7 @@ async function addJobNote(kind){
     if(error) throw error;
     await logAudit('created','job_notes',data.id,{},{ job_id: jobId, text });
     jobNotes[jobId] = [data, ...(jobNotes[jobId]||[])];
+    renderJobsList(kind);   // drops the No Notes flag
     if(jobSel[kind]===jobId){
       input.value = '';
       renderJobNotes(kind);
@@ -2066,6 +2091,7 @@ async function deleteJobNote(kind, id){
     await logAudit('deleted','job_notes',id,{ job_id: jobId, text: note?.text },{});
     jobNotes[jobId] = (jobNotes[jobId]||[]).filter(n=>n.id!==id);
     renderJobNotes(kind);
+    renderJobsList(kind);   // deleting the last note flags the job again
     loadJobNotes(kind, jobId);
     toast('Note deleted');
     setSyncStatus('ok');
