@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.41">
+<meta name="version" content="v1.0.42">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -259,7 +259,6 @@ select.fi { cursor: pointer; }
 .filter-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.12s; }
 .filter-btn:hover { background: var(--bg); }
 .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.filter-btn.nonotes-btn { margin-left: auto; }
 .filter-btn.nonotes-btn.active { background: #9b6dcc; border-color: #9b6dcc; }   /* matches .badge-purple, free of the status colours */
 
 /* ============================================================
@@ -671,7 +670,7 @@ input.fi.cln-edit-title { font-size: 22px; font-weight: 600; margin-bottom: 6px;
               <button class="filter-btn" onclick="setJobFilter('installs','Incomplete',this)">Incomplete</button>
               <button class="filter-btn" onclick="setJobFilter('installs','Complete',this)">Complete</button>
               <button class="filter-btn" onclick="setJobFilter('installs','all',this)">All</button>
-              <button class="filter-btn nonotes-btn" id="job-nonotes-installs" onclick="toggleNoNotesFilter()" title="Show only installs with no job notes">No Notes</button>
+              <button class="filter-btn nonotes-btn" id="job-nonotes-installs" onclick="toggleNoNotesFilter()" title="Show only past-due installs with no job notes">No Notes</button>
             </div>
             <div class="card port-list-card">
               <div class="card-head">
@@ -1591,9 +1590,9 @@ const jobKindOf   = j => j.type==='New Install' ? 'installs' : 'service';
 // Installs are identified by the client's services; service tickets by their own title.
 const jobSubtitle = j => j.type==='New Install' ? svcLabel(j.clients) : (j.title || '—');
 const canEditJob  = () => isAdminOrOps();   // techs only add notes to existing jobs
-// An install with nothing in the notes log or the old notes box. Unknown (false) until the
-// notes have loaded, so a failed fetch doesn't flag every job.
-const jobNoNotes  = j => j.type==='New Install' && !(j.job_notes||'').trim()
+// A past-due install with nothing in the notes log or the old notes box. Unknown (false) until
+// the notes have loaded, so a failed fetch doesn't flag every job.
+const jobNoNotes  = j => j.type==='New Install' && daysOut(j.due_date) < 0 && !(j.job_notes||'').trim()
   && (jobNotes[j.id] ? !jobNotes[j.id].length : jobNoteIndexReady && !jobNoteIndex[j.id]);
 
 async function loadJobs(){
