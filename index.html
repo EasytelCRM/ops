@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.45">
+<meta name="version" content="v1.0.46">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -720,6 +720,7 @@ input.fi.cln-edit-title { font-size: 22px; font-weight: 600; margin-bottom: 6px;
               <button class="filter-btn active" onclick="setJobFilter('installs','Pending',this)">Pending</button>
               <button class="filter-btn" onclick="setJobFilter('installs','Incomplete',this)">Incomplete</button>
               <button class="filter-btn" onclick="setJobFilter('installs','Complete',this)">Complete</button>
+              <button class="filter-btn" onclick="setJobFilter('installs','Cancelled',this)">Cancelled</button>
               <button class="filter-btn" onclick="setJobFilter('installs','all',this)">All</button>
               <button class="filter-btn nonotes-btn" id="job-nonotes-installs" onclick="toggleNoNotesFilter()" title="Show only past-due installs with no job notes">No Notes</button>
             </div>
@@ -1083,9 +1084,11 @@ function showScreen(name){
 //  STATUS BADGES
 // ============================================================
 function statusBadge(s){
-  const map = { 'Pending':'badge-amber', 'Incomplete':'badge-red', 'Complete':'badge-green' };
+  const map = { 'Pending':'badge-amber', 'Incomplete':'badge-red', 'Complete':'badge-green', 'Cancelled':'badge-gray' };
   return `<span class="badge ${map[s]||'badge-gray'}">${esc(s)}</span>`;
 }
+// Installs carried over from the old client services: they hold a client's services but were never a deal
+const legacyBadge = j => j?.legacy ? '<span class="badge badge-gray">Legacy</span> ' : '';
 function svcLabel(c){
   const svcs = [];
   if(c?.svc_webex)    svcs.push('Webex');
@@ -1098,14 +1101,23 @@ function svcLabel(c){
 function typeBadge(t){
   return t==='New Install' ? `<span class="badge badge-blue">New Install</span>` : `<span class="badge badge-gray">Service</span>`;
 }
-function svcBadges(c, sm=false){
+function svcBadges(c, sm=false, internetCount=0){
   const cls = sm ? 'badge badge-sm' : 'badge';
   let b = '';
   if(c?.svc_webex)    b += `<span class="${cls} badge-purple">Webex</span>`;
   if(c?.svc_nec)      b += `<span class="${cls} badge-nec">NEC</span>`;
-  if(c?.svc_internet) b += `<span class="${cls} badge-green">Internet</span>`;
+  if(c?.svc_internet) b += `<span class="${cls} badge-green">Internet${internetCount>1?' ×'+internetCount:''}</span>`;
   return b || '<span style="color:var(--text3);font-size:12px">None</span>';
 }
+// What a client has, worked out from their installs; cancelled installs don't count.
+// Internet is counted (a line per site or deal); Webex and NEC are just yes or no.
+function clientSvcBadges(jobs){
+  const live     = (jobs||[]).filter(j=>j.type==='New Install' && j.status!=='Cancelled');
+  const internet = live.filter(j=>j.svc_internet).length;
+  return svcBadges({ svc_internet: internet>0, svc_webex: live.some(j=>j.svc_webex), svc_nec: live.some(j=>j.svc_nec) }, false, internet);
+}
+// The client's installs, with what clientSvcBadges needs
+const CLIENT_JOBS = 'jobs(id,type,status,svc_internet,svc_webex,svc_nec)';
 
 // ============================================================
 //  AUTH
@@ -1377,7 +1389,7 @@ function toggleNoNotesFilter(){
 // ============================================================
 //  DASHBOARD
 // ============================================================
-// A deal is a New Install, won on its approval date. Installs logged before approval dates
+// A deal is a New Install (not a legacy one), won on its approval date. Installs logged before approval dates
 // were recorded fall back to the day they were created.
 let dashDeals  = [];
 let dashPeriod = 'month';
@@ -1481,9 +1493,9 @@ async function loadDashboard(){
   setSyncStatus('syncing');
   try {
     const [clients, jobs, deals] = await Promise.all([
-      fetchAll(()=>sb.from('clients').select('*,sites(id),jobs(id,type,status)').order('company')),
-      fetchAll(()=>sb.from('jobs').select('*,clients(company,account_number,svc_internet,svc_webex,svc_nec),sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('type','New Install').in('status',['Pending','Incomplete']).order('approval_date',{ascending:true,nullsFirst:false})),
-      fetchAll(()=>sb.from('jobs').select('id,status,approval_date,created_at,svc_internet,svc_webex,svc_nec,clients(company)').eq('type','New Install'))
+      fetchAll(()=>sb.from('clients').select(`*,sites(id),${CLIENT_JOBS}`).order('company')),
+      fetchAll(()=>sb.from('jobs').select('*,clients(company,account_number),sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('type','New Install').in('status',['Pending','Incomplete']).order('approval_date',{ascending:true,nullsFirst:false})),
+      fetchAll(()=>sb.from('jobs').select('id,status,approval_date,created_at,svc_internet,svc_webex,svc_nec,clients(company)').eq('type','New Install').eq('legacy',false))
     ]);
     allClients = clients || [];
     allJobs    = jobs    || [];
@@ -1519,7 +1531,7 @@ async function loadDashboard(){
 async function loadClients(){
   setSyncStatus('syncing');
   try {
-    const data = await fetchAll(()=>sb.from('clients').select('*,sites(id),jobs(id)').order('company'));
+    const data = await fetchAll(()=>sb.from('clients').select(`*,sites(id),${CLIENT_JOBS}`).order('company'));
     allClients = data || [];
     renderClientsList();
     setSyncStatus('ok');
@@ -1544,7 +1556,7 @@ function renderClientsList(){
       <td><strong style="font-weight:500">${esc(c.company)}</strong>${credNote(c)}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.account_number)||'—'}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.phone)||'—'}</td>
-      <td>${svcBadges(c)}</td>
+      <td>${clientSvcBadges(c.jobs)}</td>
       <td>${(c.sites||[]).length}</td>
       <td>${(c.jobs||[]).length}</td>
       <td><div style="display:flex;gap:4px">
@@ -1585,7 +1597,7 @@ async function loadClientProfile(id){
       ${pf('ti-mail','Email',client.email)}
       ${mainSite?.address?pf('ti-map-pin','Main site',mainSite.address):''}
       ${pf('ti-calendar','Client since',fmtDate(client.created_at))}
-      <div class="pf"><i class="ti ti-apps"></i><div><div class="pf-label">Services</div><div style="margin-top:4px">${svcBadges(client)}</div></div></div>
+      <div class="pf"><i class="ti ti-apps"></i><div><div class="pf-label">Services</div><div style="margin-top:4px">${clientSvcBadges(jobs)}</div></div></div>
       <div class="profile-actions">
         ${isAdminOrOps()?`<button class="btn btn-sm" onclick="openClientModal('${client.id}')"><i class="ti ti-edit"></i> Edit</button>`:''}
         ${isAdmin()?`<button class="btn btn-sm btn-danger" onclick="deleteClient('${client.id}')"><i class="ti ti-trash"></i> Delete</button>`:''}
@@ -1644,10 +1656,10 @@ async function loadClientProfile(id){
       ? (jobs||[]).map(j=>`<div class="job-card">
           ${typeBadge(j.type)}
           <div class="job-body">
-            <div class="job-title job-link" onclick="openJobPage('${jobKindOf(j)}','${j.id}')">${j.type==='New Install'?svcLabel(client):esc(j.title)}${safeTicketUrl(j.ticket_url)?` <a href="${esc(j.ticket_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open ticket"><i class="ti ti-external-link"></i></a>`:''}</div>
+            <div class="job-title job-link" onclick="openJobPage('${jobKindOf(j)}','${j.id}')">${j.type==='New Install'?svcLabel(j):esc(j.title)}${safeTicketUrl(j.ticket_url)?` <a href="${esc(j.ticket_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open ticket"><i class="ti ti-external-link"></i></a>`:''}</div>
             <div class="job-meta">
               ${j.sites?.name?`<span>${esc(j.sites.name)}</span>`:''}
-              ${statusBadge(j.status)}
+              ${legacyBadge(j)}${statusBadge(j.status)}
               ${j.profiles?.full_name?`<span><i class="ti ti-user" style="font-size:11px"></i> ${esc(j.profiles.full_name)}</span>`:''}
               ${j.due_date?`<span><i class="ti ti-calendar" style="font-size:11px"></i> ${fmtDate(j.due_date)}</span>`:''}
             </div>
@@ -1740,7 +1752,7 @@ async function saveCred(k){
 // ============================================================
 //  NEW INSTALLS / SERVICE TICKETS
 // ============================================================
-const JOB_SELECT = '*,clients(company,account_number,svc_internet,svc_webex,svc_nec),sites(name),profiles!jobs_assigned_to_fkey(full_name)';
+const JOB_SELECT = '*,clients(company,account_number),sites(name),profiles!jobs_assigned_to_fkey(full_name)';
 const JOB_KINDS = {
   installs: { heading:'New installs',    noun:'new install',    draft:'New install',         empty:'No new installs found.',    icon:'ti-tool'    },
   service:  { heading:'Service tickets', noun:'service ticket', draft:'New service ticket', empty:'No service tickets found.', icon:'ti-headset' }
@@ -1752,10 +1764,10 @@ const jobSubtitle = j => j.type==='New Install' ? svcLabel(j) : (j.title || '—
 // Services ticked on a New Install (the deal); the sales dashboard counts these
 const JOB_SVCS    = [['svc_internet','Internet'],['svc_webex','Webex'],['svc_nec','NEC']];
 const canEditJob  = () => isAdminOrOps();   // techs only add notes to existing jobs
-// A past-due install with nothing in the notes log or the old notes box. An old box holding only
-// a placeholder like "." or "-" (no letters or digits) counts as empty. Unknown (false) until
-// the notes have loaded, so a failed fetch doesn't flag every job.
-const jobNoNotes  = j => j.type==='New Install' && daysOut(j.due_date) < 0 && !/[\p{L}\p{N}]/u.test(j.job_notes||'')
+// A past-due install (not cancelled) with nothing in the notes log or the old notes box. An old box
+// holding only a placeholder like "." or "-" (no letters or digits) counts as empty. Unknown (false)
+// until the notes have loaded, so a failed fetch doesn't flag every job.
+const jobNoNotes  = j => j.type==='New Install' && j.status!=='Cancelled' && daysOut(j.due_date) < 0 && !/[\p{L}\p{N}]/u.test(j.job_notes||'')
   && (jobNotes[j.id] ? !jobNotes[j.id].length : jobNoteIndexReady && !jobNoteIndex[j.id]);
 
 async function loadJobs(){
@@ -1763,7 +1775,7 @@ async function loadJobs(){
   try {
     const [jobs, clients, sites, profRes, noteRows] = await Promise.all([
       fetchAll(()=>sb.from('jobs').select(JOB_SELECT).order('due_date',{ascending:true,nullsFirst:false})),
-      fetchAll(()=>sb.from('clients').select('id,company,svc_internet,svc_webex,svc_nec').order('company')),
+      fetchAll(()=>sb.from('clients').select('id,company').order('company')),
       fetchAll(()=>sb.from('sites').select('id,name,client_id')),
       sb.from('profiles').select('*').order('full_name'),
       fetchAll(()=>sb.from('job_notes').select('job_id,text').order('created_at')).catch(()=>null)   // search only: a failure keeps the last index
@@ -1809,7 +1821,7 @@ function renderJobsList(kind){
 function jobRowHTML(j, kind){
   const due = j.status==='Pending' && daysOut(j.due_date) <= 1;
   return `<button class="port-row${j.id===jobSel[kind]?' sel':''}" onclick="selectJob('${kind}','${j.id}')">
-    <div class="port-row-top"><span class="port-tid">${esc(j.clients?.company||'Unknown')}${safeTicketUrl(j.ticket_url)?' <i class="ti ti-link" title="Has ticket link"></i>':''}</span>${statusBadge(j.status)}</div>
+    <div class="port-row-top"><span class="port-tid">${esc(j.clients?.company||'Unknown')}${safeTicketUrl(j.ticket_url)?' <i class="ti ti-link" title="Has ticket link"></i>':''}</span><span>${legacyBadge(j)}${statusBadge(j.status)}</span></div>
     <div class="port-row-mid"><div class="port-co">${esc(jobSubtitle(j))}</div>${jobNoNotes(j)?'<span class="badge badge-purple"><i class="ti ti-notes-off"></i> No Notes</span>':''}</div>
     <div class="port-row-bot">
       <span class="port-when${due?' due':''}">${fmtDate(j.due_date)}</span>
@@ -1844,7 +1856,7 @@ async function newJobDraft(kind){
   // User may hit "Log job" before loadJobs has filled the pickers
   if(!jobClients.length || !allSites.length){
     const [clients, sites] = await Promise.all([
-      fetchAll(()=>sb.from('clients').select('id,company,svc_internet,svc_webex,svc_nec').order('company')),
+      fetchAll(()=>sb.from('clients').select('id,company').order('company')),
       fetchAll(()=>sb.from('sites').select('id,name,client_id'))
     ]);
     if(clients) jobClients = clients;
@@ -1925,13 +1937,13 @@ function renderJobDetail(kind){
   const assignee   = techDraft ? currentUser?.id : rec?.assigned_to;
   const staffOpts  = staffOptions(assignee);
   const createdLock = isAdmin() ? '' : ' disabled';   // only admins can re-date a ticket or change who logged it
-  // A new install starts with the client's current services ticked; a saved one shows what was sold
-  const svcFrom     = rec || jobClients.find(c=>c.id===clientId);
+  // Only installs can be cancelled: it takes them off the client's services
+  const statuses    = ['Pending','Incomplete','Complete', ...(isInstall ? ['Cancelled'] : [])];
 
   el.innerHTML = `<div class="port-det" oninput="markJobDirty('${kind}')" onchange="markJobDirty('${kind}')">
     <div class="port-det-head">
       <div>
-        <div class="port-det-tid">${draft ? JOB_KINDS[kind].draft : ticketHeadingLink(rec.ticket_url, rec.clients?.company||'Unknown')}${draft ? '' : ' '+statusBadge(rec.status)}</div>
+        <div class="port-det-tid">${draft ? JOB_KINDS[kind].draft : ticketHeadingLink(rec.ticket_url, rec.clients?.company||'Unknown')}${draft ? '' : ' '+statusBadge(rec.status)+legacyBadge(rec)}</div>
         <div class="port-det-co">${draft
           ? 'Pick a client and fill in the job, then save.'
           : `${esc(jobSubtitle(rec))} · ${esc(rec.clients?.account_number||'—')} · <span style="color:var(--accent);cursor:pointer" onclick="confirmDiscardJob('${kind}').then(ok=>{ if(ok) openClientProfile('${rec.client_id}') })">Open client</span>`}</div>
@@ -1949,7 +1961,7 @@ function renderJobDetail(kind){
       </div>
       <div class="form-group"><label class="lbl">Status *</label>
         <select class="fi" id="f-job-status-${kind}"${d}>
-          ${['Pending','Incomplete','Complete'].map(x=>`<option${(rec?.status||'Pending')===x?' selected':''}>${x}</option>`).join('')}
+          ${statuses.map(x=>`<option${(rec?.status||'Pending')===x?' selected':''}>${x}</option>`).join('')}
         </select>
       </div>
       <div class="form-group" id="f-job-title-wrap-${kind}" style="grid-column:1/-1${isInstall?';display:none':''}">
@@ -1976,7 +1988,7 @@ function renderJobDetail(kind){
       <div class="form-group" id="f-job-svc-wrap-${kind}" style="grid-column:1/-1${isInstall?'':';display:none'}">
         <label class="lbl">Services sold</label>
         <div class="checkbox-group">
-          ${JOB_SVCS.map(([col,label])=>`<label class="checkbox-label"><input type="checkbox" id="f-job-${col}-${kind}"${svcFrom?.[col]?' checked':''}${d}> ${label}</label>`).join('')}
+          ${JOB_SVCS.map(([col,label])=>`<label class="checkbox-label"><input type="checkbox" id="f-job-${col}-${kind}"${rec?.[col]?' checked':''}${d}> ${label}</label>`).join('')}
         </div>
       </div>
     </div>
@@ -2285,9 +2297,6 @@ function onJobClientChange(kind){
   if(!sel) return;
   sel.innerHTML = `<option value="">— none —</option>` + allSites.filter(x=>x.client_id===cid)
     .map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
-  // Services sold start from what the client already has
-  const client = jobClients.find(c=>c.id===cid);
-  JOB_SVCS.forEach(([col])=>{ const cb = document.getElementById(`f-job-${col}-${kind}`); if(cb) cb.checked = !!client?.[col]; });
 }
 
 // Installs are tracked by approval date; service tickets carry a title and a cost
@@ -2349,7 +2358,8 @@ async function saveJob(kind){
   const fail = m => { err.textContent = m; err.style.display = 'block'; };
   if(draft && !clientId)                return fail('Please select a client.');
   if(!isInstall && !title)              return fail('Job title is required.');
-  if(isInstall && !g('approval').value) return fail('Approval date is required for new installs.');
+  if(isInstall && !g('approval').value && !rec?.legacy) return fail('Approval date is required for new installs.');
+  if(!isInstall && g('status').value==='Cancelled')     return fail('Only new installs can be cancelled.');
   if(url && !safeTicketUrl(url))        return fail('Ticket link must start with http:// or https://.');
   let noteFailed = false;
   const payload = {
@@ -3643,13 +3653,6 @@ async function openClientModal(id){
       <div class="form-group"><label class="lbl">Phone</label><input class="fi" id="f-phone" value="${esc(c.phone||'')}" placeholder="02 9000 0000"></div>
     </div>
     <div class="form-group"><label class="lbl">Email</label><input class="fi" id="f-email" value="${esc(c.email||'')}" placeholder="info@company.com.au"></div>
-    <div class="form-group"><label class="lbl">Services</label>
-      <div class="checkbox-group">
-        <label class="checkbox-label"><input type="checkbox" id="f-internet" ${c.svc_internet?'checked':''}> Internet</label>
-        <label class="checkbox-label"><input type="checkbox" id="f-webex"    ${c.svc_webex?'checked':''}> Webex</label>
-        <label class="checkbox-label"><input type="checkbox" id="f-nec"      ${c.svc_nec?'checked':''}> NEC</label>
-      </div>
-    </div>
     ${!isEdit?`<div class="form-group">
       <label class="lbl">Addresses</label>
       <div id="site-rows">
@@ -3688,7 +3691,7 @@ async function submitAddClient(){
   if(!company){ toast('Company name is required','warn'); return; }
   const acctNum = document.getElementById('f-acct').value.trim();
   if(acctNum && allClients.some(c=>c.account_number===acctNum)){ toast('Account number already in use','error'); return; }
-  const payload = { company, account_number: acctNum, phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), svc_internet: document.getElementById('f-internet').checked, svc_webex: document.getElementById('f-webex').checked, svc_nec: document.getElementById('f-nec').checked, created_by: currentUser.id };
+  const payload = { company, account_number: acctNum, phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), created_by: currentUser.id };
   setSyncStatus('syncing');
   try {
     const { data, error } = await sb.from('clients').insert(payload).select().single();
@@ -3711,7 +3714,7 @@ async function submitAddClient(){
 async function submitEditClient(id){
   const acctNum = document.getElementById('f-acct').value.trim();
   if(acctNum && allClients.some(c=>c.account_number===acctNum && c.id!==id)){ toast('Account number already in use','error'); return; }
-  const payload = { company: document.getElementById('f-company').value.trim(), account_number: acctNum, phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), svc_internet: document.getElementById('f-internet').checked, svc_webex: document.getElementById('f-webex').checked, svc_nec: document.getElementById('f-nec').checked };
+  const payload = { company: document.getElementById('f-company').value.trim(), account_number: acctNum, phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim() };
   setSyncStatus('syncing');
   try {
     const old = allClients.find(c=>c.id===id)||{};
