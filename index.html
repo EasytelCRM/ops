@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.42">
+<meta name="version" content="v1.0.43">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -1590,9 +1590,10 @@ const jobKindOf   = j => j.type==='New Install' ? 'installs' : 'service';
 // Installs are identified by the client's services; service tickets by their own title.
 const jobSubtitle = j => j.type==='New Install' ? svcLabel(j.clients) : (j.title || '—');
 const canEditJob  = () => isAdminOrOps();   // techs only add notes to existing jobs
-// A past-due install with nothing in the notes log or the old notes box. Unknown (false) until
+// A past-due install with nothing in the notes log or the old notes box. An old box holding only
+// a placeholder like "." or "-" (no letters or digits) counts as empty. Unknown (false) until
 // the notes have loaded, so a failed fetch doesn't flag every job.
-const jobNoNotes  = j => j.type==='New Install' && daysOut(j.due_date) < 0 && !(j.job_notes||'').trim()
+const jobNoNotes  = j => j.type==='New Install' && daysOut(j.due_date) < 0 && !/[\p{L}\p{N}]/u.test(j.job_notes||'')
   && (jobNotes[j.id] ? !jobNotes[j.id].length : jobNoteIndexReady && !jobNoteIndex[j.id]);
 
 async function loadJobs(){
