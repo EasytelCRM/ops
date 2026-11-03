@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.46">
+<meta name="version" content="v1.0.47">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -613,6 +613,11 @@ input.fi.cln-edit-title { font-size: 22px; font-weight: 600; margin-bottom: 6px;
       ══════════════════════════════════════════ -->
       <div class="page" id="page-clients">
         <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="client-search" placeholder="Search company, account #, phone, IP..." oninput="renderClientsList()"></div>
+        <div class="filter-bar" id="client-filters">
+          <button class="filter-btn active" data-f="active" onclick="setClientFilter('active')">Active</button>
+          <button class="filter-btn" data-f="cancelled" onclick="setClientFilter('cancelled')">Cancelled</button>
+          <button class="filter-btn" data-f="all" onclick="setClientFilter('all')">All</button>
+        </div>
         <div class="card">
           <div class="card-head">
             <h3 id="clients-count">All clients</h3>
@@ -1538,6 +1543,13 @@ async function loadClients(){
   } catch(e){ setSyncStatus('error'); toast('Error loading clients: '+e.message,'error'); }
 }
 
+// Cancelled accounts (clients.cancelled_date set) are kept out of the default view
+let clientFilter = 'active';
+function setClientFilter(f){
+  clientFilter = f;
+  renderClientsList();
+}
+
 function renderClientsList(){
   const q = (document.getElementById('client-search')||{}).value?.toLowerCase()||'';
   // Credentials are searched too (e.g. an IP); only the matching field's name is shown, never its text
@@ -1547,13 +1559,15 @@ function renderClientsList(){
     const hit = q && !basicHit(c) && credHit(c);
     return hit ? `<div style="font-size:11px;color:var(--text3);margin-top:2px"><i class="ti ti-lock" style="font-size:11px"></i> Match in ${hit.label} credentials</div>` : '';
   };
-  const f = allClients.filter(c=>!q || basicHit(c) || credHit(c));
-  document.getElementById('clients-count').textContent = `All clients (${f.length})`;
+  const inFilter = c => clientFilter==='all' || (clientFilter==='cancelled') === !!c.cancelled_date;
+  const f = allClients.filter(c=>inFilter(c) && (!q || basicHit(c) || credHit(c)));
+  document.querySelectorAll('#client-filters .filter-btn').forEach(b=>b.classList.toggle('active', b.dataset.f===clientFilter));
+  document.getElementById('clients-count').textContent = `${{active:'Active',cancelled:'Cancelled',all:'All'}[clientFilter]} clients (${f.length})`;
   const tb = document.getElementById('clients-tbody');
   if(!tb) return;
   tb.innerHTML = f.length ? f.map(c=>`
     <tr class="clickable" onclick="openClientProfile('${c.id}')">
-      <td><strong style="font-weight:500">${esc(c.company)}</strong>${credNote(c)}</td>
+      <td><strong style="font-weight:500">${esc(c.company)}</strong>${c.cancelled_date?` <span class="badge badge-gray" title="Cancelled ${fmtDate(c.cancelled_date)}">Cancelled</span>`:''}${credNote(c)}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.account_number)||'—'}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.phone)||'—'}</td>
       <td>${clientSvcBadges(c.jobs)}</td>
@@ -1592,6 +1606,7 @@ async function loadClientProfile(id){
       <div class="profile-avatar">${initials(client.company)}</div>
       <div class="profile-name">${esc(client.company)}</div>
       <div class="profile-sub">Business client</div>
+      ${client.cancelled_date?`<div style="margin:-4px 0 12px"><span class="badge badge-gray">Cancelled · ${fmtDate(client.cancelled_date)}</span></div>`:''}
       ${pf('ti-hash','Account number',client.account_number)}
       ${pf('ti-phone','Phone',client.phone)}
       ${pf('ti-mail','Email',client.email)}
@@ -3523,7 +3538,7 @@ const AUDIT_LABELS = {
   phone_numbers:'Phone numbers', ticket_url:'Ticket link', losing_carrier:'Losing carrier', port_date:'Port date', port_time:'Port time',
   tio_ref:'TIO reference', complainant:'Complainant', open_date:'Open date', closed_date:'Closed date', complaint_id:'Complaint',
   jobs_unassigned:'Open jobs unassigned', complaints_unassigned:'Open complaints unassigned',
-  created_at:'Created', created_by:'Created by'
+  created_at:'Created', created_by:'Created by', cancelled_date:'Account cancelled'
 };
 const AUDIT_SENSITIVE = new Set(['system_credentials','cred_router','cred_phone_system','cred_other']);
 const auditNorm = v => (v===null||v===undefined||v==='') ? '' : (typeof v==='boolean' ? v : String(v));
@@ -3653,6 +3668,10 @@ async function openClientModal(id){
       <div class="form-group"><label class="lbl">Phone</label><input class="fi" id="f-phone" value="${esc(c.phone||'')}" placeholder="02 9000 0000"></div>
     </div>
     <div class="form-group"><label class="lbl">Email</label><input class="fi" id="f-email" value="${esc(c.email||'')}" placeholder="info@company.com.au"></div>
+    ${isEdit?`<div class="form-group" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <label class="checkbox-label"><input type="checkbox" id="f-cancelled"${c.cancelled_date?' checked':''} onchange="toggleClientCancelled(this.checked)"> Account cancelled</label>
+      <input type="date" class="fi" id="f-cancelled-date" value="${esc(c.cancelled_date||'')}" style="width:auto;${c.cancelled_date?'':'display:none'}">
+    </div>`:''}
     ${!isEdit?`<div class="form-group">
       <label class="lbl">Addresses</label>
       <div id="site-rows">
@@ -3668,6 +3687,13 @@ async function openClientModal(id){
       <button class="btn btn-primary" onclick="${isEdit?`submitEditClient('${id}')`:'submitAddClient()'}">${isEdit?'Save changes':'Add client'}</button>
     </div>
   </div>`);
+}
+
+// Ticking starts the date at today (local, not UTC); unticking hides it and the save clears it
+function toggleClientCancelled(on){
+  const d = document.getElementById('f-cancelled-date');
+  d.style.display = on ? '' : 'none';
+  if(on && !d.value) d.value = dashYmd(new Date());
 }
 
 function searchCompanySuggestions(q, excludeId=''){
@@ -3714,7 +3740,10 @@ async function submitAddClient(){
 async function submitEditClient(id){
   const acctNum = document.getElementById('f-acct').value.trim();
   if(acctNum && allClients.some(c=>c.account_number===acctNum && c.id!==id)){ toast('Account number already in use','error'); return; }
-  const payload = { company: document.getElementById('f-company').value.trim(), account_number: acctNum, phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim() };
+  const cancelled = document.getElementById('f-cancelled').checked;
+  const cancelledDate = document.getElementById('f-cancelled-date').value;
+  if(cancelled && !cancelledDate){ toast('Cancelled date is required','warn'); return; }
+  const payload = { company: document.getElementById('f-company').value.trim(), account_number: acctNum, phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), cancelled_date: cancelled ? cancelledDate : null };
   setSyncStatus('syncing');
   try {
     const old = allClients.find(c=>c.id===id)||{};
