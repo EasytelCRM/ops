@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.51">
+<meta name="version" content="v1.0.52">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -290,6 +290,9 @@ select.fi { cursor: pointer; }
 .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
 .filter-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); font-size: 12px; cursor: pointer; font-family: inherit; transition: all 0.12s; }
 .filter-btn:hover { background: var(--bg); }
+.th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.th-sort:hover { color: var(--text); }
+.sort-arrow { font-size: 10px; color: var(--accent); }
 .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .filter-btn.nonotes-btn.active { background: #9b6dcc; border-color: #9b6dcc; }   /* matches .badge-purple, free of the status colours */
 
@@ -635,7 +638,7 @@ input.fi.cln-edit-title { font-size: 22px; font-weight: 600; margin-bottom: 6px;
               <button class="btn btn-primary btn-sm" id="btn-add-client" onclick="openClientModal()" style="display:none"><i class="ti ti-plus"></i> Add client</button>
             </div>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Company</th><th>Account #</th><th>Phone</th><th>Services</th><th>Sites</th><th>Jobs</th><th></th></tr></thead><tbody id="clients-tbody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr id="clients-head"><th class="th-sort" data-sort="company" onclick="setClientSort('company')">Company <span class="sort-arrow"></span></th><th class="th-sort" data-sort="account" onclick="setClientSort('account')">Account # <span class="sort-arrow"></span></th><th>Phone</th><th>Services</th><th>Sites</th><th>Jobs</th><th></th></tr></thead><tbody id="clients-tbody"></tbody></table></div>
         </div>
       </div>
 
@@ -1560,6 +1563,24 @@ function setClientFilter(f){
   renderClientsList();
 }
 
+// Clicking the Company or Account # title sorts by it; clicking it again reverses. Account numbers sort
+// as numbers; clients with no number or a text one ("Camera Only") always go last, by name.
+let clientSort = { key: 'company', dir: 1 };
+function setClientSort(key){
+  clientSort = clientSort.key===key ? { key, dir: -clientSort.dir } : { key, dir: 1 };
+  renderClientsList();
+}
+function sortClients(list){
+  const byName = (a,b) => (a.company||'').localeCompare(b.company||'', undefined, { sensitivity: 'base' });
+  const acctNo = c => { const m = (c.account_number||'').trim().match(/^\d+/); return m ? +m[0] : null; };
+  const { key, dir } = clientSort;
+  return list.slice().sort(key==='account'
+    ? (a,b) => { const x = acctNo(a), y = acctNo(b);
+        if(x===null || y===null) return x===y ? byName(a,b) : (x===null ? 1 : -1);
+        return (x - y) * dir || byName(a,b); }
+    : (a,b) => byName(a,b) * dir);
+}
+
 function renderClientsList(){
   const q = (document.getElementById('client-search')||{}).value?.toLowerCase()||'';
   // Credentials are searched too (e.g. an IP); only the matching field's name is shown, never its text
@@ -1578,7 +1599,10 @@ function renderClientsList(){
     return hit ? `<div style="font-size:11px;color:var(--text3);margin-top:2px"><i class="ti ti-lock" style="font-size:11px"></i> Match in ${hit.label} credentials</div>` : '';
   };
   const inFilter = c => clientFilter==='all' || (clientFilter==='cancelled') === !!c.cancelled_date;
-  const f = allClients.filter(c=>inFilter(c) && (!q || basicHit(c) || contactHit(c) || credHit(c)));
+  const f = sortClients(allClients.filter(c=>inFilter(c) && (!q || basicHit(c) || contactHit(c) || credHit(c))));
+  document.querySelectorAll('#clients-head .th-sort').forEach(th=>{
+    th.querySelector('.sort-arrow').textContent = th.dataset.sort===clientSort.key ? (clientSort.dir>0 ? '▲' : '▼') : '';
+  });
   document.querySelectorAll('#client-filters .filter-btn').forEach(b=>b.classList.toggle('active', b.dataset.f===clientFilter));
   document.getElementById('clients-count').textContent = `${{active:'Active',cancelled:'Cancelled',all:'All'}[clientFilter]} clients (${f.length})`;
   const tb = document.getElementById('clients-tbody');
