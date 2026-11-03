@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.47">
+<meta name="version" content="v1.0.48">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -614,9 +614,9 @@ input.fi.cln-edit-title { font-size: 22px; font-weight: 600; margin-bottom: 6px;
       <div class="page" id="page-clients">
         <div class="search-bar"><i class="ti ti-search"></i><input type="text" id="client-search" placeholder="Search company, account #, phone, IP..." oninput="renderClientsList()"></div>
         <div class="filter-bar" id="client-filters">
-          <button class="filter-btn active" data-f="active" onclick="setClientFilter('active')">Active</button>
+          <button class="filter-btn" data-f="active" onclick="setClientFilter('active')">Active</button>
           <button class="filter-btn" data-f="cancelled" onclick="setClientFilter('cancelled')">Cancelled</button>
-          <button class="filter-btn" data-f="all" onclick="setClientFilter('all')">All</button>
+          <button class="filter-btn active" data-f="all" onclick="setClientFilter('all')">All</button>
         </div>
         <div class="card">
           <div class="card-head">
@@ -1543,8 +1543,8 @@ async function loadClients(){
   } catch(e){ setSyncStatus('error'); toast('Error loading clients: '+e.message,'error'); }
 }
 
-// Cancelled accounts (clients.cancelled_date set) are kept out of the default view
-let clientFilter = 'active';
+// Cancelled accounts have clients.cancelled_date set; the list shows everyone by default
+let clientFilter = 'all';
 function setClientFilter(f){
   clientFilter = f;
   renderClientsList();
