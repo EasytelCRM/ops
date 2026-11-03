@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.50">
+<meta name="version" content="v1.0.51">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -1737,8 +1737,6 @@ async function loadClientProfile(id){
           <div class="site-body">
             <div class="site-name">${esc(s.name)}</div>
             ${s.address?`<div class="site-detail"><i class="ti ti-map-pin" style="font-size:12px"></i> ${esc(s.address)}</div>`:''}
-            ${s.contact_name?`<div class="site-detail"><i class="ti ti-user" style="font-size:12px"></i> ${esc(s.contact_name)}${s.contact_phone?' · '+esc(s.contact_phone):''}</div>`:''}
-            ${s.contact_email?`<div class="site-detail"><i class="ti ti-mail" style="font-size:12px"></i> ${esc(s.contact_email)}</div>`:''}
           </div>
           ${isAdminOrOps()?`<div style="display:flex;gap:4px;flex-shrink:0">
             <button class="btn btn-sm" onclick="openSiteModal('${s.id}')"><i class="ti ti-edit"></i></button>
@@ -4179,11 +4177,6 @@ function openSiteModal(id){
       <div class="modal-hdr"><h3>${isEdit?'Edit site':'New site'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
       <div class="form-group"><label class="lbl">Site name *</label><input class="fi" id="f-site-name" value="${esc(s.name||'')}" placeholder="e.g. Head Office, Warehouse"></div>
       <div class="form-group"><label class="lbl">Address</label><input class="fi" id="f-site-addr" value="${esc(s.address||'')}" placeholder="123 Main St, Sydney NSW 2000"></div>
-      <div class="form-row">
-        <div class="form-group"><label class="lbl">Contact name</label><input class="fi" id="f-site-cname" value="${esc(s.contact_name||'')}" placeholder="Jane Smith"></div>
-        <div class="form-group"><label class="lbl">Contact phone</label><input class="fi" id="f-site-cphone" value="${esc(s.contact_phone||'')}" placeholder="02 9000 0000"></div>
-      </div>
-      <div class="form-group"><label class="lbl">Contact email</label><input class="fi" id="f-site-cemail" value="${esc(s.contact_email||'')}" placeholder="site@company.com.au"></div>
       <div class="modal-ftr">
         <button class="btn" onclick="closeModal()">Cancel</button>
         <button class="btn btn-primary" onclick="${isEdit?`submitEditSite('${id}')`:'submitAddSite()'}">${isEdit?'Save changes':'Add site'}</button>
@@ -4195,7 +4188,8 @@ function openSiteModal(id){
 async function submitAddSite(){
   const name = document.getElementById('f-site-name').value.trim();
   if(!name){ toast('Site name is required','warn'); return; }
-  const payload = { client_id: activeClientId, name, address: document.getElementById('f-site-addr').value.trim(), contact_name: document.getElementById('f-site-cname').value.trim(), contact_phone: document.getElementById('f-site-cphone').value.trim(), contact_email: document.getElementById('f-site-cemail').value.trim() };
+  // Contacts live on the client (Edit client), not on sites
+  const payload = { client_id: activeClientId, name, address: document.getElementById('f-site-addr').value.trim() };
   setSyncStatus('syncing');
   try {
     const { data, error } = await sb.from('sites').insert(payload).select().single();
@@ -4206,7 +4200,7 @@ async function submitAddSite(){
 }
 
 async function submitEditSite(id){
-  const payload = { name: document.getElementById('f-site-name').value.trim(), address: document.getElementById('f-site-addr').value.trim(), contact_name: document.getElementById('f-site-cname').value.trim(), contact_phone: document.getElementById('f-site-cphone').value.trim(), contact_email: document.getElementById('f-site-cemail').value.trim() };
+  const payload = { name: document.getElementById('f-site-name').value.trim(), address: document.getElementById('f-site-addr').value.trim() };
   setSyncStatus('syncing');
   try {
     await sb.from('sites').update(payload).eq('id',id);
