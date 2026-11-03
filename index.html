@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.48">
+<meta name="version" content="v1.0.49">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -223,6 +223,14 @@ select.fi { cursor: pointer; }
 .pf i { color: var(--text3); font-size: 15px; margin-top: 1px; flex-shrink: 0; }
 .pf-label { color: var(--text3); font-size: 11px; margin-bottom: 1px; }
 .pf-value { color: var(--text); word-break: break-word; }
+.pf-value a, .pf-contact a { color: inherit; text-decoration: none; }
+.pf-value a:hover, .pf-contact a:hover { color: var(--accent); }
+.pf-contact + .pf-contact { margin-top: 6px; }
+.pf-contact-sub { color: var(--text2); font-size: 11px; word-break: break-word; }
+.ct-row { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; margin-bottom: 6px; }
+.ct-line { display: flex; gap: 6px; align-items: center; }
+.ct-line + .ct-line { margin-top: 6px; }
+.ct-line .fi { min-width: 0; }
 .profile-actions { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
 
 /* ── Tabs ── */
@@ -439,6 +447,8 @@ input.fi.cln-edit-title { font-size: 22px; font-weight: 600; margin-bottom: 6px;
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .dash-kpis { grid-template-columns: 1fr; }
   .modal { padding: 1.25rem; }
+  .ct-line { flex-wrap: wrap; }
+  .ct-line .fi { flex: 1 1 100% !important; }
 }
 
 /* ============================================================
@@ -1536,7 +1546,7 @@ async function loadDashboard(){
 async function loadClients(){
   setSyncStatus('syncing');
   try {
-    const data = await fetchAll(()=>sb.from('clients').select(`*,sites(id),${CLIENT_JOBS}`).order('company'));
+    const data = await fetchAll(()=>sb.from('clients').select(`*,sites(id),client_contacts(name,phone,mobile,email),${CLIENT_JOBS}`).order('company'));
     allClients = data || [];
     renderClientsList();
     setSyncStatus('ok');
@@ -1555,19 +1565,27 @@ function renderClientsList(){
   // Credentials are searched too (e.g. an IP); only the matching field's name is shown, never its text
   const basicHit = c => c.company.toLowerCase().includes(q) || (c.account_number||'').toLowerCase().includes(q) || (c.phone||'').includes(q);
   const credHit  = c => CRED_FIELDS.find(cf=>(c[cf.col]||'').toLowerCase().includes(q));
-  const credNote = c => {
-    const hit = q && !basicHit(c) && credHit(c);
+  // Contacts match on name or email, and on phone/mobile with spaces ignored ("0402 298 388")
+  const qDigits = q.replace(/\s/g,'');
+  const contactHit = c => (c.client_contacts||[]).find(ct=>
+    (ct.name||'').toLowerCase().includes(q) || (ct.email||'').toLowerCase().includes(q) ||
+    (qDigits && [ct.phone,ct.mobile].some(n=>(n||'').replace(/\s/g,'').includes(qDigits))));
+  const matchNote = c => {
+    if(!q || basicHit(c)) return '';
+    const ct = contactHit(c);
+    if(ct) return `<div style="font-size:11px;color:var(--text3);margin-top:2px"><i class="ti ti-user" style="font-size:11px"></i> Match in contact ${esc(ct.name||ct.email||ct.mobile||ct.phone)}</div>`;
+    const hit = credHit(c);
     return hit ? `<div style="font-size:11px;color:var(--text3);margin-top:2px"><i class="ti ti-lock" style="font-size:11px"></i> Match in ${hit.label} credentials</div>` : '';
   };
   const inFilter = c => clientFilter==='all' || (clientFilter==='cancelled') === !!c.cancelled_date;
-  const f = allClients.filter(c=>inFilter(c) && (!q || basicHit(c) || credHit(c)));
+  const f = allClients.filter(c=>inFilter(c) && (!q || basicHit(c) || contactHit(c) || credHit(c)));
   document.querySelectorAll('#client-filters .filter-btn').forEach(b=>b.classList.toggle('active', b.dataset.f===clientFilter));
   document.getElementById('clients-count').textContent = `${{active:'Active',cancelled:'Cancelled',all:'All'}[clientFilter]} clients (${f.length})`;
   const tb = document.getElementById('clients-tbody');
   if(!tb) return;
   tb.innerHTML = f.length ? f.map(c=>`
     <tr class="clickable" onclick="openClientProfile('${c.id}')">
-      <td><strong style="font-weight:500">${esc(c.company)}</strong>${c.cancelled_date?` <span class="badge badge-gray" title="Cancelled ${fmtDate(c.cancelled_date)}">Cancelled</span>`:''}${credNote(c)}</td>
+      <td><strong style="font-weight:500">${esc(c.company)}</strong>${c.cancelled_date?` <span class="badge badge-gray" title="Cancelled ${fmtDate(c.cancelled_date)}">Cancelled</span>`:''}${matchNote(c)}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.account_number)||'—'}</td>
       <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2)">${esc(c.phone)||'—'}</td>
       <td>${clientSvcBadges(c.jobs)}</td>
@@ -1584,10 +1602,21 @@ function renderClientsList(){
 // ============================================================
 //  CLIENT PROFILE
 // ============================================================
+// Call and mail links for contact details. Imported numbers can carry text ("0243119379 (New Number)"),
+// so the link dials the first run of digits and the text is shown as typed.
+function telLink(n){
+  const d = ((n||'').match(/\+?\d[\d ]{5,}/)||[''])[0].replace(/\s/g,'');
+  return d ? `<a href="tel:${d}">${esc(n)}</a>` : esc(n);
+}
+function mailLink(e){
+  const m = ((e||'').match(/[^\s@]+@[^\s@]+\.[^\s@]+/)||[''])[0];
+  return m ? `<a href="mailto:${esc(m)}">${esc(e)}</a>` : esc(e);
+}
+
 async function loadClientProfile(id){
   setSyncStatus('syncing');
   try {
-    const [{ data: client }, { data: sites }, { data: jobs }, { data: ports }, { data: complaints }] = await Promise.all([
+    const [{ data: client }, { data: sites }, { data: jobs }, { data: ports }, { data: complaints }, { data: contacts }] = await Promise.all([
       sb.from('clients').select('*').eq('id',id).single(),
       sb.from('sites').select('*').eq('client_id',id).order('created_at',{ascending:true}),
       sb.from('jobs').select('*,sites(name),profiles!jobs_assigned_to_fkey(full_name)').eq('client_id',id).order('due_date',{ascending:true,nullsFirst:false}),
@@ -1595,13 +1624,28 @@ async function loadClientProfile(id){
       // Complaints are admin + ops only (RLS returns nothing to techs anyway), so don't ask
       isAdminOrOps()
         ? sb.from('complaints').select('*,profiles!complaints_assigned_to_fkey(full_name)').eq('client_id',id).order('open_date',{ascending:false})
-        : Promise.resolve({ data: [] })
+        : Promise.resolve({ data: [] }),
+      sb.from('client_contacts').select('*').eq('client_id',id).order('sort',{ascending:true})
     ]);
     activeClientData = client;
 
     // ── Profile card ──
     function pf(icon,label,val){ return val?`<div class="pf"><i class="ti ${icon}"></i><div><div class="pf-label">${label}</div><div class="pf-value">${esc(val)}</div></div></div>`:''; }
     const mainSite = (sites||[])[0];
+    // Primary contact sits under Phone/Email (its own phone/email only when they differ from the client's);
+    // everyone else is listed under Other contacts
+    const primary = (contacts||[]).find(ct=>ct.is_primary);
+    const others  = (contacts||[]).filter(ct=>ct!==primary);
+    const ctName  = ct => `${esc(ct.name||'(no name)')}${ct.note?` <span style="color:var(--text3)">· ${esc(ct.note)}</span>`:''}`;
+    const ctSub   = parts => parts.length ? `<div class="pf-contact-sub">${parts.join(' · ')}</div>` : '';
+    const primaryHtml = primary ? `
+      <div class="pf"><i class="ti ti-user"></i><div style="min-width:0"><div class="pf-label">Contact</div><div class="pf-value">${ctName(primary)}</div>
+        ${ctSub([primary.phone && primary.phone!==client.phone ? telLink(primary.phone) : '', primary.email && primary.email!==client.email ? mailLink(primary.email) : ''].filter(Boolean))}</div></div>
+      ${primary.mobile?`<div class="pf"><i class="ti ti-device-mobile"></i><div><div class="pf-label">Mobile</div><div class="pf-value">${telLink(primary.mobile)}</div></div></div>`:''}` : '';
+    const othersHtml = others.length ? `
+      <div class="pf"><i class="ti ti-users"></i><div style="min-width:0"><div class="pf-label">Other contacts</div>
+        ${others.map(ct=>`<div class="pf-contact"><div class="pf-value">${ctName(ct)}</div>${ctSub([ct.phone&&telLink(ct.phone), ct.mobile&&telLink(ct.mobile), ct.email&&mailLink(ct.email)].filter(Boolean))}</div>`).join('')}
+      </div></div>` : '';
     document.getElementById('client-profile-card').innerHTML = `
       <div class="profile-avatar">${initials(client.company)}</div>
       <div class="profile-name">${esc(client.company)}</div>
@@ -1610,6 +1654,8 @@ async function loadClientProfile(id){
       ${pf('ti-hash','Account number',client.account_number)}
       ${pf('ti-phone','Phone',client.phone)}
       ${pf('ti-mail','Email',client.email)}
+      ${primaryHtml}
+      ${othersHtml}
       ${mainSite?.address?pf('ti-map-pin','Main site',mainSite.address):''}
       ${pf('ti-calendar','Client since',fmtDate(client.created_at))}
       <div class="pf"><i class="ti ti-apps"></i><div><div class="pf-label">Services</div><div style="margin-top:4px">${clientSvcBadges(jobs)}</div></div></div>
@@ -3538,7 +3584,8 @@ const AUDIT_LABELS = {
   phone_numbers:'Phone numbers', ticket_url:'Ticket link', losing_carrier:'Losing carrier', port_date:'Port date', port_time:'Port time',
   tio_ref:'TIO reference', complainant:'Complainant', open_date:'Open date', closed_date:'Closed date', complaint_id:'Complaint',
   jobs_unassigned:'Open jobs unassigned', complaints_unassigned:'Open complaints unassigned',
-  created_at:'Created', created_by:'Created by', cancelled_date:'Account cancelled'
+  created_at:'Created', created_by:'Created by', cancelled_date:'Account cancelled',
+  name:'Name', note:'Note', mobile:'Mobile', is_primary:'Primary contact'
 };
 const AUDIT_SENSITIVE = new Set(['system_credentials','cred_router','cred_phone_system','cred_other']);
 const auditNorm = v => (v===null||v===undefined||v==='') ? '' : (typeof v==='boolean' ? v : String(v));
@@ -3645,15 +3692,101 @@ function addAddressRow(){
   container.appendChild(row);
 }
 
+// ── Client contacts (edited inside the client modal) ──
+let _clientContactsOrig = [];  // contacts as loaded when the modal opened, to work out what changed on save
+const CONTACT_FIELDS = ['name','note','phone','mobile','email','is_primary'];
+
+function contactRowHtml(ct={}){
+  return `<div class="ct-row" data-id="${esc(ct.id||'')}">
+    <div class="ct-line">
+      <input class="fi ct-name" value="${esc(ct.name||'')}" placeholder="Name" style="flex:3">
+      <input class="fi ct-note" value="${esc(ct.note||'')}" placeholder="Note, e.g. Accounts" style="flex:2">
+      <label class="checkbox-label" title="Primary contact" style="flex-shrink:0;font-size:12px"><input type="radio" name="ct-primary" class="ct-primary"${ct.is_primary?' checked':''}> Primary</label>
+      <button type="button" class="btn btn-sm" onclick="this.closest('.ct-row').remove()" title="Remove contact" style="flex-shrink:0;padding:7px 9px"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="ct-line">
+      <input class="fi ct-phone" value="${esc(ct.phone||'')}" placeholder="Phone" style="flex:1">
+      <input class="fi ct-mobile" value="${esc(ct.mobile||'')}" placeholder="Mobile" style="flex:1">
+      <input class="fi ct-email" value="${esc(ct.email||'')}" placeholder="Email" style="flex:1.6">
+    </div>
+  </div>`;
+}
+
+function addContactRow(){
+  const container = document.getElementById('contact-rows');
+  if(!container) return;
+  container.insertAdjacentHTML('beforeend', contactRowHtml({ is_primary: !container.querySelector('.ct-primary:checked') }));
+}
+
+// Saves the modal's contact rows: removed rows are deleted, changed ones updated, new ones added.
+// Rows with no name, phone, mobile or email are ignored. One contact is primary (the ticked one,
+// else the first); the old primary is cleared first so the one-primary-per-client index never sees two.
+async function saveClientContacts(clientId){
+  const rows = [...document.querySelectorAll('#contact-rows .ct-row')].map(r=>({
+    id: r.dataset.id || null,
+    name: r.querySelector('.ct-name').value.trim(), note: r.querySelector('.ct-note').value.trim(),
+    phone: r.querySelector('.ct-phone').value.trim(), mobile: r.querySelector('.ct-mobile').value.trim(),
+    email: r.querySelector('.ct-email').value.trim(), picked: r.querySelector('.ct-primary').checked
+  })).filter(r=>r.name || r.phone || r.mobile || r.email);
+  const primaryIdx = Math.max(0, rows.findIndex(r=>r.picked));
+  const want = rows.map((r,i)=>({ id: r.id, name: r.name, note: r.note, phone: r.phone, mobile: r.mobile, email: r.email, is_primary: i===primaryIdx, sort: i }));
+
+  const kept    = new Set(want.filter(w=>w.id).map(w=>w.id));
+  const removed = _clientContactsOrig.filter(o=>!kept.has(o.id));
+  const changed = want.filter(w=>w.id).map(w=>{
+    const o = _clientContactsOrig.find(x=>x.id===w.id) || {};
+    const diff = {};
+    [...CONTACT_FIELDS,'sort'].forEach(f=>{ if(o[f]!==w[f]) diff[f] = w[f]; });
+    return { w, o, diff };
+  }).filter(x=>Object.keys(x.diff).length);
+  const added = want.filter(w=>!w.id).map(({id, ...w})=>({ ...w, client_id: clientId }));
+
+  if(removed.length){
+    const { error } = await sb.from('client_contacts').delete().in('id', removed.map(o=>o.id));
+    if(error) throw error;
+  }
+  for(const x of changed.filter(x=>x.diff.is_primary===false)){
+    const { error } = await sb.from('client_contacts').update({ is_primary: false }).eq('id', x.w.id);
+    if(error) throw error;
+  }
+  for(const x of changed){
+    const rest = { ...x.diff };
+    if(rest.is_primary===false) delete rest.is_primary;
+    if(!Object.keys(rest).length) continue;
+    const { error } = await sb.from('client_contacts').update(rest).eq('id', x.w.id);
+    if(error) throw error;
+  }
+  let inserted = [];
+  if(added.length){
+    const { data, error } = await sb.from('client_contacts').insert(added).select();
+    if(error) throw error;
+    inserted = data || [];
+  }
+
+  // Audit: sort-only changes (a row removed above) aren't logged
+  const pick = (obj, keys) => Object.fromEntries(keys.map(k=>[k, obj[k]]));
+  for(const o of removed) await logAudit('deleted','client_contacts',o.id,o,{ name: o.name, client_id: clientId });
+  for(const x of changed){
+    const keys = Object.keys(x.diff).filter(k=>k!=='sort');
+    if(keys.length) await logAudit('updated','client_contacts',x.w.id,{ name: x.o.name, ...pick(x.o, keys) },{ name: x.w.name, ...pick(x.w, keys) });
+  }
+  for(const n of inserted) await logAudit('created','client_contacts',n.id,{},{ ...pick(n, CONTACT_FIELDS), client_id: clientId });
+}
+
 async function openClientModal(id){
-  let c = {};
+  let c = {}, contacts = [];
   if(id){
     // Always fetch the full record fresh — allClients may hold only a partial
     // projection (e.g. after visiting Porting), which would prefill blanks and wipe data on save.
-    const { data, error } = await sb.from('clients').select('*').eq('id',id).single();
-    if(error){ toast('Could not load client: '+error.message,'error'); return; }
+    const [{ data, error }, { data: cts, error: ctErr }] = await Promise.all([
+      sb.from('clients').select('*').eq('id',id).single(),
+      sb.from('client_contacts').select('*').eq('client_id',id).order('sort',{ascending:true})
+    ]);
+    if(error || ctErr){ toast('Could not load client: '+(error||ctErr).message,'error'); return; }
     c = data || {};
+    contacts = cts || [];
   }
+  _clientContactsOrig = contacts;
   const isEdit = !!id;
   openModal(`<div class="modal">
     <div class="modal-hdr"><h3>${isEdit?'Edit client':'New client'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
@@ -3668,6 +3801,11 @@ async function openClientModal(id){
       <div class="form-group"><label class="lbl">Phone</label><input class="fi" id="f-phone" value="${esc(c.phone||'')}" placeholder="02 9000 0000"></div>
     </div>
     <div class="form-group"><label class="lbl">Email</label><input class="fi" id="f-email" value="${esc(c.email||'')}" placeholder="info@company.com.au"></div>
+    <div class="form-group">
+      <label class="lbl">Contacts</label>
+      <div id="contact-rows">${contacts.length ? contacts.map(contactRowHtml).join('') : contactRowHtml({ is_primary: true })}</div>
+      <button type="button" class="btn btn-sm" onclick="addContactRow()" style="margin-top:4px"><i class="ti ti-plus"></i> Add contact</button>
+    </div>
     ${isEdit?`<div class="form-group" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <label class="checkbox-label"><input type="checkbox" id="f-cancelled"${c.cancelled_date?' checked':''} onchange="toggleClientCancelled(this.checked)"> Account cancelled</label>
       <input type="date" class="fi" id="f-cancelled-date" value="${esc(c.cancelled_date||'')}" style="width:auto;${c.cancelled_date?'':'display:none'}">
@@ -3733,6 +3871,7 @@ async function submitAddClient(){
       const { error: sErr } = await sb.from('sites').insert(sites);
       if(sErr) throw sErr;
     }
+    await saveClientContacts(data.id);
     closeModal(); toast('Client added'); loadClients();
   } catch(e){ setSyncStatus('error'); toast(clientSaveError(e),'error'); }
 }
@@ -3750,6 +3889,7 @@ async function submitEditClient(id){
     const { error } = await sb.from('clients').update(payload).eq('id',id);
     if(error) throw error;
     await logAudit('updated','clients',id,old,payload);
+    await saveClientContacts(id);
     closeModal(); toast('Client updated');
     if(currentPage==='client-profile') loadClientProfile(id); else loadClients();
   } catch(e){ setSyncStatus('error'); toast(clientSaveError(e),'error'); }
