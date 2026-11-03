@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="version" content="v1.0.49">
+<meta name="version" content="v1.0.50">
 <title>Easytel CRM</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -3787,10 +3787,20 @@ async function openClientModal(id){
     contacts = cts || [];
   }
   _clientContactsOrig = contacts;
+  _autoAcct = null;
   const isEdit = !!id;
   openModal(`<div class="modal">
     <div class="modal-hdr"><h3>${isEdit?'Edit client':'New client'}</h3><button class="modal-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
-    <div class="form-group"><label class="lbl">Account number</label><input class="fi" id="f-acct" value="${esc(c.account_number||'')}" placeholder="ACC-10042"></div>
+    <div class="form-group">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <label class="lbl">Account number</label>
+        ${!isEdit?`<div id="acct-series" style="display:flex;gap:4px;margin-bottom:4px">
+          <button type="button" class="filter-btn" data-s="easytel" onclick="fillNextAccount('easytel',true)">Easytel</button>
+          <button type="button" class="filter-btn" data-s="budget" onclick="fillNextAccount('budget',true)">Budget</button>
+        </div>`:''}
+      </div>
+      <input class="fi" id="f-acct" value="${esc(c.account_number||'')}" placeholder="${isEdit?'ACC-10042':'Getting next number…'}">
+    </div>
     <div class="form-row">
       <div class="form-group"><label class="lbl">Company name *</label>
         <div style="position:relative">
@@ -3825,6 +3835,22 @@ async function openClientModal(id){
       <button class="btn btn-primary" onclick="${isEdit?`submitEditClient('${id}')`:'submitAddClient()'}">${isEdit?'Save changes':'Add client'}</button>
     </div>
   </div>`);
+  if(!isEdit) fillNextAccount('easytel');
+}
+
+// New clients get the next free account number in a series (Easytel 30xxxx / Budget 60xxxx) from
+// next_account_number(). _autoAcct is the number we filled in, so a save can tell it from a typed one.
+let _autoAcct = null, _acctSeries = 'easytel';
+async function fillNextAccount(series, force){
+  _acctSeries = series;
+  document.querySelectorAll('#acct-series .filter-btn').forEach(b=>b.classList.toggle('active', b.dataset.s===series));
+  const { data, error } = await sb.rpc('next_account_number', { series });
+  if(error){ toast('Could not get the next account number: '+error.message,'warn'); return; }
+  const input = document.getElementById('f-acct');
+  if(!input) return;
+  // Don't overwrite a number typed while this was loading, unless the series was picked on purpose
+  if(force || !input.value.trim() || input.value.trim()===_autoAcct) input.value = data;
+  _autoAcct = data;
 }
 
 // Ticking starts the date at today (local, not UTC); unticking hides it and the save clears it
@@ -3853,12 +3879,22 @@ function searchCompanySuggestions(q, excludeId=''){
 async function submitAddClient(){
   const company = document.getElementById('f-company').value.trim();
   if(!company){ toast('Company name is required','warn'); return; }
-  const acctNum = document.getElementById('f-acct').value.trim();
-  if(acctNum && allClients.some(c=>c.account_number===acctNum)){ toast('Account number already in use','error'); return; }
+  let acctNum = document.getElementById('f-acct').value.trim();
+  // A filled-in number is re-checked at save time: someone may have added a client since the form opened
+  const shownAcct = acctNum, isAuto = !!acctNum && acctNum===_autoAcct;
+  const nextAcct = async () => { const { data, error } = await sb.rpc('next_account_number', { series: _acctSeries }); if(error) throw error; return data; };
+  if(!isAuto && acctNum && allClients.some(c=>c.account_number===acctNum)){ toast('Account number already in use','error'); return; }
   const payload = { company, account_number: acctNum, phone: document.getElementById('f-phone').value.trim(), email: document.getElementById('f-email').value.trim(), created_by: currentUser.id };
   setSyncStatus('syncing');
   try {
-    const { data, error } = await sb.from('clients').insert(payload).select().single();
+    if(isAuto) payload.account_number = await nextAcct();
+    let data, error;
+    for(let tries = 0; ; tries++){
+      ({ data, error } = await sb.from('clients').insert(payload).select().single());
+      // Two people saving at once can both get the same number; the unique index stops the second, which takes the next one
+      if(!(error && isAuto && tries < 3 && (error.message||'').includes('clients_account_number_unique'))) break;
+      payload.account_number = await nextAcct();
+    }
     if(error) throw error;
     await logAudit('created','clients',data.id,{},payload);
     const siteRows = [...document.querySelectorAll('#site-rows .site-row')];
@@ -3872,7 +3908,9 @@ async function submitAddClient(){
       if(sErr) throw sErr;
     }
     await saveClientContacts(data.id);
-    closeModal(); toast('Client added'); loadClients();
+    closeModal();
+    toast(isAuto && payload.account_number!==shownAcct ? `Client added as ${payload.account_number} (${shownAcct} was just taken)` : 'Client added');
+    loadClients();
   } catch(e){ setSyncStatus('error'); toast(clientSaveError(e),'error'); }
 }
 
