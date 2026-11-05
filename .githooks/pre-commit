@@ -1,21 +1,27 @@
 #!/bin/sh
-# Bumps the single-file app's version on commit.
+# Bumps the app's version on commit.
 #
-# Only when this commit actually changes index.html: commits that touch just app/,
-# the workflows or docs used to tick the version too, which put a pointless diff on
-# index.html and made every one of them a merge conflict waiting to happen.
+# Only when this commit actually changes something under app/: commits that touch just
+# the workflows or docs used to tick the version too, which put a pointless diff on the
+# file and made every one of them a merge conflict waiting to happen.
 #
-# At cutover, when the React build under app/ becomes the live site, this should move
-# to bumping "version" in app/package.json — that value feeds the topbar, the build
-# and the update bar.
-git diff --cached --name-only --diff-filter=ACM | grep -qx 'index.html' || exit 0
+# Before the cutover this bumped <meta name="version"> in index.html. The live site is
+# now the React build, whose version comes from app/package.json — it feeds the topbar,
+# the build and the update bar via version.json. index.html is frozen as the rollback,
+# so it is no longer touched.
+git diff --cached --name-only --diff-filter=ACM | grep -q '^app/' || exit 0
 
-CURRENT=$(grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' index.html | head -1)
+# A commit that sets the version by hand keeps it: bumping on top of a deliberate
+# version is how a stray tick ends up in a commit that was not about the version.
+git diff --cached -- app/package.json | grep -q '^+  "version":' && exit 0
+
+# Anchored to the top-level key: dependency versions are nested deeper and must not match.
+CURRENT=$(sed -n 's/^  "version": "\([0-9][0-9.]*\)",$/\1/p' app/package.json | head -1)
 if [ -z "$CURRENT" ]; then exit 0; fi
-MAJOR=$(echo "$CURRENT" | cut -d. -f1 | tr -d 'v')
+MAJOR=$(echo "$CURRENT" | cut -d. -f1)
 MINOR=$(echo "$CURRENT" | cut -d. -f2)
 PATCH=$(echo "$CURRENT" | cut -d. -f3)
-NEW="v$MAJOR.$MINOR.$((PATCH + 1))"
-sed -i "s/$CURRENT/$NEW/" index.html
-git add index.html
-echo "Version bumped: $CURRENT -> $NEW"
+NEW="$MAJOR.$MINOR.$((PATCH + 1))"
+sed -i "s/^  \"version\": \"$CURRENT\",$/  \"version\": \"$NEW\",/" app/package.json
+git add app/package.json
+echo "Version bumped: v$CURRENT -> v$NEW"

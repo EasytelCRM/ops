@@ -1,4 +1,11 @@
-name: Deploy TelcoCRM
+name: Deploy Easytel CRM
+
+# Builds the React app in app/ and publishes it to https://easytelcrm.github.io/ops/.
+#
+# Until the cutover this injected credentials into the single-file index.html and
+# published that. index.html stays in the repo as the rollback — revert the commit that
+# changed this file and the old app is live again on the next push — but nothing
+# deploys it any more.
 
 on:
   push:
@@ -12,38 +19,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
-      - name: Create dist folder
-        run: mkdir -p dist
-      - name: Inject credentials
+
+      - uses: actions/setup-node@v4.1.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install
+        working-directory: app
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: app
+        run: npm run typecheck
+
+      # No BASE_PATH here on purpose: vite.config.ts already defaults to /ops/, which is
+      # where this is served from. The preview build was the one that overrode it.
+      - name: Build
+        working-directory: app
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON: ${{ secrets.SUPABASE_ANON }}
-        run: |
-          python3 -c "
-          with open('index.html', 'r') as f:
-              content = f.read()
-          import os
-          content = content.replace('__SUPABASE_URL__', os.environ['SUPABASE_URL'])
-          content = content.replace('__SUPABASE_ANON__', os.environ['SUPABASE_ANON'])
-          with open('dist/index.html', 'w') as f:
-              f.write(content)
-          print('Done')
-          "
-        
-      - name: Copy static assets
-        run: cp logo.png dist/logo.png
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON: ${{ secrets.SUPABASE_ANON }}
+        run: npm run build
 
       - name: Verify injection
-        run: grep -c "supabase.co" dist/index.html && echo "Injection OK" || echo "Injection FAILED"
+        run: grep -rq "supabase.co" app/dist/assets && echo "Injection OK" || (echo "Injection FAILED" && exit 1)
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+          publish_dir: ./app/dist
           publish_branch: gh-pages
-          # force_orphan recreated gh-pages from scratch on every deploy, which would
-          # delete the React preview living at /ops/next/. keep_files leaves anything
-          # this build does not write, so the preview survives a live deploy.
-          # At cutover, run one force_orphan deploy to clear out the leftovers.
-          keep_files: true
+          # Only one site publishes here now, so rebuild the branch every time: this
+          # clears the old single-file app's files and the dead /ops/next/ preview, and
+          # stops stale hashed assets piling up. keep_files was only there to protect
+          # the preview.
+          force_orphan: true
