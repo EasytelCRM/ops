@@ -147,7 +147,20 @@ export type Complaint = {
   closed_date: string | null;
   status: string | null;
   assigned_to: string | null;
+  description: string | null;
   created_at: string | null;
+  created_by?: string | null;
+};
+
+/** One entry in a complaint's append-only note log. */
+export type ComplaintNote = {
+  id: string;
+  complaint_id: string;
+  text: string | null;
+  created_at: string;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
 };
 
 export type AuditLog = {
@@ -181,6 +194,7 @@ export type Database = {
       job_notes: Table<JobNote, Partial<JobNote> & { job_id: string }>;
       porting: Table<Porting, Partial<Porting> & { client_id: string }>;
       complaints: Table<Complaint, Partial<Complaint> & { client_id: string }>;
+      complaint_notes: Table<ComplaintNote, Partial<ComplaintNote> & { complaint_id: string }>;
       audit_log: Table<AuditLog, Partial<AuditLog> & { action: string; table_name: string }>;
     };
     Views: { [_ in never]: never };

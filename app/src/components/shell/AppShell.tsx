@@ -5,12 +5,17 @@ import { Topbar } from './Topbar';
 import { UpdateBar } from './UpdateBar';
 import { useUpdateCheck } from '../../hooks/useUpdateCheck';
 import { paneHasUnsavedWork } from '../../lib/jobPanes';
+import { portingHasUnsavedWork } from '../../lib/portingPane';
+import { complaintHasUnsavedWork } from '../../lib/complaintPane';
 import { registerUnsavedCheck } from '../../lib/unsavedWork';
 
 export function AppShell() {
-  // Registered here, not on the job pages: a draft left open on New Installs must still
-  // stop an automatic reload while the user is off looking at a client.
+  // Registered here, not on the pages themselves: a draft left open on New Installs,
+  // Porting or Complaints must still stop an automatic reload while the user is off
+  // looking at a client.
   useEffect(() => registerUnsavedCheck(paneHasUnsavedWork), []);
+  useEffect(() => registerUnsavedCheck(portingHasUnsavedWork), []);
+  useEffect(() => registerUnsavedCheck(complaintHasUnsavedWork), []);
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
