@@ -90,9 +90,8 @@ export function formFromComplaint(
     client_id: rec?.client_id ?? draftClient ?? '',
     tio_ref: rec?.tio_ref ?? '',
     complainant: rec?.complainant ?? '',
-    // A new complaint opens today; an existing one keeps whatever it has.
-    // today() is the UTC date, as the single-file app's was — kept rather than quietly
-    // corrected to local, which would change what the field reads before 11am in Sydney.
+    // A new complaint opens today, in the user's own timezone; an existing one keeps
+    // whatever it has
     open_date: rec ? (rec.open_date ?? '') : today(),
     closed_date: rec?.closed_date ?? '',
     status: rec?.status ?? 'Pending',

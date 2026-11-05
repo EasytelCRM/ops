@@ -8,14 +8,18 @@ export const initials = (s: string | null | undefined) =>
     .toUpperCase()
     .slice(0, 2);
 
-export const today = () => new Date().toISOString().slice(0, 10);
-
 /**
- * Today in the browser's own timezone, as YYYY-MM-DD. Not the same as today():
- * east of UTC that one is still on yesterday's date for most of the morning.
+ * A date as YYYY-MM-DD in the browser's own timezone.
+ *
+ * Everything that stamps "today" goes through here. The single-file app had two of
+ * these and used the wrong one for complaints: its today() was
+ * toISOString().slice(0,10), which is the UTC date, so a complaint opened at 9am in
+ * Sydney was dated to the day before. Fixed in index.html as well.
  */
 export const localYmd = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+export const today = () => localYmd();
 
 export const fmtDate = (d: string | null | undefined) =>
   d ? new Date(d).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
