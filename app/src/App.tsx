@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { NAV } from './nav';
 import { useAuth } from './state/AuthProvider';
 import { ModalProvider } from './state/ModalProvider';
 import { TopbarProvider } from './state/TopbarProvider';
@@ -15,6 +17,21 @@ import { PortingPage } from './pages/PortingPage';
 import { ComplaintsPage } from './pages/ComplaintsPage';
 import { UsersPage } from './pages/UsersPage';
 import { AuditPage } from './pages/AuditPage';
+
+/**
+ * Keeps a role off a page it cannot see in the sidebar. The single-file app had no URL
+ * routing, so hiding the nav item was enough to make the page unreachable; with hash
+ * routes anyone could type #/users and get it. The rule comes from the nav entry's own
+ * `visible`, so the sidebar and the router can never disagree about who gets in.
+ *
+ * This is a UI guard, not a security boundary — every table is "allow all authenticated",
+ * so the data is still reachable through the API by anyone signed in.
+ */
+function Guarded({ path, children }: { path: string; children: ReactNode }) {
+  const { profile } = useAuth();
+  const allowed = NAV.find((n) => n.path === path)?.visible?.(profile) ?? true;
+  return allowed ? <>{children}</> : <Navigate to="/" replace />;
+}
 
 export function App() {
   const { screen } = useAuth();
@@ -37,9 +54,30 @@ export function App() {
               <Route path="/installs" element={<InstallsPage />} />
               <Route path="/service" element={<ServicePage />} />
               <Route path="/porting" element={<PortingPage />} />
-              <Route path="/complaints" element={<ComplaintsPage />} />
-              <Route path="/users" element={<UsersPage />} />
-              <Route path="/audit" element={<AuditPage />} />
+              <Route
+                path="/complaints"
+                element={
+                  <Guarded path="/complaints">
+                    <ComplaintsPage />
+                  </Guarded>
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  <Guarded path="/users">
+                    <UsersPage />
+                  </Guarded>
+                }
+              />
+              <Route
+                path="/audit"
+                element={
+                  <Guarded path="/audit">
+                    <AuditPage />
+                  </Guarded>
+                }
+              />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
