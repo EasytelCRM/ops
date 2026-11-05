@@ -1,8 +1,12 @@
-# Easytel CRM — React rebuild
+# Easytel CRM
 
-Port of the single-file `index.html` CRM to Vite + React + TypeScript. The goal is that
-it looks and behaves identically to the live site; the stylesheet is copied over verbatim
-and the markup uses the same class names, so the CSS is the contract.
+The live CRM at <https://easytelcrm.github.io/ops/>: a Vite + React + TypeScript port of
+the old single-file `index.html` app, built to look and behave identically to it. The
+stylesheet is copied over verbatim and the markup uses the same class names, so the CSS
+is the contract.
+
+The root `index.html` is frozen as the rollback and nothing deploys it — see
+[Deploying](#deploying).
 
 ## Running it
 
@@ -25,10 +29,11 @@ access is governed by RLS. `.env.local` is gitignored all the same.
 ## Layout
 
 ```
-src/lib/         supabase client, db types, formatters, role helpers
-src/state/       auth, toasts, sync status, topbar slot — React context
-src/hooks/       dark mode, update check
-src/components/  auth screens, app shell
+src/lib/         supabase client, db types, formatters, role helpers, per-feature logic
+src/state/       auth, modals, toasts, sync status, topbar slot — React context
+src/hooks/       data loading per table/area, dark mode, update check
+src/components/  auth screens, app shell, split view, and one folder per feature
+                 (clients, jobs, porting, complaints, notes, users)
 src/pages/       one per route
 src/styles/      app.css — copied verbatim from index.html, do not restyle
 src/nav.ts       sidebar items, order, icons and topbar titles
@@ -48,13 +53,15 @@ jsdelivr is *currently* still resolving to 2.47.0 even though npm's latest tag i
 So 2.47.0 is the glyph set the live site actually renders today, and the pin keeps the
 rebuild matching it. All 42 icons the app uses also exist in 3.50.0, so a later bump is
 low risk — but it is a deliberate change, not a free one, because v3 redrew some glyphs.
-The same `@latest` on main will flip to v3 whenever jsdelivr's cache rolls over, which is
-worth fixing there too.
+The frozen rollback `index.html` still loads `@latest`, so if it is ever redeployed it
+may come up with v3 glyphs.
 
 **Version checking uses `version.json`.** The old app re-fetched `index.html` and read
 `<meta name="version">`. Vite emits hash-named bundles, so the build writes a
-`version.json` for the same 5-minute poll to read. Bump `version` in `package.json` to
-cut a new version — that single value feeds the topbar, the build and the update bar.
+`version.json` for the same 5-minute poll to read. `version` in `package.json` is the
+single value that feeds the topbar, the build and the update bar. `.githooks/pre-commit`
+bumps the patch number on any commit that touches `app/` (and leaves a hand-set version
+alone), but only on machines with `git config core.hooksPath .githooks` set.
 
 **The sync dot is derived, not driven.** The old app called `setSyncStatus()` by hand in
 every load function. Here it reads TanStack Query's fetch state, so every query gets the
@@ -64,19 +71,14 @@ amber dot, the 10s watchdog and click-to-retry without wiring.
 registers its own check as it mounts, instead of one function reaching into every dirty
 flag by element id.
 
-## Not done yet
+## History
 
-Phase 0 is the scaffold: auth, app shell, routing, cross-cutting UI. Every page is a
-placeholder. Still to port:
+The port went in phases on the `react-rebuild` branch: scaffold and auth (0), shared
+primitives (1), clients (2), New Installs and Service Tickets (3), Porting and Complaints
+(4), Dashboard (5), Users and Audit Log (6), then cutover. Every page of the old app now
+exists here.
 
-- **Phase 1** — shared primitives: badges, confirm-discard, the modal system (including
-  back-button-closes-modal, which Phase 0 leaves out), the notes component, split-view
-- **Phase 2** — Clients list, client profile and its six tabs, client/site modals
-- **Phase 3** — New Installs, Service Tickets
-- **Phase 4** — Porting, Complaints
-- **Phase 5** — Dashboard
-- **Phase 6** — Users, Audit Log
-- **Phase 7** — parity sweep and cutover
+## Database types
 
 `src/lib/db.types.ts` is hand-written from the columns `index.html` actually uses, because
 the Supabase connection available here has no schema read permission. Tables are added
@@ -88,11 +90,15 @@ npx supabase gen types typescript --project-id leppwkkzuscdobqehhts > src/lib/db
 
 ## Deploying
 
-`.github/workflows/preview.yml` builds this branch to `gh-pages:/next`, served at
-<https://easytelcrm.github.io/ops/next/>. The live site at `/ops/` keeps coming from
-`index.html` on main until cutover.
+Every push to `main` runs `.github/workflows/deploy.yml`: `npm ci`, typecheck, build with
+`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON` from the repo secrets, then publish `app/dist`
+to the `gh-pages` branch, served at <https://easytelcrm.github.io/ops/>. A type error
+fails the deploy.
 
-Main's `deploy.yml` had `force_orphan: true`, which recreated the whole `gh-pages` branch
-on every deploy and would have deleted the preview. It now uses `keep_files: true`
-instead. The trade-off is that files a build stops producing are left behind, so the
-cutover should include one `force_orphan` deploy to clear them out.
+It uses `force_orphan: true`, so `gh-pages` is rebuilt from scratch each time and stale
+hashed assets don't pile up. That's safe because only this one site publishes there; the
+`/ops/next/` preview and its `preview.yml` were removed at cutover.
+
+**Rollback:** the root `index.html` is the old app, left untouched. Reverting the cutover
+commit (the one that changed `deploy.yml` to build `app/`) puts it back on the live site on
+the next push.
