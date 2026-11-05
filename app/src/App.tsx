@@ -1,5 +1,6 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './state/AuthProvider';
+import { ModalProvider } from './state/ModalProvider';
 import { TopbarProvider } from './state/TopbarProvider';
 import { LoadingScreen } from './components/auth/LoadingScreen';
 import { LoginScreen } from './components/auth/LoginScreen';
@@ -26,22 +27,24 @@ export function App() {
   // for the hash an invite or recovery link arrives on.
   return (
     <HashRouter>
-      <TopbarProvider>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/clients" element={<ClientsPage />} />
-            <Route path="/client/:id" element={<ClientProfilePage />} />
-            <Route path="/installs" element={<InstallsPage />} />
-            <Route path="/service" element={<ServicePage />} />
-            <Route path="/porting" element={<PortingPage />} />
-            <Route path="/complaints" element={<ComplaintsPage />} />
-            <Route path="/users" element={<UsersPage />} />
-            <Route path="/audit" element={<AuditPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </TopbarProvider>
+      <ModalProvider>
+        <TopbarProvider>
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/clients" element={<ClientsPage />} />
+              <Route path="/client/:id" element={<ClientProfilePage />} />
+              <Route path="/installs" element={<InstallsPage />} />
+              <Route path="/service" element={<ServicePage />} />
+              <Route path="/porting" element={<PortingPage />} />
+              <Route path="/complaints" element={<ComplaintsPage />} />
+              <Route path="/users" element={<UsersPage />} />
+              <Route path="/audit" element={<AuditPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+        </TopbarProvider>
+      </ModalProvider>
     </HashRouter>
   );
 }

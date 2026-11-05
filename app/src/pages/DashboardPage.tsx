@@ -1,6 +1,6 @@
 export function DashboardPage() {
   return (
-    <div className="page active">
+    <div className="page active" id="page-dashboard">
       <div className="empty">
         <i className="ti ti-layout-dashboard" />
         <p>Dashboard is ported in Phase 5.</p>

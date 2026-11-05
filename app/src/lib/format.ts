@@ -32,6 +32,14 @@ export function toLocalDateTime(d: string | null | undefined): string {
   return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}T${p(t.getHours())}:${p(t.getMinutes())}`;
 }
 
+/** Days until a dated record comes due; undated ones sort as "far away" so they never flag as due. */
+export function daysOut(d: string | null | undefined): number {
+  if (!d) return 9999;
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  return Math.round((new Date(`${d}T00:00:00`).getTime() - start.getTime()) / 86400000);
+}
+
 /** First phone-shaped run in the string, as a tel: href — or null if there isn't one. */
 export function telLink(n: string | null | undefined): string | null {
   const d = ((n || '').match(/\+?\d[\d ]{5,}/) || [''])[0].replace(/\s/g, '');

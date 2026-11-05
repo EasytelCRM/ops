@@ -11,6 +11,24 @@
 
 export type Role = 'admin' | 'ops' | 'technician';
 
+export type JobStatus = 'Pending' | 'Incomplete' | 'Complete' | 'Cancelled';
+export type JobType = 'New Install' | 'Service';
+export type PortingStatus = 'Pending' | 'In Progress' | 'Complete' | 'Cancelled';
+export type ComplaintStatus = 'Pending' | 'Closed';
+
+/** The three service ticks, carried by both clients (legacy) and install jobs. */
+export type ServiceFlags = {
+  svc_internet?: boolean | null;
+  svc_webex?: boolean | null;
+  svc_nec?: boolean | null;
+};
+
+/** What clientSvcBadges needs off a client's installs. */
+export type JobServices = ServiceFlags & {
+  type?: string | null;
+  status?: string | null;
+};
+
 // Must stay a type alias, not an interface: Supabase's generics require
 // Record<string, unknown>, and only object-literal types get an implicit index signature.
 export type Profile = {
