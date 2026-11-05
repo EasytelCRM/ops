@@ -1,11 +1,17 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { UpdateBar } from './UpdateBar';
 import { useUpdateCheck } from '../../hooks/useUpdateCheck';
+import { paneHasUnsavedWork } from '../../lib/jobPanes';
+import { registerUnsavedCheck } from '../../lib/unsavedWork';
 
 export function AppShell() {
+  // Registered here, not on the job pages: a draft left open on New Installs must still
+  // stop an automatic reload while the user is off looking at a client.
+  useEffect(() => registerUnsavedCheck(paneHasUnsavedWork), []);
+
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return !!localStorage.getItem('navCollapsed');

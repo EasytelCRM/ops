@@ -1,10 +1,5 @@
+import { JobsPage } from '../components/jobs/JobsPage';
+
 export function InstallsPage() {
-  return (
-    <div className="page active" id="page-installs">
-      <div className="empty">
-        <i className="ti ti-tool" />
-        <p>New Installs is ported in Phase 3.</p>
-      </div>
-    </div>
-  );
+  return <JobsPage kind="installs" />;
 }

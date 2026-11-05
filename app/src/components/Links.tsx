@@ -37,3 +37,29 @@ export function TicketLink({ url }: { url: string | null | undefined }) {
     </>
   );
 }
+
+/**
+ * A detail pane's heading: the whole thing is the ticket link when there is one, with
+ * the external-link icon after it, and plain text when there is not.
+ */
+export function TicketHeading({
+  url,
+  label,
+}: {
+  url: string | null | undefined;
+  label: string;
+}) {
+  const safe = safeTicketUrl(url);
+  if (!safe) return <>{label}</>;
+  return (
+    <a
+      href={safe}
+      target="_blank"
+      rel="noopener"
+      title="Open ticket"
+      style={{ color: 'inherit', textDecoration: 'none' }}
+    >
+      {label} <i className="ti ti-external-link" style={{ fontSize: 15, color: 'var(--accent)' }} />
+    </a>
+  );
+}

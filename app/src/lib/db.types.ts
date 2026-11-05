@@ -112,16 +112,30 @@ export type Job = ServiceFlags & {
   created_by?: string | null;
 };
 
+/** One entry in a job's append-only note log. */
+export type JobNote = {
+  id: string;
+  job_id: string;
+  text: string | null;
+  created_at: string;
+  created_by: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+};
+
 export type Porting = {
   id: string;
   client_id: string;
+  /** The Assist Portal ticket number; 'TBC' until it is known. */
   phone_numbers: string | null;
   losing_carrier: string | null;
   port_date: string | null;
   port_time: string | null;
   status: string | null;
+  notes: string | null;
   ticket_url: string | null;
   created_at: string | null;
+  created_by?: string | null;
 };
 
 export type Complaint = {
@@ -164,6 +178,7 @@ export type Database = {
       client_contacts: Table<ClientContact, Partial<ClientContact> & { client_id: string }>;
       client_notes: Table<ClientNote, Partial<ClientNote> & { client_id: string }>;
       jobs: Table<Job, Partial<Job> & { client_id: string }>;
+      job_notes: Table<JobNote, Partial<JobNote> & { job_id: string }>;
       porting: Table<Porting, Partial<Porting> & { client_id: string }>;
       complaints: Table<Complaint, Partial<Complaint> & { client_id: string }>;
       audit_log: Table<AuditLog, Partial<AuditLog> & { action: string; table_name: string }>;

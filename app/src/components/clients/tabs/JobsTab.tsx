@@ -25,12 +25,16 @@ export function JobsTab({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+      {/* Techs log service tickets only; installs are admin/ops */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginBottom: 10 }}>
         {isAdminOrOps(profile) && (
           <button className="btn btn-primary btn-sm" onClick={() => navigate(`/installs?new=${clientId}`)}>
             <i className="ti ti-tool" /> Log install
           </button>
         )}
+        <button className="btn btn-primary btn-sm" onClick={() => navigate(`/service?new=${clientId}`)}>
+          <i className="ti ti-headset" /> Log service
+        </button>
       </div>
       {jobs.length ? (
         jobs.map((j) => (
