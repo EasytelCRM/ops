@@ -203,6 +203,20 @@ export type Database = {
         Args: { series: string };
         Returns: string;
       };
+      /** Changes nothing but a profile's display name; admins only. */
+      set_display_name: {
+        Args: { target: string; new_name: string };
+        Returns: null;
+      };
+      /**
+       * Activates, reactivates or deactivates an account. Deactivating also blocks
+       * sign-in, signs the user out everywhere, unassigns their open work and writes
+       * its own audit entry, and reports how much work it freed.
+       */
+      set_user_active: {
+        Args: { target: string; make_active: boolean };
+        Returns: { jobs_unassigned?: number; complaints_unassigned?: number } | null;
+      };
     };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };

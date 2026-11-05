@@ -21,6 +21,8 @@ interface AuthValue {
   signIn: (email: string, password: string) => Promise<string | null>;
   setPassword: (pw: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  /** Re-reads the signed-in user's own profile row. */
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue>({
@@ -31,6 +33,7 @@ const AuthContext = createContext<AuthValue>({
   signIn: async () => null,
   setPassword: async () => null,
   signOut: async () => {},
+  refreshProfile: async () => {},
 });
 
 /** Resolve to `fallback` if the promise has not settled in `ms` — no auth call can hang the boot. */
@@ -202,6 +205,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [openApp, toast],
   );
 
+  // An admin who renames themselves on the Users page should see the new name in the
+  // topbar straight away, as the single-file app did by writing into the DOM.
+  const refreshProfile = useCallback(async () => {
+    const id = user?.id;
+    if (!id) return;
+    const { data: p } = await sb.from('profiles').select('*').eq('id', id).single();
+    if (p) setProfile(p);
+  }, [user]);
+
   const signOut = useCallback(async () => {
     await sb.auth.signOut();
     setUser(null);
@@ -210,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [goTo]);
 
   return (
-    <AuthContext.Provider value={{ screen, user, profile, bootError, signIn, setPassword, signOut }}>
+    <AuthContext.Provider value={{ screen, user, profile, bootError, signIn, setPassword, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
