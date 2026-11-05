@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PortingStatusBadge } from '../components/Badges';
 import { safeTicketUrl, TicketHeading } from '../components/Links';
@@ -10,6 +10,7 @@ import { formFromPorting, setPorting, usePortingPane } from '../lib/portingPane'
 import { daysOut, fmtDate } from '../lib/format';
 import { isAdminOrOps } from '../lib/roles';
 import { useAuth } from '../state/AuthProvider';
+import { useTopbarCta } from '../state/TopbarProvider';
 
 export function PortingPage() {
   const { profile } = useAuth();
@@ -60,6 +61,20 @@ export function PortingPage() {
   });
 
   const canEdit = isAdminOrOps(profile); // porting is read-only for techs
+
+  // The same action the list heading carries, mirrored into the topbar as showPage() did.
+  // The node is rebuilt every render, so the effect is keyed on the gate alone and the
+  // click goes through a ref rather than capturing a stale handler.
+  const newDraftRef = useRef(actions.newDraft);
+  newDraftRef.current = actions.newDraft;
+  useTopbarCta(
+    canEdit ? (
+      <button className="btn btn-primary btn-sm" onClick={() => void newDraftRef.current()}>
+        <i className="ti ti-plus" /> Log port
+      </button>
+    ) : null,
+    [canEdit],
+  );
   const f = pane.form;
 
   return (

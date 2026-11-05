@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ComplaintStatusBadge } from '../components/Badges';
 import { StaffOptions } from '../components/StaffOptions';
@@ -16,6 +16,7 @@ import {
 } from '../lib/complaintPane';
 import { fmtDate } from '../lib/format';
 import { notesSearchText } from '../lib/jobs';
+import { useTopbarCta } from '../state/TopbarProvider';
 
 export function ComplaintsPage() {
   const [params, setParams] = useSearchParams();
@@ -76,6 +77,18 @@ export function ComplaintsPage() {
         .filter(Boolean)
         .join(' · ')
     : '';
+
+  // Mirrored into the topbar as showPage() did. Unlike porting, the old app gave every
+  // role this one, so there is no gate here. The click goes through a ref because the
+  // actions hook returns fresh functions on every render.
+  const newDraftRef = useRef(actions.newDraft);
+  newDraftRef.current = actions.newDraft;
+  useTopbarCta(
+    <button className="btn btn-primary btn-sm" onClick={() => void newDraftRef.current()}>
+      <i className="ti ti-plus" /> Log complaint
+    </button>,
+    [],
+  );
 
   const tab = (t: 'desc' | 'notes', label: ReactNode) => (
     <div className={`jd-tab${pane.tab === t ? ' active' : ''}`} onClick={() => setComplaint({ tab: t })}>

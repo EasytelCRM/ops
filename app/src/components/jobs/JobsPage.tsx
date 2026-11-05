@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { LegacyBadge, StatusBadge } from '../Badges';
@@ -20,6 +20,7 @@ import { daysOut, fmtDate } from '../../lib/format';
 import { formFromJob, setPane, setStore, useJobStore } from '../../lib/jobPanes';
 import { isAdminOrOps } from '../../lib/roles';
 import { useAuth } from '../../state/AuthProvider';
+import { useTopbarCta } from '../../state/TopbarProvider';
 import { safeTicketUrl } from '../Links';
 
 const SEARCH_PLACEHOLDER: Record<JobKind, string> = {
@@ -98,6 +99,20 @@ export function JobsPage({ kind }: { kind: JobKind }) {
 
   const statuses = ['Pending', 'Incomplete', 'Complete', ...(kind === 'installs' ? ['Cancelled'] : []), 'all'];
   const canLogJob = kind === 'service' || isAdminOrOps(profile);
+
+  // The same action the list heading carries, mirrored into the topbar as showPage() did.
+  // The node is rebuilt every render, so the effect is keyed on the gate alone and the
+  // click goes through a ref rather than capturing a stale handler.
+  const newDraftRef = useRef(actions.newDraft);
+  newDraftRef.current = actions.newDraft;
+  useTopbarCta(
+    canLogJob ? (
+      <button className="btn btn-primary btn-sm" onClick={() => void newDraftRef.current()}>
+        <i className="ti ti-plus" /> Log job
+      </button>
+    ) : null,
+    [kind, canLogJob],
+  );
 
   return (
     <SplitView
