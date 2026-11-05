@@ -42,4 +42,8 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           publish_branch: gh-pages
-          force_orphan: true
+          # force_orphan recreated gh-pages from scratch on every deploy, which would
+          # delete the React preview living at /ops/next/. keep_files leaves anything
+          # this build does not write, so the preview survives a live deploy.
+          # At cutover, run one force_orphan deploy to clear out the leftovers.
+          keep_files: true
