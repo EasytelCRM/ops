@@ -10,6 +10,13 @@ export const initials = (s: string | null | undefined) =>
 
 export const today = () => new Date().toISOString().slice(0, 10);
 
+/**
+ * Today in the browser's own timezone, as YYYY-MM-DD. Not the same as today():
+ * east of UTC that one is still on yesterday's date for most of the morning.
+ */
+export const localYmd = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export const fmtDate = (d: string | null | undefined) =>
   d ? new Date(d).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 

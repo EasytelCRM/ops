@@ -3,6 +3,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { initialHash, sb } from '../lib/supabase';
 import type { Profile } from '../lib/db.types';
 import { isActiveStaff } from '../lib/roles';
+import { setAuditIdentity } from '../lib/audit';
 import { useToast } from './ToastProvider';
 
 export const DEACTIVATED_MSG = 'This account has been deactivated. Contact an admin.';
@@ -57,6 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     screenRef.current = s;
     setScreen(s);
   }, []);
+
+  // Audit rows are written from plain functions all over the app; keep the identity
+  // they attribute to in step with the session rather than threading it through.
+  useEffect(() => {
+    setAuditIdentity(user?.id, profile?.email ?? user?.email);
+  }, [user, profile]);
 
   /**
    * Loads the signed-in user's profile and opens the app, or bounces a pending /
