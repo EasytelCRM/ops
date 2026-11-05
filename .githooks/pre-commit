@@ -1,4 +1,15 @@
 #!/bin/sh
+# Bumps the single-file app's version on commit.
+#
+# Only when this commit actually changes index.html: commits that touch just app/,
+# the workflows or docs used to tick the version too, which put a pointless diff on
+# index.html and made every one of them a merge conflict waiting to happen.
+#
+# At cutover, when the React build under app/ becomes the live site, this should move
+# to bumping "version" in app/package.json — that value feeds the topbar, the build
+# and the update bar.
+git diff --cached --name-only --diff-filter=ACM | grep -qx 'index.html' || exit 0
+
 CURRENT=$(grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' index.html | head -1)
 if [ -z "$CURRENT" ]; then exit 0; fi
 MAJOR=$(echo "$CURRENT" | cut -d. -f1 | tr -d 'v')
