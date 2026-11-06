@@ -9,6 +9,8 @@ import { portingHasUnsavedWork } from '../../lib/portingPane';
 import { complaintHasUnsavedWork } from '../../lib/complaintPane';
 import { registerUnsavedCheck } from '../../lib/unsavedWork';
 import { useLiveUpdates } from '../../lib/realtime';
+import { useScreenPop } from '../../lib/screenPop';
+import { CallBar } from './CallBar';
 
 export function AppShell() {
   // Registered here, not on the pages themselves: a draft left open on New Installs,
@@ -20,6 +22,9 @@ export function AppShell() {
 
   // Other people's saves refresh this screen; only runs while signed in.
   useLiveUpdates();
+
+  // Answering a Webex call opens the caller's client (for people switched on in webex_users)
+  const { pop, dismiss, openClient, searchClients } = useScreenPop();
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -59,6 +64,16 @@ export function AppShell() {
         </div>
       </div>
       {newVersion && <UpdateBar onReload={reloadForUpdate} />}
+      {pop && (
+        <CallBar
+          key={pop.id}
+          pop={pop}
+          belowUpdateBar={!!newVersion}
+          onOpen={openClient}
+          onSearch={searchClients}
+          onDismiss={dismiss}
+        />
+      )}
     </>
   );
 }

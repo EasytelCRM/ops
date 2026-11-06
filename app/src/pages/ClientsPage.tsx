@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ClientSvcBadges } from '../components/Badges';
 import { CRED_FIELDS } from '../lib/creds';
 import { fmtDate } from '../lib/format';
@@ -31,7 +31,14 @@ export function ClientsPage() {
   const { data: clients = [], isLoading } = useClients();
   const { openClientModal, deleteClient } = useClientActions();
 
-  const [q, setQ] = useState('');
+  // A search handed over by the call bar ("Search clients" for an unknown caller). It rides on
+  // the router's location state rather than ?q=, so callers' numbers stay out of the URL.
+  const location = useLocation();
+  const handedQ = (location.state as { q?: string } | null)?.q;
+  const [q, setQ] = useState(handedQ ?? '');
+  useEffect(() => {
+    if (handedQ !== undefined) setQ(handedQ);
+  }, [handedQ, location.key]);
   // Cancelled accounts have clients.cancelled_date set; the list shows everyone by default
   const [filter, setFilter] = useState<Filter>('all');
   // Clicking the Company or Account # title sorts by it; clicking it again reverses.
@@ -44,14 +51,15 @@ export function ClientsPage() {
 
   const rows = useMemo(() => {
     // Credentials are searched too (e.g. an IP); only the matching field's name is shown, never its text
+    // Phone numbers match with spaces ignored on both sides ("0402 298 388")
+    const qDigits = query.replace(/\s/g, '');
     const basicHit = (c: ClientListRow) =>
       c.company.toLowerCase().includes(query) ||
       (c.account_number ?? '').toLowerCase().includes(query) ||
-      (c.phone ?? '').includes(query);
+      (!!qDigits && (c.phone ?? '').replace(/\s/g, '').includes(qDigits));
     const credHit = (c: ClientListRow) =>
       CRED_FIELDS.find((cf) => (c[cf.col] ?? '').toString().toLowerCase().includes(query));
-    // Contacts match on name or email, and on phone/mobile with spaces ignored ("0402 298 388")
-    const qDigits = query.replace(/\s/g, '');
+    // Contacts match on name or email, and on phone/mobile
     const contactHit = (c: ClientListRow) =>
       (c.client_contacts ?? []).find(
         (ct) =>
@@ -95,12 +103,12 @@ export function ClientsPage() {
   /** Why a client matched when the match was not in a column on screen. */
   const matchNote = (c: ClientListRow) => {
     if (!query) return null;
+    const qDigits = query.replace(/\s/g, '');
     const basic =
       c.company.toLowerCase().includes(query) ||
       (c.account_number ?? '').toLowerCase().includes(query) ||
-      (c.phone ?? '').includes(query);
+      (!!qDigits && (c.phone ?? '').replace(/\s/g, '').includes(qDigits));
     if (basic) return null;
-    const qDigits = query.replace(/\s/g, '');
     const ct = (c.client_contacts ?? []).find(
       (x) =>
         (x.name ?? '').toLowerCase().includes(query) ||

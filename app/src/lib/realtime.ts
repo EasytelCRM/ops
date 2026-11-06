@@ -24,6 +24,8 @@ const AFFECTS: Record<string, string[]> = {
   complaints: ['complaints', 'client'],
   complaint_notes: ['complaintNotes', 'complaints'],
   profiles: ['profiles'],
+  // Webex calls, admin-only. screen_pops is not here: lib/screenPop.ts has its own channel.
+  call_log: ['callLog'],
 };
 
 /** A burst of saves (a multi-row edit, an import) becomes one refresh. */

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../state/AuthProvider';
-import { isAdminOrOps } from '../lib/roles';
+import { isAdmin, isAdminOrOps } from '../lib/roles';
 import { useClientNotes, useClientProfile } from '../hooks/useClients';
+import { useClientCalls } from '../hooks/useCalls';
 import { ProfileCard } from '../components/clients/ProfileCard';
 import { useClientActions } from '../components/clients/useClientActions';
 import { useRecordDeletes } from '../components/clients/useRecordDeletes';
@@ -12,8 +13,9 @@ import { JobsTab } from '../components/clients/tabs/JobsTab';
 import { PortingTab } from '../components/clients/tabs/PortingTab';
 import { ComplaintsTab } from '../components/clients/tabs/ComplaintsTab';
 import { SitesTab } from '../components/clients/tabs/SitesTab';
+import { CallsTab } from '../components/clients/tabs/CallsTab';
 
-type Tab = 'notes' | 'jobs' | 'creds' | 'porting' | 'complaints' | 'sites';
+type Tab = 'notes' | 'jobs' | 'creds' | 'porting' | 'complaints' | 'sites' | 'calls';
 
 export function ClientProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +23,9 @@ export function ClientProfilePage() {
   const canSeeComplaints = isAdminOrOps(profile);
   const { data, isLoading, error } = useClientProfile(id, canSeeComplaints);
   const { data: notes = [] } = useClientNotes(id);
+  // The Webex call log is admin-only (RLS enforces it; this only hides the tab)
+  const canSeeCalls = isAdmin(profile);
+  const { data: calls = [] } = useClientCalls(id, canSeeCalls);
   const { openClientModal, openSiteModal, deleteClient, deleteSite } = useClientActions();
   const { deleteJob, deletePorting, deleteComplaint } = useRecordDeletes(id);
   const [tab, setTab] = useState<Tab>('notes');
@@ -51,6 +56,7 @@ export function ClientProfilePage() {
         ]
       : []),
     { k: 'sites', icon: 'ti-map-pin', label: 'Sites', count: data.sites.length },
+    ...(canSeeCalls ? [{ k: 'calls' as Tab, icon: 'ti-phone', label: 'Calls', count: calls.length }] : []),
   ];
 
   // Every panel stays mounted and is hidden with display, as the single-file app did:
@@ -111,6 +117,11 @@ export function ClientProfilePage() {
               onDelete={(sid) => void deleteSite(sid, data.client.id)}
             />
           </div>
+          {canSeeCalls && (
+            <div style={panel('calls')}>
+              <CallsTab calls={calls} />
+            </div>
+          )}
         </div>
       </div>
     </div>

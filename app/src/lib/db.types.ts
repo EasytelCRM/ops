@@ -175,6 +175,47 @@ export type AuditLog = {
   created_at: string;
 };
 
+/** Links a Webex Calling user to a CRM user. Admin-only. `pop` switches their screen pops on. */
+export type WebexUser = {
+  webex_person_id: string;
+  profile_id: string;
+  pop: boolean;
+  label: string | null;
+  created_at: string;
+};
+
+/**
+ * "You just answered a call from …", written by the webex-call-event Edge Function.
+ * Each user can read only their own; the app never writes them.
+ */
+export type ScreenPop = {
+  id: string;
+  profile_id: string;
+  webex_call_id: string;
+  /** 0XXXXXXXXX; null when the caller withheld their number. */
+  number: string | null;
+  caller_name: string | null;
+  /** Every client the number matched (cancelled clients included); empty when unknown. */
+  client_ids: string[];
+  created_at: string;
+};
+
+/** One answered call leg (a parked call picked up by a colleague is a second row). Admin-only. */
+export type CallLog = {
+  id: string;
+  webex_call_id: string;
+  webex_session_id: string | null;
+  webex_person_id: string | null;
+  profile_id: string | null;
+  number: string | null;
+  caller_name: string | null;
+  client_ids: string[];
+  answered_at: string;
+  ended_at: string | null;
+  duration_s: number | null;
+  created_at: string;
+};
+
 type Table<Row, Ins = Partial<Row>, Upd = Partial<Row>> = {
   Row: Row;
   Insert: Ins;
@@ -196,6 +237,9 @@ export type Database = {
       complaints: Table<Complaint, Partial<Complaint> & { client_id: string }>;
       complaint_notes: Table<ComplaintNote, Partial<ComplaintNote> & { complaint_id: string }>;
       audit_log: Table<AuditLog, Partial<AuditLog> & { action: string; table_name: string }>;
+      webex_users: Table<WebexUser, Partial<WebexUser> & { webex_person_id: string; profile_id: string }>;
+      screen_pops: Table<ScreenPop>;
+      call_log: Table<CallLog>;
     };
     Views: { [_ in never]: never };
     Functions: {
