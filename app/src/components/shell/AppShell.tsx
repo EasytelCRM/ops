@@ -8,6 +8,7 @@ import { paneHasUnsavedWork } from '../../lib/jobPanes';
 import { portingHasUnsavedWork } from '../../lib/portingPane';
 import { complaintHasUnsavedWork } from '../../lib/complaintPane';
 import { registerUnsavedCheck } from '../../lib/unsavedWork';
+import { useLiveUpdates } from '../../lib/realtime';
 
 export function AppShell() {
   // Registered here, not on the pages themselves: a draft left open on New Installs,
@@ -16,6 +17,9 @@ export function AppShell() {
   useEffect(() => registerUnsavedCheck(paneHasUnsavedWork), []);
   useEffect(() => registerUnsavedCheck(portingHasUnsavedWork), []);
   useEffect(() => registerUnsavedCheck(complaintHasUnsavedWork), []);
+
+  // Other people's saves refresh this screen; only runs while signed in.
+  useLiveUpdates();
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
