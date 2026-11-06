@@ -41,6 +41,8 @@ export interface SiteLite {
 export interface ClientLite {
   id: string;
   company: string;
+  /** Only loaded where a picker needs to leave cancelled accounts out (the jobs board). */
+  cancelled_date?: string | null;
 }
 
 /** Anything that is not a New Install is a service ticket, matching the old tab split. */

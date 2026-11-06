@@ -129,7 +129,10 @@ export function JobDetail({
               }}
             >
               <option value="">— select client —</option>
-              {(data?.clients ?? []).map((c) => (
+              {/* Cancelled accounts are left out, unless the draft was opened from one's profile */}
+              {(data?.clients ?? [])
+                .filter((c) => !c.cancelled_date || c.id === f.client_id)
+                .map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.company}
                 </option>

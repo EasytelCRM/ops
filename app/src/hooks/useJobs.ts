@@ -32,7 +32,7 @@ export function useJobsData() {
             nullsFirst: false,
           }) as never,
         ),
-        fetchAll<ClientLite>(() => sb.from('clients').select('id,company').order('company') as never),
+        fetchAll<ClientLite>(() => sb.from('clients').select('id,company,cancelled_date').order('company') as never),
         fetchAll<SiteLite>(() => sb.from('sites').select('id,name,client_id') as never),
         // Search only: a failure keeps the index from the last load rather than
         // flagging every install as having no notes.

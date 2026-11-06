@@ -16,9 +16,12 @@ import {
 } from '../lib/complaintPane';
 import { fmtDate } from '../lib/format';
 import { notesSearchText } from '../lib/jobs';
+import { isAdmin } from '../lib/roles';
+import { useAuth } from '../state/AuthProvider';
 import { useTopbarCta } from '../state/TopbarProvider';
 
 export function ComplaintsPage() {
+  const { profile } = useAuth();
   const [params, setParams] = useSearchParams();
   const { data, isLoading } = useComplaintsData();
   const { data: profiles = [] } = useProfiles();
@@ -186,7 +189,8 @@ export function ComplaintsPage() {
                   )}
                 </div>
               </div>
-              {!pane.draft && (
+              {/* Only admins can delete complaints (RLS); ops can open the page but not delete */}
+              {!pane.draft && isAdmin(profile) && (
                 <button
                   className="btn btn-sm btn-danger"
                   onClick={() => void actions.deleteComplaint(sel!.id)}
