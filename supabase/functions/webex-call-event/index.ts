@@ -12,9 +12,12 @@
  *    event carrying the original caller's number.
  *  - That leg ENDS (eventType "disconnected") → the call_log row gets ended_at.
  *
- * Everything else (ringing, outbound, internal, held, recording) is ignored. We trigger on
- * eventType "answered", not state "connected": "connected" repeats when recording starts
- * and when a held call resumes.
+ * We trigger on eventType "answered", not state "connected": "connected" repeats when
+ * recording starts and when a held call resumes.
+ *
+ * Separately, every event on an external call — inbound or outbound, from ringing to hang-up —
+ * updates that person's leg in call_legs, which feeds the sales call stats wallboard. A leg
+ * that starts with the park retrieve code (*88…) is a park pickup. Internal calls are ignored.
  *
  * Deployed with verify_jwt off, because Webex cannot send a Supabase token. Instead Webex
  * signs each request with the webhook's secret (X-Spark-Signature = hex HMAC-SHA1 of the
@@ -41,6 +44,7 @@ type CallEvent = {
     callId?: string;
     callSessionId?: string;
     remoteParty?: RemoteParty;
+    created?: string;
     answered?: string;
     disconnected?: string;
   };
@@ -138,6 +142,38 @@ async function onDisconnected(ev: CallEvent) {
   if (r.error) console.error('call_log end failed', r.error.message);
 }
 
+/**
+ * Keeps call_legs up to date for the call stats. Events for a leg can arrive in any order;
+ * record_call_leg() only ever fills gaps, so a late "received" never undoes an "answered".
+ */
+async function recordLeg(ev: CallEvent) {
+  const d = ev.data!;
+  if (!d.callId || !ev.actorId) return;
+  // clickToDial is the desk phone ringing to start a click-to-dial; the same leg turns
+  // into the originator once it dials out, and that is when it is recorded.
+  const direction = d.personality === 'originator' ? 'out' : d.personality === 'terminator' ? 'in' : null;
+  if (!direction) return;
+  const rp = d.remoteParty;
+  const external = rp?.callType === 'external';
+  // Picking a call up from park: the leg opens dialling the retrieve code, then connects
+  // to the original (external) caller.
+  const park = direction === 'in' && /^\*88/.test(rp?.number ?? '');
+  if (!external && !park) return;
+
+  const r = await db.rpc('record_call_leg', {
+    p_call_id: d.callId,
+    p_session_id: d.callSessionId ?? null,
+    p_person_id: ev.actorId,
+    p_direction: direction,
+    p_park: park,
+    p_remote: external ? nationalNumber(rp) : null,
+    p_created: d.created ?? null,
+    p_answered: d.answered ?? null,
+    p_ended: d.eventType === 'disconnected' ? (d.disconnected ?? new Date().toISOString()) : null,
+  });
+  if (r.error) console.error('record_call_leg failed', r.error.message);
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('ok');
   if (!SECRET) {
@@ -167,11 +203,18 @@ Deno.serve(async (req) => {
 
   // Always answer 200 once the signature is good: Webex can disable a webhook that keeps failing,
   // and a lost pop is better than a dead webhook.
-  try {
+  const popAndLog = async () => {
     if (relevant && d!.eventType === 'answered') await onAnswered(ev);
     else if (relevant && d!.eventType === 'disconnected') await onDisconnected(ev);
-  } catch (e) {
-    console.error('handler failed', e instanceof Error ? e.message : String(e));
+  };
+  const legs = async () => {
+    if (ev.resource === 'telephony_calls' && d) await recordLeg(ev);
+  };
+  const results = await Promise.allSettled([popAndLog(), legs()]);
+  for (const r of results) {
+    if (r.status === 'rejected') {
+      console.error('handler failed', r.reason instanceof Error ? r.reason.message : String(r.reason));
+    }
   }
   return new Response('ok');
 });

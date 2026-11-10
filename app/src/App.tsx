@@ -17,6 +17,9 @@ import { PortingPage } from './pages/PortingPage';
 import { ComplaintsPage } from './pages/ComplaintsPage';
 import { UsersPage } from './pages/UsersPage';
 import { AuditPage } from './pages/AuditPage';
+import { CallStatsPage } from './pages/CallStatsPage';
+import { WallboardScreen } from './pages/WallboardScreen';
+import { isWallboard } from './lib/roles';
 
 /**
  * Keeps a role off a page it cannot see in the sidebar. The single-file app had no URL
@@ -34,11 +37,13 @@ function Guarded({ path, children }: { path: string; children: ReactNode }) {
 }
 
 export function App() {
-  const { screen } = useAuth();
+  const { screen, profile } = useAuth();
 
   if (screen === 'loading') return <LoadingScreen />;
   if (screen === 'login') return <LoginScreen />;
   if (screen === 'set-password') return <SetPasswordScreen />;
+  // A TV login gets the call stats wallboard and nothing else
+  if (isWallboard(profile)) return <WallboardScreen />;
 
   // The router mounts only once the app is open, so it never competes with the SDK
   // for the hash an invite or recovery link arrives on.
@@ -59,6 +64,14 @@ export function App() {
                 element={
                   <Guarded path="/complaints">
                     <ComplaintsPage />
+                  </Guarded>
+                }
+              />
+              <Route
+                path="/call-stats"
+                element={
+                  <Guarded path="/call-stats">
+                    <CallStatsPage />
                   </Guarded>
                 }
               />

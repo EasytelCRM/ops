@@ -11,7 +11,8 @@
  * types get an implicit index signature.
  */
 
-export type Role = 'admin' | 'ops' | 'technician';
+/** `wallboard` is a TV login: it sees the call stats wallboard and nothing else. */
+export type Role = 'admin' | 'ops' | 'technician' | 'wallboard';
 
 export type JobStatus = 'Pending' | 'Incomplete' | 'Complete' | 'Cancelled';
 export type JobType = 'New Install' | 'Service';
@@ -175,13 +176,47 @@ export type AuditLog = {
   created_at: string;
 };
 
-/** Links a Webex Calling user to a CRM user. Admin-only. `pop` switches their screen pops on. */
+/**
+ * A Webex Calling user, and the CRM user they are (if any). Admin-only.
+ * `pop` switches their screen pops on; `sales` puts them on the call stats wallboard.
+ */
 export type WebexUser = {
   webex_person_id: string;
-  profile_id: string;
+  profile_id: string | null;
   pop: boolean;
+  sales: boolean;
+  /** Their Webex display name. */
   label: string | null;
   created_at: string;
+};
+
+/** One person's side of one external call, for the call stats. Admins and the wallboard read it. */
+export type CallLeg = {
+  webex_call_id: string;
+  webex_session_id: string | null;
+  webex_person_id: string;
+  direction: 'in' | 'out';
+  park_pickup: boolean;
+  remote_number: string | null;
+  started_at: string;
+  answered_at: string | null;
+  ended_at: string | null;
+};
+
+export type CallStatus = 'on_call' | 'ringing' | 'dialling' | 'idle';
+
+/** A sales-team member's totals for a period, from call_stats(). Talk times are seconds. */
+export type CallStatsRow = {
+  webex_person_id: string;
+  name: string;
+  out_calls: number;
+  out_talk_s: number;
+  in_calls: number;
+  in_talk_s: number;
+  park_pickups: number;
+  total_talk_s: number;
+  status: CallStatus;
+  status_since: string | null;
 };
 
 /**
@@ -237,12 +272,18 @@ export type Database = {
       complaints: Table<Complaint, Partial<Complaint> & { client_id: string }>;
       complaint_notes: Table<ComplaintNote, Partial<ComplaintNote> & { complaint_id: string }>;
       audit_log: Table<AuditLog, Partial<AuditLog> & { action: string; table_name: string }>;
-      webex_users: Table<WebexUser, Partial<WebexUser> & { webex_person_id: string; profile_id: string }>;
+      webex_users: Table<WebexUser, Partial<WebexUser> & { webex_person_id: string }>;
+      call_legs: Table<CallLeg>;
       screen_pops: Table<ScreenPop>;
       call_log: Table<CallLog>;
     };
     Views: { [_ in never]: never };
     Functions: {
+      /** Sales team totals for calls answered in [p_from, p_to), plus live status. Admin + wallboard. */
+      call_stats: {
+        Args: { p_from: string; p_to: string };
+        Returns: CallStatsRow[];
+      };
       next_account_number: {
         Args: { series: string };
         Returns: string;

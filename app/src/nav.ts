@@ -31,6 +31,13 @@ export const NAV: NavItem[] = [
     visible: isAdminOrOps,
   },
   {
+    path: '/call-stats',
+    label: 'Call Stats',
+    icon: 'ti-chart-bar',
+    title: 'Sales call stats',
+    visible: isAdmin,
+  },
+  {
     path: '/users',
     label: 'Users',
     icon: 'ti-shield-lock',

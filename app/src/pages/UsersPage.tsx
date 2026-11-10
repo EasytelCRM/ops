@@ -121,6 +121,8 @@ function UserRow({
               <option value="technician">Tech</option>
               <option value="ops">Ops</option>
               <option value="admin">Admin</option>
+              {/* A TV login for the sales call stats: sees the wallboard and nothing else */}
+              <option value="wallboard">Wallboard</option>
             </select>
             {statusReady &&
               (live ? (
