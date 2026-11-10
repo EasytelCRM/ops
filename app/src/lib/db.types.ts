@@ -288,6 +288,11 @@ export type Database = {
         Args: { p_from: string; p_to: string };
         Returns: CallStatsRow[];
       };
+      /** A client's calls, matched on its current numbers. Admins + ops. */
+      client_calls: {
+        Args: { p_client: string };
+        Returns: CallLog[];
+      };
       next_account_number: {
         Args: { series: string };
         Returns: string;

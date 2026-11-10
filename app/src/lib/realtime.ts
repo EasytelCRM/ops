@@ -14,8 +14,8 @@ import { sb } from './supabase';
  * is not dirty, and the client modal reads its record once when it opens.
  */
 const AFFECTS: Record<string, string[]> = {
-  clients: ['clients', 'client', 'jobs', 'porting', 'complaints', 'dashboard'],
-  client_contacts: ['clients', 'client'],
+  clients: ['clients', 'client', 'jobs', 'porting', 'complaints', 'dashboard', 'callLog'],
+  client_contacts: ['clients', 'client', 'callLog'],
   client_notes: ['clientNotes', 'client'],
   sites: ['client', 'jobs'],
   jobs: ['jobs', 'dashboard', 'client', 'clients'],
@@ -24,7 +24,7 @@ const AFFECTS: Record<string, string[]> = {
   complaints: ['complaints', 'client'],
   complaint_notes: ['complaintNotes', 'complaints'],
   profiles: ['profiles'],
-  // Webex calls, admin-only. screen_pops is not here: lib/screenPop.ts has its own channel.
+  // Webex calls, admins and ops. screen_pops is not here: lib/screenPop.ts has its own channel.
   call_log: ['callLog'],
   // Every ring, answer and hang-up on the sales team moves the call stats
   call_legs: ['callStats'],
