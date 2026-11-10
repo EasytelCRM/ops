@@ -116,7 +116,8 @@ export function ManageTeamModal() {
                         CRM name
                       </span>
                     ) : (
-                      <button className="jn-act" title="Rename" onClick={() => startEdit(u)}>
+                      // jn-act hides itself outside a note row, so it is made visible here
+                      <button className="jn-act" style={{ opacity: 1 }} title="Rename" onClick={() => startEdit(u)}>
                         <i className="ti ti-pencil" />
                       </button>
                     )}
