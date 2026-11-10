@@ -10,7 +10,11 @@
  *        picks it up over Realtime and opens the caller's client.
  *    Picking a call up from park counts: Webex sends the colleague their own "answered"
  *    event carrying the original caller's number.
+ *  - An agent's OUTBOUND call to an outside number is answered (personality "originator",
+ *    `answered` set) → a call_log row with direction "out" (no screen pop).
  *  - That leg ENDS (eventType "disconnected") → the call_log row gets ended_at.
+ *
+ * It also nudges call-recording to renew the Service App's Webex token once a day.
  *
  * We trigger on eventType "answered", not state "connected": "connected" repeats when
  * recording starts and when a held call resumes.
@@ -131,6 +135,54 @@ async function onAnswered(ev: CallEvent) {
   if (clean.error) console.error('screen_pops cleanup failed', clean.error.message);
 }
 
+/**
+ * An outbound call to an outside number, once the far end picks up: a call_log row (direction
+ * "out", client matched by the number dialled) so it shows on the client's Calls tab with its
+ * recording. No screen pop: the agent chose who to call. Every event on the leg carries
+ * `answered` once connected, so whichever arrives first logs it and the rest are ignored.
+ */
+async function onOutboundAnswered(ev: CallEvent) {
+  const d = ev.data!;
+  if (!d.callId || !ev.actorId || !d.answered) return;
+  const number = nationalNumber(d.remoteParty);
+  const [match, who] = await Promise.all([
+    number ? db.rpc('match_caller', { num: number }) : Promise.resolve({ data: [] as string[], error: null }),
+    db.from('webex_users').select('profile_id').eq('webex_person_id', ev.actorId).maybeSingle(),
+  ]);
+  if (match.error) console.error('match_caller failed', match.error.message);
+  const log = await db.from('call_log').upsert(
+    {
+      webex_call_id: d.callId,
+      webex_session_id: d.callSessionId ?? null,
+      webex_person_id: ev.actorId,
+      profile_id: who.data?.profile_id ?? null,
+      number,
+      caller_name: d.remoteParty?.name?.trim() || null,
+      client_ids: (match.data as string[] | null) ?? [],
+      answered_at: d.answered,
+      direction: 'out',
+    },
+    { onConflict: 'webex_call_id', ignoreDuplicates: true },
+  );
+  if (log.error) console.error('call_log outbound insert failed', log.error.message);
+}
+
+/**
+ * Once a day, asks call-recording to renew the Service App's Webex token, so recordings keep
+ * playing without anyone generating tokens by hand. webex_token_due() says yes at most once
+ * every 20 hours; calls arrive every business day, which is plenty for a 14-day token.
+ */
+async function renewWebexTokenDaily() {
+  const due = await db.rpc('webex_token_due');
+  if (due.error || !due.data) return;
+  const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/call-recording`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'refresh' }),
+  });
+  console.log(JSON.stringify({ did: 'token-renew', status: res.status }));
+}
+
 async function onDisconnected(ev: CallEvent) {
   const d = ev.data!;
   if (!d.callId || !d.answered) return; // never answered on this leg: nothing was logged
@@ -196,21 +248,21 @@ Deno.serve(async (req) => {
   }
 
   const d = ev.data;
-  const relevant =
-    ev.resource === 'telephony_calls' &&
-    d?.personality === 'terminator' &&
-    d.remoteParty?.callType === 'external';
+  const external = ev.resource === 'telephony_calls' && d?.remoteParty?.callType === 'external';
+  const inbound = external && d!.personality === 'terminator';
+  const outbound = external && d!.personality === 'originator';
 
   // Always answer 200 once the signature is good: Webex can disable a webhook that keeps failing,
   // and a lost pop is better than a dead webhook.
   const popAndLog = async () => {
-    if (relevant && d!.eventType === 'answered') await onAnswered(ev);
-    else if (relevant && d!.eventType === 'disconnected') await onDisconnected(ev);
+    if (inbound && d!.eventType === 'answered') await onAnswered(ev);
+    else if (outbound && d!.answered) await onOutboundAnswered(ev);
+    if ((inbound || outbound) && d!.eventType === 'disconnected') await onDisconnected(ev);
   };
   const legs = async () => {
     if (ev.resource === 'telephony_calls' && d) await recordLeg(ev);
   };
-  const results = await Promise.allSettled([popAndLog(), legs()]);
+  const results = await Promise.allSettled([popAndLog(), legs(), renewWebexTokenDaily()]);
   for (const r of results) {
     if (r.status === 'rejected') {
       console.error('handler failed', r.reason instanceof Error ? r.reason.message : String(r.reason));

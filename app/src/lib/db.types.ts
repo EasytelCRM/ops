@@ -248,6 +248,10 @@ export type CallLog = {
   answered_at: string;
   ended_at: string | null;
   duration_s: number | null;
+  /** in = answered inbound call, out = answered outbound call */
+  direction: 'in' | 'out';
+  /** Webex recording id, saved once found; the audio stays on Webex */
+  recording_id: string | null;
   created_at: string;
 };
 
