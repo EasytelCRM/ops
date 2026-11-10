@@ -62,6 +62,24 @@ export function useWebexUsers(enabled: boolean) {
   });
 }
 
+/**
+ * The name shown for someone with no CRM login (webex_users.label). Copied from Webex once,
+ * so a rename in Webex doesn't reach here; admins fix it in Manage team instead.
+ */
+export function useRenameWebexUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, label }: { id: string; label: string }) => {
+      const { error } = await sb.from('webex_users').update({ label }).eq('webex_person_id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['webexUsers'] });
+      void qc.invalidateQueries({ queryKey: ['callStats'] });
+    },
+  });
+}
+
 /** Puts someone on, or takes them off, the sales team board. */
 export function useSetSales() {
   const qc = useQueryClient();

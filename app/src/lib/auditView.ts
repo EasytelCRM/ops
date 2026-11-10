@@ -134,7 +134,7 @@ export function auditDiff(a: AuditLog, look: AuditLookups): AuditChange[] {
           to: fmtAuditVal(k, newD[k], look),
         });
     }
-  } else if (a.action === 'created') {
+  } else if (a.action === 'created' || a.action === 'invited') {
     for (const k of Object.keys(newD)) {
       const v = newD[k];
       // A create lists what was actually filled in, not every blank column

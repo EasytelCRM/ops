@@ -1,10 +1,10 @@
-import { isActiveStaff } from '../lib/roles';
+import { isActiveStaff, isWallboard } from '../lib/roles';
 import type { Profile } from '../lib/db.types';
 
 /**
  * The options inside a "who is this on" dropdown. Deactivated staff are dropped, unless
  * the record is still assigned to one — then they stay, marked, so saving the record
- * does not quietly reassign it.
+ * does not quietly reassign it. Wallboard (TV) logins are never offered: nobody works there.
  */
 export function StaffOptions({
   profiles,
@@ -19,7 +19,7 @@ export function StaffOptions({
     <>
       <option value="">{emptyLabel}</option>
       {profiles
-        .filter((u) => isActiveStaff(u) || u.id === selectedId)
+        .filter((u) => (isActiveStaff(u) && !isWallboard(u)) || u.id === selectedId)
         .map((u) => (
           <option key={u.id} value={u.id}>
             {u.full_name}
