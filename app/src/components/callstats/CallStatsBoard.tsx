@@ -36,7 +36,10 @@ function StatusBadge({ row, now, big }: { row: CallStatsRow; now: number; big: b
   const s = STATUS[row.status] ?? STATUS.idle;
   const since = row.status === 'on_call' && row.status_since ? mmss((now - Date.parse(row.status_since)) / 1000) : '';
   return (
-    <span className={`badge ${s.badge}`} style={big ? { fontSize: 'clamp(15px, 1.1vw, 44px)', padding: '0.3em 0.8em' } : undefined}>
+    <span
+      className={`badge ${s.badge}`}
+      style={{ fontVariantNumeric: 'tabular-nums', ...(big ? { fontSize: 'clamp(15px, 1.1vw, 44px)', padding: '0.3em 0.8em' } : {}) }}
+    >
       {s.label}
       {since && ` · ${since}`}
     </span>
@@ -74,7 +77,8 @@ export function CallStatsBoard({ period, big = false }: { period: Period; big?: 
   // Wallboard sizes follow the screen width, so a 1080p or 4K TV is filled the same way
   const th = big ? { fontSize: 'clamp(14px, 1vw, 40px)', padding: '0.8vw 1rem' } : undefined;
   const td = big ? { fontSize: 'clamp(22px, 1.7vw, 68px)', padding: '1.1vw 1rem' } : undefined;
-  const num = { ...td, textAlign: 'right' as const, fontFamily: "'DM Mono',monospace" };
+  // The app's own font with fixed-width digits, as elsewhere in the CRM, so the columns line up
+  const num = { ...td, textAlign: 'right' as const, fontVariantNumeric: 'tabular-nums' };
   const thNum = { ...th, textAlign: 'right' as const };
   const value = big ? { fontSize: 'clamp(40px, 3.6vw, 140px)' } : undefined;
   const label = big ? { fontSize: 'clamp(12px, 0.9vw, 36px)' } : undefined;
@@ -114,6 +118,14 @@ export function CallStatsBoard({ period, big = false }: { period: Period; big?: 
       <div className="card">
         <div className="table-wrap">
           <table>
+            {/* Even spacing for the six number columns; Status is fixed so a live call timer can't shift them */}
+            <colgroup>
+              <col />
+              <col style={{ width: '14%' }} />
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <col key={i} style={{ width: '10.5%' }} />
+              ))}
+            </colgroup>
             <thead>
               <tr>
                 <th style={th}>Agent</th>
@@ -139,7 +151,7 @@ export function CallStatsBoard({ period, big = false }: { period: Period; big?: 
                     <td style={num}>{r.in_calls}</td>
                     <td style={num}>{hms(r.in_talk_s)}</td>
                     <td style={num}>{r.park_pickups}</td>
-                    <td style={{ ...num, fontWeight: 600 }}>{hms(r.total_talk_s)}</td>
+                    <td style={{ ...num, fontWeight: 600, color: 'var(--text)' }}>{hms(r.total_talk_s)}</td>
                   </tr>
                 ))
               ) : (

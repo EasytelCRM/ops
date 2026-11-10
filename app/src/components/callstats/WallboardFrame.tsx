@@ -10,7 +10,7 @@ function Clock() {
     return () => clearInterval(t);
   }, []);
   return (
-    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 'clamp(22px, 1.7vw, 68px)', color: 'var(--text2)' }}>
+    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 'clamp(22px, 1.7vw, 68px)', color: 'var(--text2)' }}>
       {now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
     </span>
   );
