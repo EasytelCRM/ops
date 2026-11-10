@@ -6,13 +6,13 @@ import type { CallLog } from '../lib/db.types';
 const CALLS_SHOWN = 200;
 
 /**
- * A client's answered calls, from the Webex call log. Admins only: RLS returns nothing
+ * A client's answered calls, from the Webex call log. Admins and ops only: RLS returns nothing
  * to anyone else, so it is not asked for.
  */
-export function useClientCalls(clientId: string | undefined, isAdmin: boolean) {
+export function useClientCalls(clientId: string | undefined, allowed: boolean) {
   return useQuery({
     queryKey: ['callLog', clientId],
-    enabled: !!clientId && isAdmin,
+    enabled: !!clientId && allowed,
     queryFn: async () => {
       const { data, error } = await sb
         .from('call_log')

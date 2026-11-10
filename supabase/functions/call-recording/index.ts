@@ -1,7 +1,7 @@
 /**
  * Plays a Webex call recording from a client's Calls tab, without the CRM ever storing audio.
  *
- * POST { call_log_id } (an admin's session) → finds that call's recording on Webex and returns
+ * POST { call_log_id } (an admin's or ops session) → finds that call's recording on Webex and returns
  * Webex's own short-lived download link, which the browser plays directly. The recording is
  * matched by the call's session id (call_log.webex_session_id is that id, base64-encoded),
  * preferring the recording owned by the agent on that leg; once found, its id is saved on the
@@ -161,11 +161,12 @@ Deno.serve(async (req) => {
       return reply(200, { ok: true });
     }
 
-    // Playing a recording: admins only, like the Calls tab itself
+    // Playing a recording: admins and ops, the same people who see the Calls tab
     const { data: who } = await db.auth.getUser(jwt);
     if (!who?.user) return reply(401, { error: 'Sign in again and retry' });
     const { data: me } = await db.from('profiles').select('role, active').eq('id', who.user.id).single();
-    if (me?.role !== 'admin' || me.active === false) return reply(403, { error: 'Only admins can play recordings' });
+    if (!['admin', 'ops'].includes(me?.role ?? '') || me?.active === false)
+      return reply(403, { error: 'Only admins and ops can play recordings' });
 
     if (!body.call_log_id) return reply(400, { error: 'Which call?' });
     const { data: call } = await db

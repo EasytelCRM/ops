@@ -54,7 +54,7 @@ function Recording({ call }: { call: CallLog }) {
   );
 }
 
-/** Answered Webex calls with this client's numbers, both ways, with their recordings. Admin-only. */
+/** Answered Webex calls with this client's numbers, both ways, with their recordings. Admins and ops. */
 export function CallsTab({ calls }: { calls: CallLog[] }) {
   const { data: profiles = [] } = useProfiles();
   const who = (c: CallLog) =>

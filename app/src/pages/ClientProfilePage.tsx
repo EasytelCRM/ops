@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../state/AuthProvider';
-import { isAdmin, isAdminOrOps } from '../lib/roles';
+import { isAdminOrOps } from '../lib/roles';
 import { useClientNotes, useClientProfile } from '../hooks/useClients';
 import { useClientCalls } from '../hooks/useCalls';
 import { ProfileCard } from '../components/clients/ProfileCard';
@@ -23,8 +23,8 @@ export function ClientProfilePage() {
   const canSeeComplaints = isAdminOrOps(profile);
   const { data, isLoading, error } = useClientProfile(id, canSeeComplaints);
   const { data: notes = [] } = useClientNotes(id);
-  // The Webex call log is admin-only (RLS enforces it; this only hides the tab)
-  const canSeeCalls = isAdmin(profile);
+  // The Webex call log is admins and ops only (RLS enforces it; this only hides the tab)
+  const canSeeCalls = isAdminOrOps(profile);
   const { data: calls = [] } = useClientCalls(id, canSeeCalls);
   const { openClientModal, openSiteModal, deleteClient, deleteSite } = useClientActions();
   const { deleteJob, deletePorting, deleteComplaint } = useRecordDeletes(id);
