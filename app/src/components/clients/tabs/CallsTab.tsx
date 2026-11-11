@@ -49,10 +49,10 @@ function CallCard({ call: c, who }: { call: CallLog; who: string }) {
           <i className={`ti ${out ? 'ti-phone-outgoing' : 'ti-phone-incoming'}`} />{' '}
           {out ? 'Called by' : 'Answered by'} {who}
         </div>
+        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)', margin: '2px 0 4px' }}>
+          <i className="ti ti-calendar" style={{ fontSize: 12 }} /> {fmtDateTime(c.answered_at)}
+        </div>
         <div className="job-meta">
-          <span>
-            <i className="ti ti-calendar" style={{ fontSize: 11 }} /> {fmtDateTime(c.answered_at)}
-          </span>
           <span>
             <i className="ti ti-clock" style={{ fontSize: 11 }} /> {length(c.duration_s)}
           </span>
