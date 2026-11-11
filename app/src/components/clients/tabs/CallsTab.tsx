@@ -22,8 +22,8 @@ let active: HTMLAudioElement | null = null;
 /**
  * One call card with an inline mini player for its Webex recording. The `call-recording` Edge
  * Function finds it and hands back Webex's own short-lived link; the audio streams from Webex and
- * nothing is saved in the CRM. While a recording is playing (or paused part-way) the details line
- * becomes a progress bar you can click to skip; it goes back to the details when the recording ends.
+ * nothing is saved in the CRM. While a recording is playing the details line becomes a progress bar
+ * you can click to skip; pausing brings the details back and play carries on from the same spot.
  */
 function CallCard({ call: c, who }: { call: CallLog; who: string }) {
   const [p, setP] = useState<Playback>({ state: 'idle' });
@@ -108,7 +108,7 @@ function CallCard({ call: c, who }: { call: CallLog; who: string }) {
     e.preventDefault();
   };
 
-  const showBar = p.state === 'ready' && (playing || pos > 0);
+  const showBar = p.state === 'ready' && playing;
   const pct = total ? Math.min(100, (pos / total) * 100) : 0;
   const time = { fontSize: 11, color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' } as const;
 
