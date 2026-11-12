@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { sb } from '../../lib/supabase';
 import { logAudit } from '../../lib/audit';
 import type { Site } from '../../lib/db.types';
+import { sitePlaceholder, suggestSiteName } from '../../lib/siteName';
 import { useToast } from '../../state/ToastProvider';
 
 export function SiteModal({
@@ -21,10 +22,28 @@ export function SiteModal({
   const [name, setName] = useState(site?.name ?? '');
   const [address, setAddress] = useState(site?.address ?? '');
   const [saving, setSaving] = useState(false);
+  /** The client's other sites' addresses, so a blank name can tell same-suburb sites apart. */
+  const [otherAddresses, setOtherAddresses] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void sb
+      .from('sites')
+      .select('id, address')
+      .eq('client_id', clientId)
+      .then(({ data }) => {
+        if (live) setOtherAddresses((data ?? []).filter((s) => s.id !== site?.id).map((s) => s.address ?? ''));
+      });
+    return () => {
+      live = false;
+    };
+  }, [clientId, site?.id]);
+
+  const suggestion = address.trim() ? suggestSiteName(address, otherAddresses ?? []) : '';
 
   const submit = async () => {
-    const trimmed = name.trim();
-    if (!trimmed) return toast('Site name is required', 'warn');
+    const trimmed = name.trim() || suggestion;
+    if (!trimmed) return toast('Enter a site name, or an address with a suburb', 'warn');
     setSaving(true);
     try {
       if (isEdit) {
@@ -72,11 +91,11 @@ export function SiteModal({
         </button>
       </div>
       <div className="form-group">
-        <label className="lbl">Site name *</label>
+        <label className="lbl">Site name</label>
         <input
           className="fi"
           value={name}
-          placeholder="e.g. Head Office, Warehouse"
+          placeholder={sitePlaceholder(suggestion)}
           onChange={(e) => setName(e.target.value)}
         />
       </div>
@@ -93,7 +112,7 @@ export function SiteModal({
         <button className="btn" onClick={onClose}>
           Cancel
         </button>
-        <button className="btn btn-primary" disabled={saving} onClick={() => void submit()}>
+        <button className="btn btn-primary" disabled={saving || otherAddresses === null} onClick={() => void submit()}>
           {isEdit ? 'Save changes' : 'Add site'}
         </button>
       </div>

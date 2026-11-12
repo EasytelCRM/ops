@@ -9,12 +9,22 @@ import {
   type ContactRow,
 } from '../../lib/clientContacts';
 import type { Client, ClientContact } from '../../lib/db.types';
+import { sitePlaceholder, suggestSiteName } from '../../lib/siteName';
 import { useToast } from '../../state/ToastProvider';
 
 interface AddressRow {
   key: string;
   name: string;
   address: string;
+}
+
+/** The default name for an address row, given the other rows' addresses. */
+function addressRowSuggestion(rows: AddressRow[], row: AddressRow): string {
+  if (!row.address.trim()) return '';
+  return suggestSiteName(
+    row.address,
+    rows.filter((r) => r.key !== row.key).map((r) => r.address),
+  );
 }
 
 /** Friendly message for client save failures, incl. DB unique-constraint violations. */
@@ -56,7 +66,7 @@ export function ClientModal({
   const [contacts, setContacts] = useState<ContactRow[]>([emptyContactRow()]);
   const [primaryKey, setPrimaryKey] = useState<string | null>(null);
   const [addresses, setAddresses] = useState<AddressRow[]>([
-    { key: crypto.randomUUID(), name: 'Main Site', address: '' },
+    { key: crypto.randomUUID(), name: '', address: '' },
   ]);
   const [series, setSeries] = useState<'easytel' | 'budget'>('easytel');
   const [saving, setSaving] = useState(false);
@@ -207,7 +217,7 @@ export function ClientModal({
       const sites = addresses
         .map((row, i) => ({
           client_id: data!.id,
-          name: row.name.trim() || `Site ${i + 1}`,
+          name: row.name.trim() || addressRowSuggestion(addresses, row) || `Site ${i + 1}`,
           address: row.address.trim(),
         }))
         .filter((s) => s.address)
@@ -528,7 +538,7 @@ export function ClientModal({
                 <input
                   className="fi site-name-input"
                   value={row.name}
-                  placeholder={i === 0 ? 'Site name (e.g. Head Office)' : 'Site name'}
+                  placeholder={sitePlaceholder(addressRowSuggestion(addresses, row))}
                   style={{ flex: 1 }}
                   onChange={(e) =>
                     setAddresses((rows) =>
