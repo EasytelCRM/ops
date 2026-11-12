@@ -33,7 +33,16 @@ export function useJobsData() {
           }) as never,
         ),
         fetchAll<ClientLite>(() => sb.from('clients').select('id,company,cancelled_date').order('company') as never),
-        fetchAll<SiteLite>(() => sb.from('sites').select('id,name,client_id') as never),
+        // Primary first, so it heads each client's site picker
+        fetchAll<SiteLite>(
+          () =>
+            sb
+              .from('sites')
+              .select('id,name,client_id')
+              .order('is_primary', { ascending: false })
+              .order('created_at', { ascending: true })
+              .order('id') as never, // a unique last key keeps the pages stable
+        ),
         // Search only: a failure keeps the index from the last load rather than
         // flagging every install as having no notes.
         fetchAll<Pick<JobNote, 'job_id' | 'text'>>(() =>

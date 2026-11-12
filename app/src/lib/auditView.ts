@@ -52,6 +52,11 @@ export const AUDIT_LABELS: Record<string, string> = {
   is_primary: 'Primary contact',
 };
 
+/** Where a column means something different on one table, keyed table → column. */
+const AUDIT_TABLE_LABELS: Record<string, Record<string, string>> = {
+  sites: { is_primary: 'Primary site' },
+};
+
 /** Passwords never appear in the log — only the fact that they moved. */
 export const AUDIT_SENSITIVE = new Set([
   'system_credentials',
@@ -119,7 +124,8 @@ const asRecord = (v: unknown): Record<string, unknown> =>
 export function auditDiff(a: AuditLog, look: AuditLookups): AuditChange[] {
   const rows: AuditChange[] = [];
   const newD = asRecord(a.new_data);
-  const label = (k: string) => AUDIT_LABELS[k] || k;
+  const label = (k: string) =>
+    AUDIT_TABLE_LABELS[a.table_name]?.[k] || AUDIT_LABELS[k] || k;
 
   if (a.action === 'updated') {
     const oldD = asRecord(a.old_data);

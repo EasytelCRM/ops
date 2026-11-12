@@ -54,7 +54,8 @@ export function ProfileCard({
 }) {
   const { profile } = useAuth();
   const { client, sites, jobs, contacts } = data;
-  const mainSite = sites[0];
+  // Only a site someone marked primary: the oldest can be an address the client moved from
+  const mainSite = sites.find((s) => s.is_primary);
 
   // The primary contact sits under Phone/Email (its own phone and email only where they
   // differ from the client's); everyone else is listed under Other contacts.

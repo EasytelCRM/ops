@@ -94,5 +94,31 @@ export function useClientActions() {
     [refreshClient, toast],
   );
 
-  return { openClientModal, openSiteModal, deleteClient, deleteSite };
+  const setPrimarySite = useCallback(
+    async (site: Site) => {
+      try {
+        // Clear the outgoing primary first, or the unique index sees two at once
+        const { data: cleared, error: cErr } = await sb
+          .from('sites')
+          .update({ is_primary: false })
+          .eq('client_id', site.client_id)
+          .eq('is_primary', true)
+          .select('id,name');
+        if (cErr) throw cErr;
+        for (const o of cleared ?? [])
+          await logAudit('updated', 'sites', o.id, { is_primary: true }, { name: o.name, is_primary: false });
+        const { error } = await sb.from('sites').update({ is_primary: true }).eq('id', site.id);
+        if (error) throw error;
+        await logAudit('updated', 'sites', site.id, { is_primary: false }, { name: site.name, is_primary: true });
+        toast(`${site.name} is now the primary site`);
+      } catch (e) {
+        toast(`Update failed: ${(e as Error).message}`, 'error');
+      } finally {
+        refreshClient(site.client_id);
+      }
+    },
+    [refreshClient, toast],
+  );
+
+  return { openClientModal, openSiteModal, deleteClient, deleteSite, setPrimarySite };
 }

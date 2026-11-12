@@ -35,8 +35,19 @@ export function SiteModal({
         onClose();
         toast('Site updated');
       } else {
+        // A client's first site is their primary; later ones never take over on their own
+        const { count, error: cErr } = await sb
+          .from('sites')
+          .select('id', { count: 'exact', head: true })
+          .eq('client_id', clientId);
+        if (cErr) throw cErr;
         // Contacts live on the client (Edit client), not on sites
-        const payload = { client_id: clientId, name: trimmed, address: address.trim() };
+        const payload = {
+          client_id: clientId,
+          name: trimmed,
+          address: address.trim(),
+          is_primary: count === 0,
+        };
         const { data, error } = await sb.from('sites').insert(payload).select().single();
         if (error) throw error;
         await logAudit('created', 'sites', data.id, {}, payload);

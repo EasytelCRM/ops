@@ -26,7 +26,7 @@ export function ClientProfilePage() {
   // The Webex call log is admins and ops only (RLS enforces it; this only hides the tab)
   const canSeeCalls = isAdminOrOps(profile);
   const { data: calls = [] } = useClientCalls(id, canSeeCalls);
-  const { openClientModal, openSiteModal, deleteClient, deleteSite } = useClientActions();
+  const { openClientModal, openSiteModal, deleteClient, deleteSite, setPrimarySite } = useClientActions();
   const { deleteJob, deletePorting, deleteComplaint } = useRecordDeletes(id);
   const [tab, setTab] = useState<Tab>('notes');
 
@@ -115,6 +115,7 @@ export function ClientProfilePage() {
               onAdd={() => openSiteModal(data.client.id)}
               onEdit={(s) => openSiteModal(data.client.id, s)}
               onDelete={(sid) => void deleteSite(sid, data.client.id)}
+              onMakePrimary={(s) => void setPrimarySite(s)}
             />
           </div>
           {canSeeCalls && (

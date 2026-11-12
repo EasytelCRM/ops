@@ -210,7 +210,9 @@ export function ClientModal({
           name: row.name.trim() || `Site ${i + 1}`,
           address: row.address.trim(),
         }))
-        .filter((s) => s.address);
+        .filter((s) => s.address)
+        // The first address filled in is the new client's primary site
+        .map((s, i) => ({ ...s, is_primary: i === 0 }));
       if (sites.length) {
         const { error: sErr } = await sb.from('sites').insert(sites);
         if (sErr) throw sErr;

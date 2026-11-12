@@ -74,7 +74,12 @@ export function useClientProfile(id: string | undefined, canSeeComplaints: boole
     queryFn: async (): Promise<ClientProfileData> => {
       const [client, sites, jobs, ports, complaints, contacts] = await Promise.all([
         sb.from('clients').select('*').eq('id', id!).single(),
-        sb.from('sites').select('*').eq('client_id', id!).order('created_at', { ascending: true }),
+        sb
+          .from('sites')
+          .select('*')
+          .eq('client_id', id!)
+          .order('is_primary', { ascending: false })
+          .order('created_at', { ascending: true }),
         sb
           .from('jobs')
           .select('*,sites(name),profiles!jobs_assigned_to_fkey(full_name)')

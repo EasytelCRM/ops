@@ -64,6 +64,8 @@ export type Site = {
   client_id: string;
   name: string;
   address: string | null;
+  /** One per client at most (sites_one_primary index); some clients have none. */
+  is_primary: boolean;
   created_at: string | null;
 };
 
