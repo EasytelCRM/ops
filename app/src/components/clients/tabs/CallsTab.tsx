@@ -24,6 +24,7 @@ let active: HTMLAudioElement | null = null;
  * Function finds it and hands back Webex's own short-lived link; the audio streams from Webex and
  * nothing is saved in the CRM. While a recording is playing the details line becomes a progress bar
  * you can click to skip; pausing brings the details back and play carries on from the same spot.
+ * The Download button saves the same recording from Webex's link.
  */
 function CallCard({ call: c, who }: { call: CallLog; who: string }) {
   const [p, setP] = useState<Playback>({ state: 'idle' });
@@ -31,6 +32,9 @@ function CallCard({ call: c, who }: { call: CallLog; who: string }) {
   const [pos, setPos] = useState(0);
   const [dur, setDur] = useState(0);
   const audio = useRef<HTMLAudioElement | null>(null);
+  const link = useRef<{ url: string; at: number } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
   const out = c.direction === 'out';
 
   // Stop the audio if the card goes away (another tab, another client).
@@ -48,22 +52,58 @@ function CallCard({ call: c, who }: { call: CallLog; who: string }) {
     a.play().catch((e: Error) => setP({ state: 'message', text: `Couldn't play the recording: ${e.message}` }));
   };
 
-  const load = async () => {
-    setP({ state: 'loading' });
+  /**
+   * Webex's link for this recording, or why there isn't one. Fetched once and reused by Play and
+   * Download while it's fresh: Webex's links last about 3 hours, so ask again after 2.
+   */
+  const getUrl = async (): Promise<string | { message: string }> => {
+    if (link.current && Date.now() - link.current.at < 2 * 60 * 60 * 1000) return link.current.url;
+    const { data, error } = await sb.functions.invoke('call-recording', { body: { call_log_id: c.id } });
+    if (error) {
+      const msg =
+        error instanceof FunctionsHttpError
+          ? ((await error.context.json().catch(() => null)) as { error?: string } | null)?.error
+          : null;
+      throw new Error(msg || error.message);
+    }
+    if (data?.status !== 'ok' || !data.url) return { message: data?.message ?? 'No recording for this call.' };
+    link.current = { url: data.url, at: Date.now() };
+    return data.url;
+  };
+
+  /**
+   * Opens Webex's download link in a new tab; Webex serves it as a file, so the browser saves it
+   * rather than showing a page. The link only works for a few hours, so it's useless to share.
+   */
+  const download = async () => {
+    setNote(null);
+    setSaving(true);
     try {
-      const { data, error } = await sb.functions.invoke('call-recording', { body: { call_log_id: c.id } });
-      if (error) {
-        const msg =
-          error instanceof FunctionsHttpError
-            ? ((await error.context.json().catch(() => null)) as { error?: string } | null)?.error
-            : null;
-        throw new Error(msg || error.message);
-      }
-      if (data?.status !== 'ok' || !data.url) {
-        setP({ state: 'message', text: data?.message ?? 'No recording for this call.' });
+      const r = await getUrl();
+      if (typeof r !== 'string') {
+        setNote(r.message);
         return;
       }
-      const a = new Audio(data.url);
+      const w = window.open(r, '_blank');
+      if (!w) setNote('Your browser blocked the download. Press Download again.');
+      else w.opener = null;
+    } catch (e) {
+      setNote(`Couldn't download the recording: ${(e as Error).message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const load = async () => {
+    setNote(null);
+    setP({ state: 'loading' });
+    try {
+      const r = await getUrl();
+      if (typeof r !== 'string') {
+        setP({ state: 'message', text: r.message });
+        return;
+      }
+      const a = new Audio(r);
       a.onplay = () => setPlaying(true);
       a.onpause = () => setPlaying(false);
       a.ontimeupdate = () => setPos(a.currentTime);
@@ -109,6 +149,7 @@ function CallCard({ call: c, who }: { call: CallLog; who: string }) {
   };
 
   const showBar = p.state === 'ready' && playing;
+  const msg = note ?? (p.state === 'message' ? p.text : null);
   const pct = total ? Math.min(100, (pos / total) * 100) : 0;
   const time = { fontSize: 11, color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' } as const;
 
@@ -162,23 +203,35 @@ function CallCard({ call: c, who }: { call: CallLog; who: string }) {
             </span>
           </div>
         )}
-        {p.state === 'message' && (
-          <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6 }}>{p.text}</div>
-        )}
+        {msg && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6 }}>{msg}</div>}
       </div>
-      <button
-        className="btn btn-sm btn-icon"
-        title={p.state === 'loading' ? 'Finding recording…' : playing ? 'Pause' : 'Play recording'}
-        aria-label={playing ? 'Pause recording' : 'Play recording'}
-        disabled={p.state === 'loading'}
-        onClick={toggle}
-        style={showBar ? { background: 'var(--accent-light)', color: 'var(--accent-text)' } : undefined}
-      >
-        <i
-          className={`ti ${p.state === 'loading' ? 'ti-loader-2' : playing ? 'ti-player-pause' : 'ti-player-play'}`}
-          style={p.state === 'loading' ? { animation: 'spin 0.8s linear infinite' } : undefined}
-        />
-      </button>
+      <div style={{ display: 'flex', gap: 4 }}>
+        <button
+          className="btn btn-sm btn-icon"
+          title={saving ? 'Finding recording…' : 'Download recording'}
+          aria-label="Download recording"
+          disabled={saving}
+          onClick={() => void download()}
+        >
+          <i
+            className={`ti ${saving ? 'ti-loader-2' : 'ti-download'}`}
+            style={saving ? { animation: 'spin 0.8s linear infinite' } : undefined}
+          />
+        </button>
+        <button
+          className="btn btn-sm btn-icon"
+          title={p.state === 'loading' ? 'Finding recording…' : playing ? 'Pause' : 'Play recording'}
+          aria-label={playing ? 'Pause recording' : 'Play recording'}
+          disabled={p.state === 'loading'}
+          onClick={toggle}
+          style={showBar ? { background: 'var(--accent-light)', color: 'var(--accent-text)' } : undefined}
+        >
+          <i
+            className={`ti ${p.state === 'loading' ? 'ti-loader-2' : playing ? 'ti-player-pause' : 'ti-player-play'}`}
+            style={p.state === 'loading' ? { animation: 'spin 0.8s linear infinite' } : undefined}
+          />
+        </button>
+      </div>
     </div>
   );
 }
