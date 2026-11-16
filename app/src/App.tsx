@@ -18,6 +18,7 @@ import { ComplaintsPage } from './pages/ComplaintsPage';
 import { UsersPage } from './pages/UsersPage';
 import { AuditPage } from './pages/AuditPage';
 import { CallStatsPage } from './pages/CallStatsPage';
+import { AfterHoursPage } from './pages/AfterHoursPage';
 import { WallboardScreen } from './pages/WallboardScreen';
 import { isWallboard } from './lib/roles';
 
@@ -72,6 +73,14 @@ export function App() {
                 element={
                   <Guarded path="/call-stats">
                     <CallStatsPage />
+                  </Guarded>
+                }
+              />
+              <Route
+                path="/after-hours"
+                element={
+                  <Guarded path="/after-hours">
+                    <AfterHoursPage />
                   </Guarded>
                 }
               />

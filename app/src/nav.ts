@@ -38,6 +38,13 @@ export const NAV: NavItem[] = [
     visible: isAdmin,
   },
   {
+    path: '/after-hours',
+    label: 'After Hours',
+    icon: 'ti-moon',
+    title: 'After hours calls',
+    visible: isAdmin,
+  },
+  {
     path: '/users',
     label: 'Users',
     icon: 'ti-shield-lock',

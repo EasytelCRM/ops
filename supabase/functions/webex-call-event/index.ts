@@ -22,6 +22,7 @@
  * Separately, every event on an external call — inbound or outbound, from ringing to hang-up —
  * updates that person's leg in call_legs, which feeds the sales call stats wallboard. A leg
  * that starts with the park retrieve code (*88…) is a park pickup. Internal calls are ignored.
+ * An inbound leg also records the call queue that rang it, for the queue stats (After Hours).
  *
  * Deployed with verify_jwt off, because Webex cannot send a Supabase token. Instead Webex
  * signs each request with the webhook's secret (X-Spark-Signature = hex HMAC-SHA1 of the
@@ -39,6 +40,7 @@ const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SE
 const enc = new TextEncoder();
 
 type RemoteParty = { name?: string; number?: string; privacyEnabled?: boolean; callType?: string };
+type Redirection = { reason?: string; redirectingParty?: RemoteParty };
 type CallEvent = {
   resource?: string;
   actorId?: string;
@@ -51,6 +53,7 @@ type CallEvent = {
     created?: string;
     answered?: string;
     disconnected?: string;
+    redirections?: Redirection[];
   };
 };
 
@@ -211,6 +214,7 @@ async function recordLeg(ev: CallEvent) {
   // to the original (external) caller.
   const park = direction === 'in' && /^\*88/.test(rp?.number ?? '');
   if (!external && !park) return;
+  const queue = direction === 'in' ? queueOf(d.redirections) : null;
 
   const r = await db.rpc('record_call_leg', {
     p_call_id: d.callId,
@@ -222,8 +226,23 @@ async function recordLeg(ev: CallEvent) {
     p_created: d.created ?? null,
     p_answered: d.answered ?? null,
     p_ended: d.eventType === 'disconnected' ? (d.disconnected ?? new Date().toISOString()) : null,
+    p_queue_name: queue?.name ?? null,
+    p_queue_number: queue?.number ?? null,
   });
   if (r.error) console.error('record_call_leg failed', r.error.message);
+}
+
+/**
+ * The call queue that rang this person (e.g. "Easytel After Hours", 0290584342), for the queue
+ * stats. Webex sends it only on the ringing ("received") event, as a "callQueue" redirection;
+ * later events leave redirections out, and record_call_leg() keeps the first value it got.
+ * Webex lists the most recent redirection first, so a call passed from one queue to another
+ * is credited to the queue that actually rang the person.
+ */
+function queueOf(redirections: Redirection[] | undefined): { name: string | null; number: string | null } | null {
+  const q = redirections?.find((r) => r.reason === 'callQueue')?.redirectingParty;
+  if (!q) return null;
+  return { name: q.name?.trim() || null, number: nationalNumber({ ...q, privacyEnabled: false }) };
 }
 
 Deno.serve(async (req) => {

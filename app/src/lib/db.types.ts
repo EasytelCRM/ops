@@ -203,6 +203,32 @@ export type CallLeg = {
   started_at: string;
   answered_at: string | null;
   ended_at: string | null;
+  /** The Webex call queue that rang this person (e.g. Easytel After Hours); null for direct calls. */
+  queue_name: string | null;
+  /** That queue's number, 0XXXXXXXXX. Queue stats match on this. */
+  queue_number: string | null;
+};
+
+export type QueueCallOutcome = 'answered' | 'missed' | 'ringing';
+
+/** One call a queue offered, from queue_calls(). Times in seconds. Admin-only. */
+export type QueueCall = {
+  session_id: string;
+  started_at: string;
+  /** 0XXXXXXXXX; null when withheld. */
+  caller_number: string | null;
+  /** Clients whose numbers match the caller (cancelled ones included). */
+  clients: { id: string; company: string }[];
+  outcome: QueueCallOutcome;
+  answered_by: string | null;
+  answered_at: string | null;
+  ended_at: string | null;
+  /** Until answered, or until the caller gave up; null if Webex never said. */
+  wait_s: number | null;
+  /** Answer to hang-up; null if not answered. */
+  talk_s: number | null;
+  /** How many people it rang. */
+  rang: number;
 };
 
 export type CallStatus = 'on_call' | 'ringing' | 'dialling' | 'idle';
@@ -289,6 +315,11 @@ export type Database = {
       call_stats: {
         Args: { p_from: string; p_to: string };
         Returns: CallStatsRow[];
+      };
+      /** Calls a Webex queue offered in [p_from, p_to), newest first. Admins only. */
+      queue_calls: {
+        Args: { p_queue_number: string; p_from: string; p_to: string };
+        Returns: QueueCall[];
       };
       /** A client's calls, matched on its current numbers. Admins + ops. */
       client_calls: {
