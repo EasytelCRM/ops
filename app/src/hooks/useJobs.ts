@@ -1,3 +1,4 @@
+import { byClientName } from '../lib/clientName';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { sb } from '../lib/supabase';
 import { fetchAll } from '../lib/fetchAll';
@@ -32,7 +33,7 @@ export function useJobsData() {
             nullsFirst: false,
           }) as never,
         ),
-        fetchAll<ClientLite>(() => sb.from('clients').select('id,company,cancelled_date').order('company') as never),
+        fetchAll<ClientLite>(() => sb.from('clients').select('id,company,trading_name,cancelled_date') as never).then((rows) => rows.sort(byClientName)),
         // Primary first, so it heads each client's site picker
         fetchAll<SiteLite>(
           () =>

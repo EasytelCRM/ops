@@ -1,3 +1,4 @@
+import { byClientName, clientName, clientNameMatches } from '../lib/clientName';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ClientSvcBadges } from '../components/Badges';
@@ -54,7 +55,7 @@ export function ClientsPage() {
     // Phone numbers match with spaces ignored on both sides ("0402 298 388")
     const qDigits = query.replace(/\s/g, '');
     const basicHit = (c: ClientListRow) =>
-      c.company.toLowerCase().includes(query) ||
+      clientNameMatches(c, query) ||
       (c.account_number ?? '').toLowerCase().includes(query) ||
       (!!qDigits && (c.phone ?? '').replace(/\s/g, '').includes(qDigits));
     const credHit = (c: ClientListRow) =>
@@ -82,7 +83,7 @@ export function ClientsPage() {
     // Account numbers sort as numbers; clients with no number or a text one ("Camera Only")
     // always go last, by name.
     const byName = (a: ClientListRow, b: ClientListRow) =>
-      (a.company || '').localeCompare(b.company || '', undefined, { sensitivity: 'base' });
+      byClientName(a, b);
     const acctNo = (c: ClientListRow) => {
       const m = (c.account_number ?? '').trim().match(/^\d+/);
       return m ? +m[0] : null;
@@ -105,7 +106,7 @@ export function ClientsPage() {
     if (!query) return null;
     const qDigits = query.replace(/\s/g, '');
     const basic =
-      c.company.toLowerCase().includes(query) ||
+      clientNameMatches(c, query) ||
       (c.account_number ?? '').toLowerCase().includes(query) ||
       (!!qDigits && (c.phone ?? '').replace(/\s/g, '').includes(qDigits));
     if (basic) return null;
@@ -138,7 +139,7 @@ export function ClientsPage() {
         <i className="ti ti-search" />
         <input
           type="text"
-          placeholder="Search company, account #, phone, IP..."
+          placeholder="Search name, account #, phone, IP..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -187,7 +188,7 @@ export function ClientsPage() {
                 rows.map((c) => (
                   <tr key={c.id} className="clickable" onClick={() => navigate(`/client/${c.id}`)}>
                     <td>
-                      <strong style={{ fontWeight: 500 }}>{c.company}</strong>
+                      <strong style={{ fontWeight: 500 }}>{clientName(c)}</strong>
                       {c.hardware_only && (
                         <>
                           {' '}
@@ -203,6 +204,9 @@ export function ClientsPage() {
                             Cancelled
                           </span>
                         </>
+                      )}
+                      {c.trading_name && (
+                        <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{c.company}</div>
                       )}
                       {matchNote(c)}
                     </td>

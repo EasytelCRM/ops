@@ -163,7 +163,7 @@ export function usePortingActions(data: PortingData | undefined) {
         const { data: row, error } = await sb
           .from('porting')
           .insert({ ...payload, client_id: clientId, created_by: user?.id })
-          .select('*,clients(company,account_number)')
+          .select('*,clients(company,trading_name,account_number)')
           .single();
         if (error) throw error;
         saved = row as unknown as PortingRow;

@@ -1,3 +1,4 @@
+import { clientName } from '../lib/clientName';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ComplaintStatusBadge } from '../components/Badges';
@@ -65,7 +66,7 @@ export function ComplaintsPage() {
   const list = complaints.filter((c) => {
     const matchQ =
       !q ||
-      [c.clients?.company, c.clients?.account_number, c.complainant, c.tio_ref].some((v) =>
+      [c.clients?.company, c.clients?.trading_name, c.clients?.account_number, c.complainant, c.tio_ref].some((v) =>
         (v || '').toLowerCase().includes(q),
       ) ||
       notesSearchText(c.id === sel?.id ? notes : undefined, data?.noteIndex?.[c.id]).includes(q);
@@ -135,7 +136,7 @@ export function ComplaintsPage() {
               onClick={() => void actions.selectComplaint(c.id)}
             >
               <div className="port-row-top">
-                <span className="port-tid">{c.clients?.company || 'Unknown'}</span>
+                <span className="port-tid">{clientName(c.clients)}</span>
                 <ComplaintStatusBadge status={c.status} />
               </div>
               <div className="port-co">{c.complainant || 'No complainant'}</div>
@@ -169,7 +170,7 @@ export function ComplaintsPage() {
                     'New complaint'
                   ) : (
                     <>
-                      {sel!.clients?.company || 'Unknown'} <ComplaintStatusBadge status={sel!.status} />
+                      {clientName(sel!.clients)} <ComplaintStatusBadge status={sel!.status} />
                     </>
                   )}
                 </div>
@@ -212,7 +213,7 @@ export function ComplaintsPage() {
                     <option value="">— select client —</option>
                     {(data?.clients ?? []).map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.company}
+                        {clientName(c)}
                       </option>
                     ))}
                   </select>

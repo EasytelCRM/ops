@@ -1,3 +1,4 @@
+import { clientName } from './clientName';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { sb } from './supabase';
@@ -24,6 +25,7 @@ import { useToast } from '../state/ToastProvider';
 
 export interface PopClient {
   id: string;
+  /** The name shown: trading name, else entity name. */
   company: string;
   cancelled: boolean;
 }
@@ -132,9 +134,9 @@ export function useScreenPop() {
 
       let clients: PopClient[] = [];
       if (row.client_ids.length) {
-        const { data } = await sb.from('clients').select('id,company,cancelled_date').in('id', row.client_ids);
+        const { data } = await sb.from('clients').select('id,company,trading_name,cancelled_date').in('id', row.client_ids);
         clients = (data ?? [])
-          .map((c) => ({ id: c.id, company: c.company, cancelled: !!c.cancelled_date }))
+          .map((c) => ({ id: c.id, company: clientName(c), cancelled: !!c.cancelled_date }))
           // Current clients first
           .sort((a, b) => Number(a.cancelled) - Number(b.cancelled) || a.company.localeCompare(b.company));
       }

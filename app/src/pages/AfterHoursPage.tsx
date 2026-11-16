@@ -1,3 +1,4 @@
+import { clientName } from '../lib/clientName';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AFTER_HOURS_QUEUE, QUEUE_PERIODS, useQueueCalls, type QueuePeriod } from '../hooks/useQueueCalls';
@@ -26,7 +27,7 @@ function Caller({ c }: { c: QueueCall }) {
           {c.clients.map((cl, i) => (
             <span key={cl.id}>
               {i > 0 && ', '}
-              <Link to={`/client/${cl.id}`}>{cl.company}</Link>
+              <Link to={`/client/${cl.id}`}>{clientName(cl)}</Link>
             </span>
           ))}
         </div>

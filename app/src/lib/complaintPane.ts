@@ -4,10 +4,10 @@ import { today } from './format';
 import type { Complaint } from './db.types';
 
 export const COMPLAINT_SELECT =
-  '*,clients(company,account_number),profiles!complaints_assigned_to_fkey(full_name)';
+  '*,clients(company,trading_name,account_number),profiles!complaints_assigned_to_fkey(full_name)';
 
 export type ComplaintRow = Complaint & {
-  clients: { company: string | null; account_number: string | null } | null;
+  clients: { company: string | null; trading_name: string | null; account_number: string | null } | null;
   profiles: { full_name: string | null } | null;
 };
 

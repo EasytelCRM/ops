@@ -1,3 +1,4 @@
+import { byClientName } from '../lib/clientName';
 import { useQuery } from '@tanstack/react-query';
 import { sb } from '../lib/supabase';
 import { fetchAll } from '../lib/fetchAll';
@@ -22,7 +23,7 @@ export function usePortingData() {
             .order('port_date', { ascending: true, nullsFirst: false })
             .order('port_time', { ascending: true, nullsFirst: false }) as never,
         ),
-        fetchAll<ClientLite>(() => sb.from('clients').select('id,company').order('company') as never),
+        fetchAll<ClientLite>(() => sb.from('clients').select('id,company,trading_name') as never).then((rows) => rows.sort(byClientName)),
       ]);
       // The fetch orders by date; TBC tickets still need lifting to the top
       return { ports: sortPorting(ports), clients };

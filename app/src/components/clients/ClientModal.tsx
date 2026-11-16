@@ -10,6 +10,7 @@ import {
 } from '../../lib/clientContacts';
 import type { Client, ClientContact } from '../../lib/db.types';
 import { sitePlaceholder, suggestSiteName } from '../../lib/siteName';
+import { clientName, clientNameMatches } from '../../lib/clientName';
 import { useToast } from '../../state/ToastProvider';
 
 interface AddressRow {
@@ -30,7 +31,8 @@ function addressRowSuggestion(rows: AddressRow[], row: AddressRow): string {
 /** Friendly message for client save failures, incl. DB unique-constraint violations. */
 function clientSaveError(e: unknown): string {
   const m = (e as { message?: string })?.message ?? '';
-  if (m.includes('clients_company_unique')) return 'A client with that company name already exists';
+  if (m.includes('clients_name_unique'))
+    return 'A client with that entity name and trading name already exists';
   if (m.includes('clients_account_number_unique'))
     return 'That account number is already in use by another client';
   return `Save failed: ${m}`;
@@ -45,8 +47,8 @@ export function ClientModal({
   onOpenClient,
 }: {
   id?: string;
-  /** Used for the duplicate check and the company-name suggestions. */
-  allClients: Pick<Client, 'id' | 'company' | 'account_number'>[];
+  /** Used for the duplicate check and the name suggestions. */
+  allClients: Pick<Client, 'id' | 'company' | 'trading_name' | 'account_number'>[];
   currentUserId: string;
   onClose: () => void;
   onSaved: (clientId: string) => void;
@@ -57,6 +59,7 @@ export function ClientModal({
 
   const [loading, setLoading] = useState(isEdit);
   const [company, setCompany] = useState('');
+  const [tradingName, setTradingName] = useState('');
   const [acct, setAcct] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -70,7 +73,8 @@ export function ClientModal({
   ]);
   const [series, setSeries] = useState<'easytel' | 'budget'>('easytel');
   const [saving, setSaving] = useState(false);
-  const [showSuggest, setShowSuggest] = useState(false);
+  /** Which name box is showing the "already a client?" suggestions. */
+  const [suggestFor, setSuggestFor] = useState<'company' | 'trading' | null>(null);
 
   const origContacts = useRef<ClientContact[]>([]);
   /** The number we filled in, so a save can tell it from a typed one. */
@@ -118,6 +122,7 @@ export function ClientModal({
       const list = (cts ?? []) as ClientContact[];
       origContacts.current = list;
       setCompany(c.company ?? '');
+      setTradingName(c.trading_name ?? '');
       setAcct(c.account_number ?? '');
       setPhone(c.phone ?? '');
       setEmail(c.email ?? '');
@@ -162,11 +167,13 @@ export function ClientModal({
   const patchContact = (key: string, patch: Partial<ContactRow>) =>
     setContacts((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
+  // Whatever is typed in either name box is matched against both names of every client
+  const suggestText = (suggestFor === 'trading' ? tradingName : suggestFor === 'company' ? company : '')
+    .trim()
+    .toLowerCase();
   const suggestions =
-    showSuggest && company.trim().length >= 2
-      ? allClients
-          .filter((c) => c.id !== id && c.company.toLowerCase().includes(company.toLowerCase()))
-          .slice(0, 6)
+    suggestText.length >= 2
+      ? allClients.filter((c) => c.id !== id && clientNameMatches(c, suggestText)).slice(0, 6)
       : [];
 
   const nextAcctNumber = async () => {
@@ -177,7 +184,7 @@ export function ClientModal({
 
   const submitAdd = async () => {
     const name = company.trim();
-    if (!name) return toast('Company name is required', 'warn');
+    if (!name) return toast('Entity name is required', 'warn');
     const acctNum = acct.trim();
     // A filled-in number is re-checked at save time: someone may have added a client since the form opened
     const shownAcct = acctNum;
@@ -188,6 +195,7 @@ export function ClientModal({
     // A blank account number is saved as empty (null), which the unique index allows any number of times
     const payload: Record<string, unknown> = {
       company: name,
+      trading_name: tradingName.trim() || null,
       account_number: acctNum || null,
       hardware_only: hardwareOnly,
       phone: phone.trim(),
@@ -248,8 +256,10 @@ export function ClientModal({
     if (acctNum && allClients.some((c) => c.account_number === acctNum && c.id !== id))
       return toast('Account number already in use', 'error');
     if (cancelled && !cancelledDate) return toast('Cancelled date is required', 'warn');
+    if (!company.trim()) return toast('Entity name is required', 'warn');
     const payload = {
       company: company.trim(),
+      trading_name: tradingName.trim() || null,
       account_number: acctNum || null,
       hardware_only: hardwareOnly,
       phone: phone.trim(),
@@ -289,6 +299,55 @@ export function ClientModal({
         </div>
       </div>
     );
+
+  /** "Already a client?" — opens the match instead of adding a duplicate. */
+  const suggestBox = suggestions.length > 0 && (
+    <div
+      style={{
+        position: 'absolute',
+        top: '100%',
+        left: 0,
+        right: 0,
+        zIndex: 200,
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        marginTop: 4,
+        overflow: 'hidden',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+      }}
+    >
+      {suggestions.map((c) => (
+        <div
+          key={c.id}
+          style={{
+            padding: '10px 14px',
+            cursor: 'pointer',
+            borderBottom: '1px solid var(--border)',
+            fontSize: 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            onClose();
+            onOpenClient(c.id);
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            <span style={{ fontWeight: 500 }}>{clientName(c)}</span>
+            {c.trading_name && (
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>{c.company}</span>
+            )}
+          </span>
+          {c.account_number && (
+            <span style={{ fontSize: 12, color: 'var(--text2)' }}>{c.account_number}</span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="modal">
@@ -344,7 +403,7 @@ export function ClientModal({
 
       <div className="form-row">
         <div className="form-group">
-          <label className="lbl">Company name *</label>
+          <label className="lbl">Entity name *</label>
           <div style={{ position: 'relative' }}>
             <input
               className="fi"
@@ -353,54 +412,33 @@ export function ClientModal({
               autoComplete="off"
               onChange={(e) => {
                 setCompany(e.target.value);
-                setShowSuggest(true);
+                setSuggestFor('company');
               }}
-              onBlur={() => setTimeout(() => setShowSuggest(false), 150)}
+              onBlur={() => setTimeout(() => setSuggestFor(null), 150)}
             />
-            {suggestions.length > 0 && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  zIndex: 200,
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  marginTop: 4,
-                  overflow: 'hidden',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-                }}
-              >
-                {suggestions.map((c) => (
-                  <div
-                    key={c.id}
-                    style={{
-                      padding: '10px 14px',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid var(--border)',
-                      fontSize: 14,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      onClose();
-                      onOpenClient(c.id);
-                    }}
-                  >
-                    <span style={{ fontWeight: 500, flex: 1 }}>{c.company}</span>
-                    {c.account_number && (
-                      <span style={{ fontSize: 12, color: 'var(--text2)' }}>{c.account_number}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            {suggestFor === 'company' && suggestBox}
           </div>
         </div>
+        <div className="form-group">
+          <label className="lbl">Trading name</label>
+          <div style={{ position: 'relative' }}>
+            <input
+              className="fi"
+              value={tradingName}
+              placeholder="If different, e.g. Acme Plumbing"
+              autoComplete="off"
+              onChange={(e) => {
+                setTradingName(e.target.value);
+                setSuggestFor('trading');
+              }}
+              onBlur={() => setTimeout(() => setSuggestFor(null), 150)}
+            />
+            {suggestFor === 'trading' && suggestBox}
+          </div>
+        </div>
+      </div>
+
+      <div className="form-row">
         <div className="form-group">
           <label className="lbl">Phone</label>
           <input
@@ -410,16 +448,15 @@ export function ClientModal({
             onChange={(e) => setPhone(e.target.value)}
           />
         </div>
-      </div>
-
-      <div className="form-group">
-        <label className="lbl">Email</label>
-        <input
-          className="fi"
-          value={email}
-          placeholder="info@company.com.au"
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <div className="form-group">
+          <label className="lbl">Email</label>
+          <input
+            className="fi"
+            value={email}
+            placeholder="info@company.com.au"
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className="form-group">

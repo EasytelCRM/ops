@@ -1,3 +1,4 @@
+import { clientName } from '../../lib/clientName';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { sb } from '../../lib/supabase';
@@ -148,7 +149,7 @@ export function useJobActions(kind: JobKind, data: JobsData | undefined, profile
       const { data: row, error } = await sb
         .from('porting')
         .insert({ ...payload, client_id: clientId, created_by: user?.id })
-        .select('*,clients(company,account_number)')
+        .select('*,clients(company,trading_name,account_number)')
         .single();
       if (error) throw error;
       await logAudit('created', 'porting', row.id, {}, { ...payload, client_id: clientId });
@@ -246,7 +247,7 @@ export function useJobActions(kind: JobKind, data: JobsData | undefined, profile
           await sendAssignmentEmail(
             { title: payload.title ?? null, type: payload.type ?? null, due_date: payload.due_date ?? null },
             profiles.find((u) => u.id === assigned),
-            rec.clients?.company ?? '',
+            clientName(rec.clients, ''),
             profile?.full_name,
           );
         saved = { ...rec, ...payload } as JobRow;
@@ -263,7 +264,7 @@ export function useJobActions(kind: JobKind, data: JobsData | undefined, profile
           .from('jobs')
           .insert({ ...payload, client_id: clientId, created_by: user?.id })
           .select(
-            '*,clients(company,account_number),sites(name),profiles!jobs_assigned_to_fkey(full_name)',
+            '*,clients(company,trading_name,account_number),sites(name),profiles!jobs_assigned_to_fkey(full_name)',
           )
           .single();
         if (error) throw error;
@@ -273,7 +274,7 @@ export function useJobActions(kind: JobKind, data: JobsData | undefined, profile
           await sendAssignmentEmail(
             saved,
             profiles.find((u) => u.id === assigned),
-            saved.clients?.company ?? '',
+            clientName(saved.clients, ''),
             profile?.full_name,
           );
         const portOk = isInstall ? await createInstallPorting(clientId) : true;

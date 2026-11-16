@@ -1,10 +1,12 @@
+import { clientName } from './clientName';
 import { svcLabel } from '../components/Badges';
 import type { AuditLog } from './db.types';
 import { fmtDateTime } from './format';
 
 /** Field names as the audit log shows them. Anything missing falls back to the column name. */
 export const AUDIT_LABELS: Record<string, string> = {
-  company: 'Company',
+  company: 'Entity name',
+  trading_name: 'Trading name',
   account_number: 'Account number',
   phone: 'Phone',
   email: 'Email',
@@ -77,7 +79,7 @@ export interface AuditJobLite {
   svc_internet?: boolean | null;
   svc_webex?: boolean | null;
   svc_nec?: boolean | null;
-  clients: { company: string | null } | null;
+  clients: { company: string | null; trading_name: string | null } | null;
 }
 
 /**
@@ -94,7 +96,7 @@ export interface AuditLookups {
 export const EMPTY_LOOKUPS: AuditLookups = { clients: {}, profiles: {}, jobs: {}, complaints: {} };
 
 export const jobLabel = (j: AuditJobLite) =>
-  `${j.clients?.company || 'Unknown'} · ${j.type === 'New Install' ? svcLabel(j) : j.title || '—'}`;
+  `${clientName(j.clients)} · ${j.type === 'New Install' ? svcLabel(j) : j.title || '—'}`;
 
 export function fmtAuditVal(key: string, val: unknown, look: AuditLookups): string {
   if (val === null || val === undefined || val === '') return '(empty)';
@@ -165,6 +167,6 @@ export function auditDiff(a: AuditLog, look: AuditLookups): AuditChange[] {
 /** The record's own name, when the entry carried one. */
 export function auditSubject(a: AuditLog): string | null {
   const d = asRecord(a.new_data);
-  const v = d.title || d.company || d.name;
+  const v = d.title || d.trading_name || d.company || d.name;
   return typeof v === 'string' && v ? v : null;
 }

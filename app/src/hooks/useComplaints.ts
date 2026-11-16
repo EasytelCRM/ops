@@ -1,3 +1,4 @@
+import { byClientName } from '../lib/clientName';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { sb } from '../lib/supabase';
 import { fetchAll } from '../lib/fetchAll';
@@ -27,7 +28,7 @@ export function useComplaintsData() {
             .order('open_date', { ascending: false })
             .order('created_at', { ascending: false }) as never,
         ),
-        fetchAll<ClientLite>(() => sb.from('clients').select('id,company').order('company') as never),
+        fetchAll<ClientLite>(() => sb.from('clients').select('id,company,trading_name') as never).then((rows) => rows.sort(byClientName)),
         // Search only: a failure keeps the index from the last load
         fetchAll<Pick<ComplaintNote, 'complaint_id' | 'text'>>(() =>
           sb.from('complaint_notes').select('complaint_id,text').order('created_at') as never,

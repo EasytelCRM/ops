@@ -46,6 +46,8 @@ export type Profile = {
 export type Client = ServiceFlags & {
   id: string;
   company: string;
+  /** Name the business trades under, when it differs from the entity name. */
+  trading_name: string | null;
   account_number: string | null;
   phone: string | null;
   email: string | null;
@@ -218,7 +220,7 @@ export type QueueCall = {
   /** 0XXXXXXXXX; null when withheld. */
   caller_number: string | null;
   /** Clients whose numbers match the caller (cancelled ones included). */
-  clients: { id: string; company: string }[];
+  clients: { id: string; company: string; trading_name: string | null }[];
   outcome: QueueCallOutcome;
   answered_by: string | null;
   answered_at: string | null;

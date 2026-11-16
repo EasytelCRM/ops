@@ -1,3 +1,4 @@
+import { clientName } from '../lib/clientName';
 import { useNavigate } from 'react-router-dom';
 import { StatusBadge, SvcBadges } from '../components/Badges';
 import { useDashboardData } from '../hooks/useDashboard';
@@ -38,7 +39,7 @@ function InstallCard({ job, onOpen }: { job: JobRow; onOpen: () => void }) {
     >
       <div className="job-body">
         <div className="job-title" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          {job.clients?.company || 'Unknown'}
+          {clientName(job.clients)}
           <span style={{ display: 'flex', gap: 4 }}>
             <SvcBadges services={job} sm />
           </span>
@@ -197,7 +198,7 @@ export function DashboardPage() {
               recent.map((j) => (
                 <div className="dash-deal" key={j.id} onClick={() => openInstall(j.id)}>
                   <div className="dash-deal-co">
-                    {j.clients?.company || 'Unknown'}
+                    {clientName(j.clients)}
                     <span style={{ display: 'flex', gap: 4 }}>
                       <SvcBadges services={j} sm />
                     </span>

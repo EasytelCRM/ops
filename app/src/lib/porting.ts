@@ -1,10 +1,11 @@
+import { clientName } from './clientName';
 import { sb } from './supabase';
 import type { Porting } from './db.types';
 
-export const PORTING_SELECT = '*,clients(company,account_number)';
+export const PORTING_SELECT = '*,clients(company,trading_name,account_number)';
 
 export type PortingRow = Porting & {
-  clients: { company: string | null; account_number: string | null } | null;
+  clients: { company: string | null; trading_name: string | null; account_number: string | null } | null;
 };
 
 export const PORTING_STATUSES = ['Pending', 'Complete', 'Cancelled'] as const;
@@ -52,13 +53,13 @@ export async function confirmPortingTicketNo(numbers: string, excludeId?: string
   if (['TBC', 'N/A'].includes(numbers.toUpperCase())) return true; // placeholders, not real ticket numbers
   let q = sb
     .from('porting')
-    .select('id,clients(company,account_number)')
+    .select('id,clients(company,trading_name,account_number)')
     .ilike('phone_numbers', numbers.replace(/[\\%_]/g, '\\$&'));
   if (excludeId) q = q.neq('id', excludeId);
   const { data, error } = await q;
   if (error || !data?.length) return true; // don't stop a save because the check failed
   const list = (data as unknown as PortingRow[])
-    .map((p) => `• ${p.clients?.company || 'Unknown'} (${p.clients?.account_number || '—'})`)
+    .map((p) => `• ${clientName(p.clients)} (${p.clients?.account_number || '—'})`)
     .join('\n');
   return confirm(`Ticket number ${numbers} is already used on:\n${list}\n\nSave anyway?`);
 }

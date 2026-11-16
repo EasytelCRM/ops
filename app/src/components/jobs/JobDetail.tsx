@@ -1,3 +1,4 @@
+import { clientName } from '../../lib/clientName';
 import type { ReactNode } from 'react';
 import { LegacyBadge, StatusBadge } from '../Badges';
 import { TicketHeading } from '../Links';
@@ -86,7 +87,7 @@ export function JobDetail({
               JOB_KINDS[kind].draft
             ) : (
               <>
-                <TicketHeading url={rec!.ticket_url} label={rec!.clients?.company || 'Unknown'} />{' '}
+                <TicketHeading url={rec!.ticket_url} label={clientName(rec!.clients)} />{' '}
                 <StatusBadge status={rec!.status} />
                 <LegacyBadge legacy={rec!.legacy} />
               </>
@@ -134,7 +135,7 @@ export function JobDetail({
                 .filter((c) => !c.cancelled_date || c.id === f.client_id)
                 .map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.company}
+                  {clientName(c)}
                 </option>
               ))}
             </select>

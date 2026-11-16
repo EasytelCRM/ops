@@ -27,7 +27,7 @@ export function useDashboardData() {
         fetchAll<Deal>(() =>
           sb
             .from('jobs')
-            .select('id,status,approval_date,created_at,svc_internet,svc_webex,svc_nec,clients(company)')
+            .select('id,status,approval_date,created_at,svc_internet,svc_webex,svc_nec,clients(company,trading_name)')
             .eq('type', 'New Install')
             .eq('legacy', false) as never,
         ),

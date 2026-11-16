@@ -1,3 +1,4 @@
+import { clientName } from '../lib/clientName';
 import { useQuery } from '@tanstack/react-query';
 import { sb } from '../lib/supabase';
 import { fetchAll } from '../lib/fetchAll';
@@ -7,12 +8,12 @@ import { jobLabel, type AuditJobLite, type AuditLookups } from '../lib/auditView
 interface Lite {
   id: string;
 }
-type ClientLite = Lite & { company: string | null };
+type ClientLite = Lite & { company: string | null; trading_name: string | null };
 type ProfileLite = Lite & { full_name: string | null };
 type ComplaintLite = Lite & {
   complainant: string | null;
   tio_ref: string | null;
-  clients: { company: string | null } | null;
+  clients: { company: string | null; trading_name: string | null } | null;
 };
 
 const index = <T extends Lite>(rows: T[], name: (r: T) => string) =>
@@ -37,27 +38,27 @@ export function useAuditLog() {
             if (error) throw error;
             return (data ?? []) as AuditLog[];
           }),
-        fetchAll<ClientLite>(() => sb.from('clients').select('id,company') as never),
+        fetchAll<ClientLite>(() => sb.from('clients').select('id,company,trading_name') as never),
         fetchAll<ProfileLite>(() => sb.from('profiles').select('id,full_name') as never),
         fetchAll<AuditJobLite>(
           () =>
             sb
               .from('jobs')
-              .select('id,type,title,svc_internet,svc_webex,svc_nec,clients(company)') as never,
+              .select('id,type,title,svc_internet,svc_webex,svc_nec,clients(company,trading_name)') as never,
         ),
         fetchAll<ComplaintLite>(
-          () => sb.from('complaints').select('id,complainant,tio_ref,clients(company)') as never,
+          () => sb.from('complaints').select('id,complainant,tio_ref,clients(company,trading_name)') as never,
         ),
       ]);
       return {
         entries,
         lookups: {
-          clients: index(clients, (c) => c.company || ''),
+          clients: index(clients, (c) => clientName(c, '')),
           profiles: index(profiles, (p) => p.full_name || ''),
           jobs: index(jobs, jobLabel),
           complaints: index(
             complaints,
-            (c) => `${c.clients?.company || 'Unknown'} · ${c.complainant || c.tio_ref || 'Complaint'}`,
+            (c) => `${clientName(c.clients)} · ${c.complainant || c.tio_ref || 'Complaint'}`,
           ),
         },
       };

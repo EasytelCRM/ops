@@ -22,11 +22,11 @@ export const JOB_KINDS = {
 } as const;
 
 export const JOB_SELECT =
-  '*,clients(company,account_number),sites(name),profiles!jobs_assigned_to_fkey(full_name)';
+  '*,clients(company,trading_name,account_number),sites(name),profiles!jobs_assigned_to_fkey(full_name)';
 
 /** A job with the three joins the list and detail pane read. */
 export type JobRow = Job & {
-  clients: { company: string | null; account_number: string | null } | null;
+  clients: { company: string | null; trading_name: string | null; account_number: string | null } | null;
   sites: { name: string | null } | null;
   profiles: { full_name: string | null } | null;
 };
@@ -41,6 +41,7 @@ export interface SiteLite {
 export interface ClientLite {
   id: string;
   company: string;
+  trading_name?: string | null;
   /** Only loaded where a picker needs to leave cancelled accounts out (the jobs board). */
   cancelled_date?: string | null;
 }

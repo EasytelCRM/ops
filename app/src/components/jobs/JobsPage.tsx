@@ -1,3 +1,4 @@
+import { clientName, clientNameMatches } from '../../lib/clientName';
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -86,7 +87,7 @@ export function JobsPage({ kind }: { kind: JobKind }) {
     if (jobKindOf(j) !== kind) return false;
     const matchQ =
       !q ||
-      (j.clients?.company || '').toLowerCase().includes(q) ||
+      clientNameMatches(j.clients, q) ||
       jobSubtitle(j).toLowerCase().includes(q) ||
       (j.job_notes || '').toLowerCase().includes(q) ||
       notesSearchText(liveNotesFor(j.id), data?.noteIndex?.[j.id]).includes(q);
@@ -158,7 +159,7 @@ export function JobsPage({ kind }: { kind: JobKind }) {
             <PortRow key={j.id} selected={j.id === pane.sel} onClick={() => void actions.selectJob(j.id)}>
               <div className="port-row-top">
                 <span className="port-tid">
-                  {j.clients?.company || 'Unknown'}
+                  {clientName(j.clients)}
                   {safeTicketUrl(j.ticket_url) && (
                     <>
                       {' '}

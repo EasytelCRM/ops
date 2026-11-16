@@ -11,7 +11,7 @@ export type Deal = ServiceFlags & {
   status: string | null;
   approval_date: string | null;
   created_at: string | null;
-  clients: { company: string | null } | null;
+  clients: { company: string | null; trading_name: string | null } | null;
 };
 
 /** Deals were only logged in the CRM from May 2026, so earlier periods would compare against near-empty months. */

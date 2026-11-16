@@ -1,3 +1,4 @@
+import { clientName, clientNameMatches } from '../lib/clientName';
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PortingStatusBadge } from '../components/Badges';
@@ -53,7 +54,7 @@ export function PortingPage() {
   const list = ports.filter((p) => {
     const matchQ =
       !q ||
-      (p.clients?.company || '').toLowerCase().includes(q) ||
+      clientNameMatches(p.clients, q) ||
       (p.clients?.account_number || '').toLowerCase().includes(q) ||
       (p.phone_numbers || '').toLowerCase().includes(q) ||
       (p.notes || '').toLowerCase().includes(q);
@@ -112,7 +113,7 @@ export function PortingPage() {
             <PortRow key={p.id} selected={p.id === pane.sel} onClick={() => void actions.selectPorting(p.id)}>
               <div className="port-row-top">
                 <span className="port-tid">
-                  {p.clients?.company || 'Unknown'}
+                  {clientName(p.clients)}
                   {safeTicketUrl(p.ticket_url) && (
                     <>
                       {' '}
@@ -160,7 +161,7 @@ export function PortingPage() {
                     'New porting ticket'
                   ) : (
                     <>
-                      <TicketHeading url={sel!.ticket_url} label={sel!.clients?.company || 'Unknown'} />{' '}
+                      <TicketHeading url={sel!.ticket_url} label={clientName(sel!.clients)} />{' '}
                       <PortingStatusBadge status={sel!.status} />
                     </>
                   )}
@@ -200,7 +201,7 @@ export function PortingPage() {
                     <option value="">— select client —</option>
                     {(data?.clients ?? []).map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.company}
+                        {clientName(c)}
                       </option>
                     ))}
                   </select>

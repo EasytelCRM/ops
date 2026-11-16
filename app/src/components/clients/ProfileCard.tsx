@@ -1,3 +1,4 @@
+import { clientName } from '../../lib/clientName';
 import type { ReactNode } from 'react';
 import { ClientSvcBadges } from '../Badges';
 import { Mail, Tel } from '../Links';
@@ -70,9 +71,9 @@ export function ProfileCard({
 
   return (
     <div className="profile-card">
-      <div className="profile-avatar">{initials(client.company)}</div>
-      <div className="profile-name">{client.company}</div>
-      <div className="profile-sub">Business client</div>
+      <div className="profile-avatar">{initials(clientName(client))}</div>
+      <div className="profile-name">{clientName(client)}</div>
+      <div className="profile-sub">{client.trading_name ? client.company : 'Business client'}</div>
       {(client.hardware_only || client.cancelled_date) && (
         <div style={{ margin: '-4px 0 12px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {client.hardware_only && (
