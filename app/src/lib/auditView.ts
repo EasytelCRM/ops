@@ -52,6 +52,8 @@ export const AUDIT_LABELS: Record<string, string> = {
   note: 'Note',
   mobile: 'Mobile',
   is_primary: 'Primary contact',
+  sales_rep: 'Sales rep',
+  is_sales_rep: 'Sales rep',
 };
 
 /** Where a column means something different on one table, keyed table → column. */
@@ -103,7 +105,7 @@ export function fmtAuditVal(key: string, val: unknown, look: AuditLookups): stri
   if (typeof val === 'boolean') return val ? 'On' : 'Off';
   const id = String(val);
   if (key === 'client_id') return look.clients[id] || id;
-  if (key === 'assigned_to' || key === 'created_by') return look.profiles[id] || id;
+  if (key === 'assigned_to' || key === 'created_by' || key === 'sales_rep') return look.profiles[id] || id;
   if (key === 'created_at') return fmtDateTime(id);
   if (key === 'job_id') return look.jobs[id] || id;
   if (key === 'complaint_id') return look.complaints[id] || id;

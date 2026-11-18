@@ -11,6 +11,8 @@ import {
 import type { Client, ClientContact } from '../../lib/db.types';
 import { sitePlaceholder, suggestSiteName } from '../../lib/siteName';
 import { clientName, clientNameMatches } from '../../lib/clientName';
+import { isActiveStaff } from '../../lib/roles';
+import { useProfiles } from '../../hooks/useClients';
 import { useToast } from '../../state/ToastProvider';
 
 interface AddressRow {
@@ -66,6 +68,8 @@ export function ClientModal({
   const [hardwareOnly, setHardwareOnly] = useState(false);
   const [cancelled, setCancelled] = useState(false);
   const [cancelledDate, setCancelledDate] = useState('');
+  const [salesRep, setSalesRep] = useState('');
+  const { data: profiles = [] } = useProfiles();
   const [contacts, setContacts] = useState<ContactRow[]>([emptyContactRow()]);
   const [primaryKey, setPrimaryKey] = useState<string | null>(null);
   const [addresses, setAddresses] = useState<AddressRow[]>([
@@ -77,6 +81,8 @@ export function ClientModal({
   const [suggestFor, setSuggestFor] = useState<'company' | 'trading' | null>(null);
 
   const origContacts = useRef<ClientContact[]>([]);
+  /** The list projection has no sales_rep, so the audit's "before" comes from the fresh load. */
+  const origSalesRep = useRef<string | null>(null);
   /** The number we filled in, so a save can tell it from a typed one. */
   const autoAcct = useRef<string | null>(null);
   /** Remembers the account number while Hardware only is ticked. */
@@ -129,6 +135,8 @@ export function ClientModal({
       setHardwareOnly(!!c.hardware_only);
       setCancelled(!!c.cancelled_date);
       setCancelledDate(c.cancelled_date ?? '');
+      origSalesRep.current = c.sales_rep ?? null;
+      setSalesRep(c.sales_rep ?? '');
       const rows = list.length ? list.map(toContactRow) : [emptyContactRow()];
       setContacts(rows);
       setPrimaryKey(rows.find((r) => list.find((l) => l.id === r.id)?.is_primary)?.key ?? rows[0]?.key ?? null);
@@ -200,6 +208,7 @@ export function ClientModal({
       hardware_only: hardwareOnly,
       phone: phone.trim(),
       email: email.trim(),
+      sales_rep: salesRep || null,
       created_by: currentUserId,
     };
     setSaving(true);
@@ -265,10 +274,11 @@ export function ClientModal({
       phone: phone.trim(),
       email: email.trim(),
       cancelled_date: cancelled ? cancelledDate : null,
+      sales_rep: salesRep || null,
     };
     setSaving(true);
     try {
-      const old = allClients.find((c) => c.id === id) ?? {};
+      const old = { ...allClients.find((c) => c.id === id), sales_rep: origSalesRep.current };
       const { error } = await sb.from('clients').update(payload).eq('id', id!);
       if (error) throw error;
       await logAudit('updated', 'clients', id!, old, payload);
@@ -299,6 +309,10 @@ export function ClientModal({
         </div>
       </div>
     );
+
+  // Active users ticked as sales reps; a client's current rep stays listed after they stop
+  // being one, so saving the form does not quietly clear it
+  const repOptions = profiles.filter((p) => (p.is_sales_rep && isActiveStaff(p)) || p.id === salesRep);
 
   /** "Already a client?" — opens the match instead of adding a duplicate. */
   const suggestBox = suggestions.length > 0 && (
@@ -457,6 +471,18 @@ export function ClientModal({
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
+      </div>
+
+      <div className="form-group">
+        <label className="lbl">Sales rep</label>
+        <select className="fi" value={salesRep} onChange={(e) => setSalesRep(e.target.value)}>
+          <option value="">—</option>
+          {repOptions.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.full_name || p.email}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="form-group">

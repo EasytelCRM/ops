@@ -41,6 +41,8 @@ export type Profile = {
   /** Added later than the rest of the table: older rows may not carry the key at all. */
   active?: boolean | null;
   deactivated_at?: string | null;
+  /** Shows in the client's Sales rep list. Changed only through set_sales_rep(). */
+  is_sales_rep?: boolean | null;
 };
 
 export type Client = ServiceFlags & {
@@ -57,6 +59,8 @@ export type Client = ServiceFlags & {
   cred_router: string | null;
   cred_phone_system: string | null;
   cred_other: string | null;
+  /** The sales rep (a profile with is_sales_rep) who signed the deal. */
+  sales_rep?: string | null;
   created_at: string | null;
   created_by?: string | null;
 };
@@ -335,6 +339,11 @@ export type Database = {
       /** Changes nothing but a profile's display name; admins only. */
       set_display_name: {
         Args: { target: string; new_name: string };
+        Returns: null;
+      };
+      /** Ticks or unticks a profile as a sales rep; admins only, themselves included. */
+      set_sales_rep: {
+        Args: { target: string; make_rep: boolean };
         Returns: null;
       };
       /**

@@ -22,12 +22,14 @@ function UserRow({
   onRole,
   onActive,
   onRename,
+  onSalesRep,
 }: {
   p: Profile;
   isSelf: boolean;
   onRole: (role: Role) => void;
   onActive: (makeActive: boolean) => void;
   onRename: (name: string) => void;
+  onSalesRep: (on: boolean) => void;
 }) {
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState('');
@@ -105,6 +107,18 @@ function UserRow({
       <td style={{ color: 'var(--text2)' }}>{p.email}</td>
       <td>
         <span className={`badge ${roleBadge(p.role)}`}>{roleLabel(p.role)}</span>
+      </td>
+      <td>
+        {/* A TV login never signs deals; admins can tick themselves, unlike the role */}
+        {p.role !== 'wallboard' && (
+          <input
+            type="checkbox"
+            checked={!!p.is_sales_rep}
+            aria-label={`Sales rep: ${p.full_name ?? p.email ?? ''}`}
+            title="Can be picked as a client's sales rep"
+            onChange={(e) => onSalesRep(e.target.checked)}
+          />
+        )}
       </td>
       <td style={{ fontSize: 12, color: 'var(--text2)' }}>{fmtDate(p.created_at)}</td>
       <td>
@@ -221,6 +235,18 @@ export function UsersPage() {
     }
   };
 
+  /** Through set_sales_rep(), admins only, which writes its own audit entry. */
+  const setSalesRep = async (p: Profile, on: boolean) => {
+    try {
+      const { error } = await sb.rpc('set_sales_rep', { target: p.id, make_rep: on });
+      if (error) throw error;
+      toast(`${p.full_name || p.email || 'User'} ${on ? 'is now a sales rep' : 'is no longer a sales rep'}`);
+      void reload();
+    } catch (e) {
+      toast(`Failed: ${(e as Error).message}`, 'error');
+    }
+  };
+
   const row = (p: Profile) => (
     <UserRow
       key={p.id}
@@ -229,6 +255,7 @@ export function UsersPage() {
       onRole={(role) => void setRole(p, role)}
       onActive={(makeActive) => void setActive(p, makeActive)}
       onRename={(name) => void rename(p, name)}
+      onSalesRep={(on) => void setSalesRep(p, on)}
     />
   );
 
@@ -237,7 +264,7 @@ export function UsersPage() {
       <>
         {grouped && (
           <tr className="users-sec">
-            <td colSpan={5}>
+            <td colSpan={6}>
               {label} ({list.length})
             </td>
           </tr>
@@ -267,6 +294,7 @@ export function UsersPage() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Role</th>
+                <th>Sales rep</th>
                 <th>Joined</th>
                 <th />
               </tr>
@@ -277,7 +305,7 @@ export function UsersPage() {
               {section('Deactivated', deactivated)}
               {!profiles.length && (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <div className="empty">
                       <i className="ti ti-users" />
                       <p>{isLoading ? 'Loading…' : 'No team members found.'}</p>

@@ -6,7 +6,7 @@ import { fmtDate, initials } from '../../lib/format';
 import { isAdmin, isAdminOrOps } from '../../lib/roles';
 import { useAuth } from '../../state/AuthProvider';
 import type { ClientContact } from '../../lib/db.types';
-import type { ClientProfileData } from '../../hooks/useClients';
+import { useProfiles, type ClientProfileData } from '../../hooks/useClients';
 
 /** One labelled line on the card; renders nothing when there is no value. */
 function Pf({ icon, label, children }: { icon: string; label: string; children?: ReactNode }) {
@@ -54,7 +54,9 @@ export function ProfileCard({
   onDelete: () => void;
 }) {
   const { profile } = useAuth();
+  const { data: profiles = [] } = useProfiles();
   const { client, sites, jobs, contacts } = data;
+  const rep = client.sales_rep ? profiles.find((p) => p.id === client.sales_rep) : undefined;
   // Only a site someone marked primary: the oldest can be an address the client moved from
   const mainSite = sites.find((s) => s.is_primary);
 
@@ -147,6 +149,9 @@ export function ProfileCard({
       )}
       <Pf icon="ti-calendar" label="Client since">
         {fmtDate(client.created_at)}
+      </Pf>
+      <Pf icon="ti-user-dollar" label="Sales rep">
+        {rep ? rep.full_name || rep.email : null}
       </Pf>
 
       <div className="pf">
