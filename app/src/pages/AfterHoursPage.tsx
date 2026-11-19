@@ -42,7 +42,7 @@ function Caller({ c }: { c: QueueCall }) {
  * before any phone rings isn't seen.
  */
 export function AfterHoursPage() {
-  const [period, setPeriod] = useState<QueuePeriod>('last7');
+  const [period, setPeriod] = useState<QueuePeriod>('today');
   const [day, setDay] = useState(() => localYmd());
   const { data: calls = [], isLoading, error } = useQueueCalls(AFTER_HOURS_QUEUE, period, day);
 
