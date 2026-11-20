@@ -1,7 +1,13 @@
 import { clientName } from '../lib/clientName';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AFTER_HOURS_QUEUE, QUEUE_PERIODS, useQueueCalls, type QueuePeriod } from '../hooks/useQueueCalls';
+import {
+  AFTER_HOURS_QUEUE,
+  QUEUE_PERIODS,
+  queueRange,
+  useQueueCalls,
+  type QueuePeriod,
+} from '../hooks/useQueueCalls';
 import { hms } from '../components/callstats/CallStatsBoard';
 import { fmtDateTime, localYmd } from '../lib/format';
 import type { QueueCall, QueueCallOutcome } from '../lib/db.types';
@@ -17,6 +23,11 @@ const OUTCOME: Record<QueueCallOutcome, { label: string; badge: string }> = {
 };
 
 const num = { textAlign: 'right' as const, fontVariantNumeric: 'tabular-nums' as const };
+
+/** "Thu 19 Nov, 5:00 pm", for the window a period covers. */
+const fmtEdge = (d: Date) =>
+  `${d.toLocaleDateString('en-AU', { weekday: 'short' })} ${d.getDate()} ${d.toLocaleDateString('en-AU', { month: 'short' })}, ` +
+  d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
 
 function Caller({ c }: { c: QueueCall }) {
   return (
@@ -45,6 +56,7 @@ export function AfterHoursPage() {
   const [period, setPeriod] = useState<QueuePeriod>('today');
   const [day, setDay] = useState(() => localYmd());
   const { data: calls = [], isLoading, error } = useQueueCalls(AFTER_HOURS_QUEUE, period, day);
+  const range = period !== 'day' || /^\d{4}-\d{2}-\d{2}$/.test(day) ? queueRange(period, day) : null;
 
   const totals = useMemo(() => {
     const answered = calls.filter((c) => c.outcome === 'answered');
@@ -85,7 +97,7 @@ export function AfterHoursPage() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <label className="lbl" htmlFor="ah-day" style={{ margin: 0 }}>
-            Day
+            Night ending
           </label>
           <input
             id="ah-day"
@@ -101,6 +113,11 @@ export function AfterHoursPage() {
           />
         </div>
       </div>
+      {range && (
+        <div style={{ fontSize: 12, color: 'var(--text3)', margin: '-0.25rem 0 0.75rem' }}>
+          <i className="ti ti-moon" style={{ fontSize: 12 }} /> {fmtEdge(range.from)} → {fmtEdge(range.to)}
+        </div>
+      )}
 
       {error ? (
         <div className="empty">
@@ -223,8 +240,10 @@ export function AfterHoursPage() {
       )}
 
       <p style={{ fontSize: 11, color: 'var(--text3)' }}>
-        From Webex call events since 16 Nov 2026. Wait runs from when the queue started ringing someone until answered
-        (or until a missed caller gave up). A caller who hangs up before any phone rings isn't counted.
+        Each night runs from 5pm on the last weekday to 5pm on the day it ends, so Monday holds the whole weekend;
+        tonight's calls show under tomorrow. From Webex call events since 16 Nov 2026. Wait runs from when the queue
+        started ringing someone until answered (or until a missed caller gave up). A caller who hangs up before any
+        phone rings isn't counted.
       </p>
     </div>
   );

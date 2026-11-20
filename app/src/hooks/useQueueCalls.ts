@@ -14,26 +14,52 @@ export const QUEUE_PERIODS: { p: Exclude<QueuePeriod, 'day'>; label: string }[] 
   { p: 'month', label: 'This month' },
 ];
 
+/** The office closes at 5pm, when After Hours calls begin; each night is counted up to 5pm the next day. */
+const CLOSE_HOUR = 17;
+
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const at5pm = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), CLOSE_HOUR);
+const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
+
+/** The latest weekday (Mon–Fri) before `d`. */
+function prevWeekday(d: Date): Date {
+  let p = addDays(d, -1);
+  while (isWeekend(p)) p = addDays(p, -1);
+  return p;
+}
+
 /**
- * A period as [from, to) in the browser's own timezone. `day` is a YYYY-MM-DD picked on the
- * page; "last 7 days" is today and the six days before, so a Monday still shows the weekend.
+ * The night that ends on day `d`, the way the After Hours team reads it: from 5pm on the last
+ * weekday before it until 5pm on `d`. Fri 20 Nov is Thu 5pm → Fri 5pm; Monday (and a Saturday
+ * or Sunday picked on the page) runs from Friday 5pm, so Monday's view holds the whole weekend.
+ * Ending at 5pm, not at opening time, keeps it independent of the Webex schedule: only calls
+ * outside business hours reach the queue.
+ */
+export function nightRange(d: Date): { from: Date; to: Date } {
+  return { from: at5pm(prevWeekday(d)), to: at5pm(d) };
+}
+
+/**
+ * A period as [from, to) in the browser's own timezone, made of nights (see nightRange).
+ * "Today" is the night ending today, and stays on it after 5pm (tonight's calls belong to
+ * tomorrow). "Yesterday" is the night before that, so on a Monday it is Thursday → Friday rather
+ * than the weekend again. `day` is a YYYY-MM-DD picked on the page.
  */
 export function queueRange(p: QueuePeriod, day: string, now = new Date()): { from: Date; to: Date } {
-  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   switch (p) {
     case 'today':
-      return { from: midnight, to: addDays(midnight, 1) };
+      return nightRange(today);
     case 'yesterday':
-      return { from: addDays(midnight, -1), to: midnight };
+      return nightRange(nightRange(today).from);
     case 'last7':
-      return { from: addDays(midnight, -6), to: addDays(midnight, 1) };
+      return { from: at5pm(addDays(today, -7)), to: at5pm(today) };
     case 'month':
-      return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: addDays(midnight, 1) };
+      // From 5pm on the last day of the previous month: the night into the 1st counts here
+      return { from: at5pm(addDays(new Date(now.getFullYear(), now.getMonth(), 1), -1)), to: at5pm(today) };
     case 'day': {
       const [y, m, d] = day.split('-').map(Number);
-      const from = new Date(y, m - 1, d);
-      return { from, to: addDays(from, 1) };
+      return nightRange(new Date(y, m - 1, d));
     }
   }
 }
